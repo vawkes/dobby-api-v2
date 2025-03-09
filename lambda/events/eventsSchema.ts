@@ -11,25 +11,33 @@ enum EventType {
 const startShedSchema = z.object({
     device_id: z.string().uuid(),
     start_time: z.string().datetime(),
+    duration: z.number().optional(),
+    event_sent: z.boolean().optional(),
 });
 
 const endShedSchema = z.object({
-    device_id: z.string().uuid()
+    device_id: z.string().uuid(),
+    start_time: z.string().datetime().optional(),
+    event_sent: z.boolean().optional(),
 });
 
 const loadUpSchema = z.object({
     device_id: z.string().uuid(),
     start_time: z.string().datetime(),
+    duration: z.number().optional(),
+    event_sent: z.boolean().optional(),
 });
 
 const gridEmergencySchema = z.object({
     device_id: z.string().uuid(),
     start_time: z.string().datetime(),
+    event_sent: z.boolean().optional(),
 });
 
 const criticalPeakSchema = z.object({
     device_id: z.string().uuid(),
     start_time: z.string().datetime(),
+    event_sent: z.boolean().optional(),
 });
 
 const eventRequestSchema = z.object({
