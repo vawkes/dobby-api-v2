@@ -1,32 +1,89 @@
 import { handle } from 'hono/aws-lambda'
 import devices from './devices/devices'
 import events from './events/events'
+import authRoutes from './utils/authRoutes'
 import { Hono } from 'hono'
-import { openAPISpecs } from 'hono-openapi';
-import { apiReference } from "@scalar/hono-api-reference";
+import { openAPISpecs } from 'hono-openapi'
+import { apiReference } from '@scalar/hono-api-reference'
+import { auth } from './utils/auth'
 
-
+// Create the main app
 const app = new Hono()
 
-app.route('/devices', devices)
-app.route('/events', events)
+// Create a separate router for public routes
+const publicRoutes = new Hono()
 
-app.get(
+// Add auth routes to public routes (do this first so the routes are included in OpenAPI spec)
+publicRoutes.route('/auth', authRoutes)
+
+// Create a full app for OpenAPI documentation that includes all routes
+const fullApp = new Hono()
+fullApp.route('/devices', devices)
+fullApp.route('/events', events)
+fullApp.route('/public/auth', authRoutes)
+
+// Add OpenAPI documentation to public routes
+publicRoutes.get(
     '/openapi',
-    openAPISpecs(app, {
+    openAPISpecs(fullApp, {
         documentation: {
-            info: { title: 'Vawkes GridCube API', version: '1.0.0', description: 'API for interacting with Vawkes GridCube devices.' },
+            info: {
+                title: 'Vawkes GridCube API',
+                version: '1.0.0',
+                description: 'API for interacting with Vawkes GridCube devices.'
+            },
             servers: [],
+            tags: [
+                { name: 'Devices', description: 'Device management endpoints' },
+                { name: 'Events', description: 'Event data endpoints' },
+                { name: 'Authentication', description: 'User authentication endpoints' }
+            ],
+            components: {
+                securitySchemes: {
+                    bearerAuth: {
+                        type: 'http',
+                        scheme: 'bearer',
+                        bearerFormat: 'JWT',
+                        description: 'Enter JWT token for authentication'
+                    }
+                }
+            },
+            security: [
+                { bearerAuth: [] }
+            ]
         },
     })
-);
+)
 
-app.get(
+// Add API documentation UI to public routes
+publicRoutes.get(
     '/docs',
     apiReference({
         theme: 'saturn',
-        spec: { url: '/prod/openapi' },
+        spec: { url: '/prod/public/openapi' },
     })
-);
+)
 
+// Mount the public routes at /public
+app.route('/public', publicRoutes)
+
+// Add a middleware that logs all incoming requests for debugging
+app.use('*', async (c, next) => {
+    console.log(`Request received: ${c.req.method} ${c.req.path}`);
+    console.log('Headers:', JSON.stringify(c.req.header()));
+    await next();
+    console.log(`Response status: ${c.res.status}`);
+})
+
+// Add authentication middleware to protected routes
+// Protected routes must be defined AFTER mounting public routes
+const protectedRoutes = new Hono();
+protectedRoutes.use('/*', auth);
+protectedRoutes.route('/devices', devices);
+protectedRoutes.route('/events', events);
+
+// Mount the protected routes at the root level
+app.route('/', protectedRoutes);
+
+// Export the handler
 export const handler = handle(app)
