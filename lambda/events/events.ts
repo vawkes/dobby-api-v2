@@ -1,10 +1,14 @@
 import { Hono } from "hono";
 import { DynamoDB } from "@aws-sdk/client-dynamodb";
 import { unmarshall } from "@aws-sdk/util-dynamodb";
-import { eventsSchema, eventSchema, eventRequestSchema, EventType } from './eventsSchema';
+import { eventsSchema, eventSchema, eventRequestSchema, EventType, EventSchemaType } from './eventsSchema';
 import { describeRoute } from 'hono-openapi';
 import { resolver, validator as zValidator } from "hono-openapi/zod";
 import { handleLoadUp } from "./eventHandlers/loadUp";
+import { handleStartShed } from "./eventHandlers/startShed";
+import { handleEndShed } from "./eventHandlers/endShed";
+import { handleGridEmergency } from "./eventHandlers/gridEmergency";
+import { handleCriticalPeak } from "./eventHandlers/criticalPeak";
 
 const app = new Hono()
 
@@ -94,24 +98,62 @@ app.post("/",
     }),
     zValidator('json', eventRequestSchema),
     async (c) => {
-        const body = await c.req.json()
-        const parsedBody = eventRequestSchema.parse(body)
+        try {
+            const body = await c.req.json()
+            const parsedBody = eventRequestSchema.parse(body)
 
-        switch (parsedBody.event_type) {
-            case EventType.LOAD_UP:
-                const handleLoadUp(parsedBody.device_id, parsedBody.startTime, parsedBody.duration)
-                break;
-            case EventType.GRID_EMERGENCY:
-                break;
-            case EventType.CRITICAL_PEAK:
-                break;
-            case EventType.START_SHED:
-                break;
-            case EventType.END_SHED:
-                break;
+            let result: EventSchemaType | null = null;
+            const eventType = parsedBody.event_type;
+
+            // Handle each event type
+            if (eventType === EventType.LOAD_UP) {
+                result = await handleLoadUp(parsedBody.event_data.device_id,
+                    parsedBody.event_data.start_time ? new Date(parsedBody.event_data.start_time) : undefined,
+                    parsedBody.event_data.duration);
+            }
+            else if (eventType === EventType.GRID_EMERGENCY) {
+                result = await handleGridEmergency(parsedBody.event_data.device_id,
+                    parsedBody.event_data.start_time ? new Date(parsedBody.event_data.start_time) : undefined);
+            }
+            else if (eventType === EventType.CRITICAL_PEAK) {
+                result = await handleCriticalPeak(parsedBody.event_data.device_id,
+                    parsedBody.event_data.start_time ? new Date(parsedBody.event_data.start_time) : undefined);
+            }
+            else if (eventType === EventType.START_SHED) {
+                result = await handleStartShed(parsedBody.event_data.device_id,
+                    parsedBody.event_data.start_time ? new Date(parsedBody.event_data.start_time) : undefined,
+                    parsedBody.event_data.duration || 0);
+            }
+            else if (eventType === EventType.END_SHED) {
+                result = await handleEndShed(parsedBody.event_data.device_id,
+                    parsedBody.event_data.start_time ? new Date(parsedBody.event_data.start_time) : undefined);
+            }
+            else {
+                // Unsupported event type
+                return c.json({
+                    statusCode: 400,
+                    body: { reason: `Unsupported event type: ${eventType}` }
+                }, 400);
+            }
+
+            if (!result) {
+                return c.json({
+                    statusCode: 500,
+                    body: { reason: "Failed to process event" }
+                }, 500);
+            }
+
+            return c.json({
+                statusCode: 200,
+                body: result
+            }, 200);
+        } catch (error) {
+            console.error("Error processing event:", error);
+            return c.json({
+                statusCode: 500,
+                body: { reason: error instanceof Error ? error.message : "Unknown error" }
+            }, 500);
         }
-
-        return c.json({ "response": "Hello from Events" })
     })
 
 export default app
