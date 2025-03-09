@@ -4,6 +4,7 @@ import * as lambda from 'aws-cdk-lib/aws-lambda'
 import * as apigw from 'aws-cdk-lib/aws-apigateway'
 import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs'
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb'
+import * as iam from 'aws-cdk-lib/aws-iam'
 
 export class DobbyApiV2Stack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -24,6 +25,13 @@ export class DobbyApiV2Stack extends cdk.Stack {
     fn.addFunctionUrl({
       authType: lambda.FunctionUrlAuthType.NONE,
     })
+
+    fn.addToRolePolicy(new iam.PolicyStatement({
+      actions: [
+        "iotwireless:SendDataToWirelessDevice",
+      ],
+      resources: ["*"],
+    }));
 
     new apigw.LambdaRestApi(this, 'myapi', {
       handler: fn,

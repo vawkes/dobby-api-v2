@@ -48,7 +48,8 @@ const eventRequestSchema = z.object({
 const eventSchema = eventRequestSchema.and(z.object({
     event_id: z.string().uuid(),
 }));
+type EventSchemaType = z.infer<typeof eventSchema>;
 
 const eventsSchema = z.array(eventSchema);
 
-export { eventsSchema, eventSchema, eventRequestSchema, EventType };
+export { eventsSchema, eventSchema, eventRequestSchema, EventType, EventSchemaType };

@@ -4,6 +4,7 @@ import { unmarshall } from "@aws-sdk/util-dynamodb";
 import { eventsSchema, eventSchema, eventRequestSchema, EventType } from './eventsSchema';
 import { describeRoute } from 'hono-openapi';
 import { resolver, validator as zValidator } from "hono-openapi/zod";
+import { handleLoadUp } from "./eventHandlers/loadUp";
 
 const app = new Hono()
 
@@ -98,6 +99,7 @@ app.post("/",
 
         switch (parsedBody.event_type) {
             case EventType.LOAD_UP:
+                const handleLoadUp(parsedBody.device_id, parsedBody.startTime, parsedBody.duration)
                 break;
             case EventType.GRID_EMERGENCY:
                 break;
