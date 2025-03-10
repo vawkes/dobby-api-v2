@@ -49,6 +49,7 @@ export class DobbyApiV2Stack extends cdk.Stack {
       entry: 'lambda/index.ts',
       handler: 'handler',
       runtime: lambda.Runtime.NODEJS_20_X,
+      timeout: cdk.Duration.seconds(30),
       environment: {
         USER_POOL_ID: userPool.userPoolId,
         USER_POOL_CLIENT_ID: userPoolClient.userPoolClientId,

@@ -42,9 +42,20 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             setIsLoading(true);
             const response = await authAPI.login(credentials.email, credentials.password);
 
+            console.log('Login successful, token received, length:', response.token.length);
+
             // Save token and user info
-            setToken(response.token);
-            localStorage.setItem('token', response.token);
+            if (!response.token) {
+                throw new Error('No token received from server');
+            }
+
+            // Ensure token is properly formatted
+            const token = response.token.startsWith('Bearer ')
+                ? response.token
+                : `Bearer ${response.token}`;
+
+            setToken(token);
+            localStorage.setItem('token', token);
 
             // Create user object
             const userObj: User = {

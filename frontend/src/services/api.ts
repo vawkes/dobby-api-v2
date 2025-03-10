@@ -23,7 +23,15 @@ api.interceptors.request.use(
 
         // If token exists, add it to the headers
         if (token) {
-            config.headers.Authorization = `Bearer ${token}`;
+            // Check if token already has Bearer prefix
+            const tokenValue = token.startsWith('Bearer ') ? token : `Bearer ${token}`;
+            config.headers.Authorization = tokenValue;
+
+            // Debug log (avoid logging full token in production)
+            const tokenPreview = tokenValue.substring(0, 15) + '...' + tokenValue.substring(tokenValue.length - 5);
+            console.log(`Adding authorization token: ${tokenPreview}`);
+        } else {
+            console.warn('No authorization token available for request');
         }
 
         console.log(`Making ${config.method?.toUpperCase()} request to: ${config.baseURL}${config.url}`);
@@ -45,8 +53,29 @@ api.interceptors.response.use(
         // Any status codes outside the range of 2xx trigger this function
         console.error('API Error:', error);
 
-        // Handle specific error types
-        if (error.response) {
+        // Handle unauthorized errors by redirecting to login
+        if (error.response && error.response.status === 401) {
+            console.error('Unauthorized access - token may be expired');
+
+            // Clear authentication data from localStorage
+            if (typeof window !== 'undefined') {
+                localStorage.removeItem('token');
+                localStorage.removeItem('user');
+
+                // Only redirect if we're in the browser
+                if (window.location.pathname !== '/login') {
+                    console.log('Redirecting to login page due to authentication error');
+                    // Use a slight delay to allow the console messages to be logged
+                    setTimeout(() => {
+                        window.location.href = '/login';
+                    }, 100);
+                }
+            }
+
+            // Show toast with error message
+            const errorMessage = 'Your session has expired. Please log in again.';
+            toast.error(errorMessage);
+        } else if (error.response) {
             // The request was made and the server responded with a status code
             // that falls out of the range of 2xx
             console.error('Response data:', error.response.data);
@@ -130,10 +159,25 @@ export const authAPI = {
 export const deviceAPI = {
     getAllDevices: async () => {
         try {
+            // Check if token exists before making the request
+            const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+            if (!token) {
+                console.warn('No auth token found in localStorage when fetching devices');
+            } else {
+                console.log('Auth token found, length:', token.length);
+            }
+
+            console.log('Making request to /devices endpoint');
             const response = await api.get('/devices');
             return response.data;
-        } catch (error) {
+        } catch (error: any) { // Type assertion for axios error
             console.error('Get devices error:', error);
+            // Log more detailed error information
+            if (error.response) {
+                console.error('Error response status:', error.response.status);
+                console.error('Error response headers:', error.response.headers);
+                console.error('Error response data:', error.response.data);
+            }
             throw error;
         }
     },

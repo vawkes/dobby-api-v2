@@ -7,23 +7,89 @@ export async function GET(
     request: NextRequest,
     context: { params: { path: string[] } }
 ) {
-    const path = context.params.path.join('/');
+    const path = await Promise.resolve(context.params.path).then(path => path.join('/'));
     const url = new URL(request.url);
     const apiUrl = `${API_URL}/${path}${url.search}`;
 
+    // Log the authorization header for debugging
+    const authHeader = request.headers.get('Authorization');
+    console.log(`Authorization header present: ${!!authHeader}`);
+    if (authHeader) {
+        // Log a censored version of the token for debugging
+        const tokenPreview = authHeader.substring(0, 15) + '...' + authHeader.substring(authHeader.length - 5);
+        console.log(`Token format: ${tokenPreview}`);
+    }
+
     try {
         console.log(`Proxying GET request to: ${apiUrl}`);
+        const headers: Record<string, string> = {
+            'Content-Type': 'application/json',
+        };
+
+        if (authHeader) {
+            headers['Authorization'] = authHeader;
+            console.log('Adding Authorization header to request');
+        } else {
+            console.log('WARNING: No Authorization header found in the incoming request');
+        }
+
         const response = await fetch(apiUrl, {
-            headers: {
-                'Content-Type': 'application/json',
-                ...(request.headers.get('Authorization')
-                    ? { 'Authorization': request.headers.get('Authorization') as string }
-                    : {})
-            },
+            headers,
             cache: 'no-store',
         });
 
-        const data = await response.json();
+        console.log(`Response status from ${apiUrl}: ${response.status}`);
+        console.log(`Response content-type: ${response.headers.get('content-type')}`);
+
+        // If we get a 401, pass it through but with a clearer message
+        if (response.status === 401) {
+            let errorMessage = 'Authentication required';
+
+            try {
+                const errorData = await response.json();
+                if (errorData.message) {
+                    errorMessage = errorData.message;
+                }
+            } catch (e) {
+                // If we can't parse the error as JSON, try to get the text
+                try {
+                    const errorText = await response.text();
+                    if (errorText) {
+                        errorMessage = errorText;
+                    }
+                } catch (textError) {
+                    // If we can't get the text, just use the default message
+                }
+            }
+
+            return NextResponse.json(
+                { error: errorMessage, details: 'Your session may have expired. Please log in again.' },
+                { status: 401 }
+            );
+        }
+
+        let data;
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+            try {
+                data = await response.json();
+            } catch (jsonError) {
+                console.error('Error parsing JSON response:', jsonError);
+                const text = await response.text();
+                console.error('Response text:', text);
+                return NextResponse.json(
+                    { error: 'Invalid JSON response from API', details: text.substring(0, 200) },
+                    { status: 500 }
+                );
+            }
+        } else {
+            const text = await response.text();
+            console.error('Non-JSON response received:', text);
+            return NextResponse.json(
+                { error: 'Non-JSON response from API', details: text.substring(0, 200) },
+                { status: 500 }
+            );
+        }
 
         return NextResponse.json(data, {
             status: response.status,
@@ -41,7 +107,7 @@ export async function POST(
     request: NextRequest,
     context: { params: { path: string[] } }
 ) {
-    const path = context.params.path.join('/');
+    const path = await Promise.resolve(context.params.path).then(path => path.join('/'));
     const apiUrl = `${API_URL}/${path}`;
 
     try {
@@ -59,7 +125,29 @@ export async function POST(
             body: JSON.stringify(body),
         });
 
-        const data = await response.json();
+        let data;
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+            try {
+                data = await response.json();
+            } catch (jsonError) {
+                console.error('Error parsing JSON response:', jsonError);
+                const text = await response.text();
+                console.error('Response text:', text);
+                return NextResponse.json(
+                    { error: 'Invalid JSON response from API', details: text.substring(0, 200) },
+                    { status: 500 }
+                );
+            }
+        } else {
+            const text = await response.text();
+            console.error('Non-JSON response received:', text.substring(0, 200));
+            return NextResponse.json(
+                { error: 'Non-JSON response from API', details: text.substring(0, 200) },
+                { status: 500 }
+            );
+        }
+
         console.log(`Response from ${apiUrl}:`, data);
 
         return NextResponse.json(data, {
@@ -78,7 +166,7 @@ export async function PUT(
     request: NextRequest,
     context: { params: { path: string[] } }
 ) {
-    const path = context.params.path.join('/');
+    const path = await Promise.resolve(context.params.path).then(path => path.join('/'));
     const apiUrl = `${API_URL}/${path}`;
 
     try {
@@ -96,7 +184,28 @@ export async function PUT(
             body: JSON.stringify(body),
         });
 
-        const data = await response.json();
+        let data;
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+            try {
+                data = await response.json();
+            } catch (jsonError) {
+                console.error('Error parsing JSON response:', jsonError);
+                const text = await response.text();
+                console.error('Response text:', text);
+                return NextResponse.json(
+                    { error: 'Invalid JSON response from API', details: text.substring(0, 200) },
+                    { status: 500 }
+                );
+            }
+        } else {
+            const text = await response.text();
+            console.error('Non-JSON response received:', text.substring(0, 200));
+            return NextResponse.json(
+                { error: 'Non-JSON response from API', details: text.substring(0, 200) },
+                { status: 500 }
+            );
+        }
 
         return NextResponse.json(data, {
             status: response.status,
@@ -114,7 +223,7 @@ export async function DELETE(
     request: NextRequest,
     context: { params: { path: string[] } }
 ) {
-    const path = context.params.path.join('/');
+    const path = await Promise.resolve(context.params.path).then(path => path.join('/'));
     const url = new URL(request.url);
     const apiUrl = `${API_URL}/${path}${url.search}`;
 
@@ -130,7 +239,28 @@ export async function DELETE(
             },
         });
 
-        const data = await response.json();
+        let data;
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+            try {
+                data = await response.json();
+            } catch (jsonError) {
+                console.error('Error parsing JSON response:', jsonError);
+                const text = await response.text();
+                console.error('Response text:', text);
+                return NextResponse.json(
+                    { error: 'Invalid JSON response from API', details: text.substring(0, 200) },
+                    { status: 500 }
+                );
+            }
+        } else {
+            const text = await response.text();
+            console.error('Non-JSON response received:', text.substring(0, 200));
+            return NextResponse.json(
+                { error: 'Non-JSON response from API', details: text.substring(0, 200) },
+                { status: 500 }
+            );
+        }
 
         return NextResponse.json(data, {
             status: response.status,
