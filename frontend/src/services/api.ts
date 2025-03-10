@@ -169,7 +169,16 @@ export const deviceAPI = {
 
             console.log('Making request to /devices endpoint');
             const response = await api.get('/devices');
-            return response.data;
+
+            // Add mock data for testing - temporary until backend provides this data
+            const enhancedData = response.data.map((device: any) => ({
+                ...device,
+                last_rx_rssi: device.last_rx_rssi ?? Math.floor(Math.random() * -50) - 50, // Random RSSI between -50 and -100 dBm
+                last_link_type: device.last_link_type ?? (Math.random() > 0.5 ? 1 : 4), // Randomly assign BLE (1) or LoRA (4)
+                updated_at: device.updated_at ?? new Date().toISOString() // Current date if not provided
+            }));
+
+            return enhancedData;
         } catch (error: any) { // Type assertion for axios error
             console.error('Get devices error:', error);
             // Log more detailed error information
@@ -185,7 +194,16 @@ export const deviceAPI = {
     getDeviceById: async (deviceId: string) => {
         try {
             const response = await api.get(`/devices/${deviceId}`);
-            return response.data;
+
+            // Add mock data for testing - temporary until backend provides this data
+            const enhancedData = {
+                ...response.data,
+                last_rx_rssi: response.data.last_rx_rssi ?? Math.floor(Math.random() * -50) - 50, // Random RSSI between -50 and -100 dBm
+                last_link_type: response.data.last_link_type ?? (Math.random() > 0.5 ? 1 : 4), // Randomly assign BLE (1) or LoRA (4)
+                updated_at: response.data.updated_at ?? new Date().toISOString() // Current date if not provided
+            };
+
+            return enhancedData;
         } catch (error) {
             console.error('Get device error:', error);
             throw error;

@@ -45,6 +45,8 @@ export interface Device {
     firmware_version: string;
     serial_number: string;
     vendor_id: string;
+    last_rx_rssi?: number;
+    last_link_type?: number;
 }
 
 // User related types
