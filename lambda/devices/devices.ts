@@ -22,10 +22,28 @@ app.get('/',
         },
     }),
     async (c) => {
-        const dynamodb = new DynamoDB({ "region": "us-east-1" });
-        const results = await dynamodb.scan({ TableName: "DobbyInfo" });
-        const devices = results.Items?.map(item => unmarshall(item)) || [];
-        return c.json(devicesSchema.parse(devices));
+        try {
+            console.log('Starting device scan operation');
+            const dynamodb = new DynamoDB({ region: "us-east-1" });
+
+            // Use a limit to prevent retrieving too many items at once
+            // and set a reasonable page size
+            const scanParams = {
+                TableName: "DobbyInfo",
+                Limit: 100 // Only retrieve up to 100 devices at a time
+            };
+
+            console.log('Executing scan with params:', JSON.stringify(scanParams));
+            const results = await dynamodb.scan(scanParams);
+
+            console.log(`Scan complete. Retrieved ${results.Items?.length || 0} devices`);
+            const devices = results.Items?.map(item => unmarshall(item)) || [];
+
+            return c.json(devicesSchema.parse(devices));
+        } catch (error) {
+            console.error('Error in device scan operation:', error);
+            return c.json({ error: 'Failed to retrieve devices' }, 500);
+        }
     })
 
 app.get('/:deviceId',

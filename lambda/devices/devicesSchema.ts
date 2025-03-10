@@ -13,6 +13,8 @@ const deviceSchema = z.object({
     firmware_version: z.string(),
     serial_number: z.string(),
     vendor_id: z.string(), // Assuming this is a string, adjust if it's a number
+    last_rx_rssi: z.number().optional(), // Signal strength in dBm
+    last_link_type: z.number().optional(), // 1 for BLE, 4 for LoRA
 });
 
 const devicesSchema = z.array(deviceSchema);

@@ -40,7 +40,10 @@ describe("Devices API", () => {
                         device_revision: { S: "1.0" },
                         firmware_version: { S: "2.0" },
                         serial_number: { S: "SN12345" },
-                        vendor_id: { S: "VID123" }
+                        vendor_id: { S: "VID123" },
+                        last_rx_rssi: { N: "-75" },
+                        last_link_type: { N: "1" },
+                        updated_at: { S: "2023-06-01T12:00:00Z" }
                     },
                     {
                         device_id: { S: "87654321-4321-4321-4321-987654321098" },
@@ -54,7 +57,10 @@ describe("Devices API", () => {
                         device_revision: { S: "1.1" },
                         firmware_version: { S: "2.1" },
                         serial_number: { S: "SN67890" },
-                        vendor_id: { S: "VID456" }
+                        vendor_id: { S: "VID456" },
+                        last_rx_rssi: { N: "-82" },
+                        last_link_type: { N: "4" },
+                        updated_at: { S: "2023-06-02T14:30:00Z" }
                     },
                 ],
             };
