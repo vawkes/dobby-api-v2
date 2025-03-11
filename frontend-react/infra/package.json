@@ -1,0 +1,21 @@
+{
+    "name": "frontend-react-infra",
+    "version": "0.1.0",
+    "private": true,
+    "scripts": {
+        "build": "tsc",
+        "watch": "tsc -w",
+        "cdk": "cdk"
+    },
+    "dependencies": {
+        "aws-cdk-lib": "^2.174.1",
+        "constructs": "^10.0.0",
+        "source-map-support": "^0.5.21"
+    },
+    "devDependencies": {
+        "@types/node": "^20.10.4",
+        "aws-cdk": "^2.174.1",
+        "ts-node": "^10.9.2",
+        "typescript": "~5.6.3"
+    }
+}
