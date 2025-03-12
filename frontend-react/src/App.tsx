@@ -10,6 +10,8 @@ import VerifyPage from './pages/Verify';
 import ForgotPasswordPage from './pages/ForgotPassword';
 import ResetPasswordPage from './pages/ResetPassword';
 import Dashboard from './pages/Dashboard';
+import Devices from './pages/Devices';
+import DeviceDetail from './pages/DeviceDetail';
 
 // Components
 import ProtectedRoute from './components/ProtectedRoute';
@@ -52,6 +54,8 @@ function App() {
           {/* Protected routes */}
           <Route element={<ProtectedRoute />}>
             <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/devices" element={<Devices />} />
+            <Route path="/devices/:deviceId" element={<DeviceDetail />} />
             {/* Add more protected routes here */}
           </Route>
 

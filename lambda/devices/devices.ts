@@ -37,7 +37,20 @@ app.get('/',
             const results = await dynamodb.scan(scanParams);
 
             console.log(`Scan complete. Retrieved ${results.Items?.length || 0} devices`);
-            const devices = results.Items?.map(item => unmarshall(item)) || [];
+            const devices = results.Items?.map(item => {
+                const device = unmarshall(item);
+
+                // Convert string values to numbers for fields expected to be numbers
+                if (device.last_rx_rssi !== undefined && typeof device.last_rx_rssi === 'string') {
+                    device.last_rx_rssi = Number(device.last_rx_rssi);
+                }
+
+                if (device.last_link_type !== undefined && typeof device.last_link_type === 'string') {
+                    device.last_link_type = Number(device.last_link_type);
+                }
+
+                return device;
+            }) || [];
 
             return c.json(devicesSchema.parse(devices));
         } catch (error) {
@@ -81,6 +94,16 @@ app.get('/:deviceId',
             }
 
             const device = unmarshall(result.Item);
+
+            // Convert string values to numbers for fields expected to be numbers
+            if (device.last_rx_rssi !== undefined && typeof device.last_rx_rssi === 'string') {
+                device.last_rx_rssi = Number(device.last_rx_rssi);
+            }
+
+            if (device.last_link_type !== undefined && typeof device.last_link_type === 'string') {
+                device.last_link_type = Number(device.last_link_type);
+            }
+
             return c.json(deviceSchema.parse(device));
         } catch (error) {
             console.error('Error fetching device:', error);

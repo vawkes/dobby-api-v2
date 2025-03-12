@@ -170,6 +170,29 @@ export const authAPI = {
     },
 };
 
+// Device API calls
+export const deviceAPI = {
+    getAllDevices: async () => {
+        try {
+            const response = await api.get('/devices');
+            return response.data;
+        } catch (error) {
+            console.error('Error fetching all devices:', error);
+            throw error;
+        }
+    },
+
+    getDeviceById: async (deviceId: string) => {
+        try {
+            const response = await api.get(`/devices/${deviceId}`);
+            return response.data;
+        } catch (error) {
+            console.error(`Error fetching device with ID ${deviceId}:`, error);
+            throw error;
+        }
+    },
+};
+
 // Export updateBaseUrl to be called after config is loaded
 export { updateBaseUrl };
 
