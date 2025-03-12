@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { DynamoDB } from "@aws-sdk/client-dynamodb";
 import { unmarshall } from "@aws-sdk/util-dynamodb";
-import { devicesSchema, deviceSchema } from './devicesSchema';
+import { devicesSchema, deviceSchema, deviceDataSchema } from './devicesSchema';
 import { describeRoute } from 'hono-openapi';
 import { resolver } from 'hono-openapi/zod'
 
@@ -107,6 +107,81 @@ app.get('/:deviceId',
             return c.json(deviceSchema.parse(device));
         } catch (error) {
             console.error('Error fetching device:', error);
+            return c.json({ error: 'Internal server error' }, 500);
+        }
+    })
+
+app.get('/:deviceId/data',
+    describeRoute({
+        description: "Fetch device data from ShiftedData table",
+        responses: {
+            200: {
+                content: {
+                    'application/json': {
+                        schema: resolver(deviceDataSchema),
+                    },
+                },
+                description: 'Retrieve device time series data',
+            },
+            404: {
+                description: 'Device not found or no data available',
+            },
+            500: {
+                description: 'Internal server error',
+            },
+        },
+    }),
+    async (c) => {
+        try {
+            const deviceId = c.req.param('deviceId');
+            const dynamodb = new DynamoDB({ "region": "us-east-1" });
+
+            // Get the timeframe from query parameters (default to last 24 hours)
+            const days = parseInt(c.req.query('days') || '1');
+            const currentTime = new Date();
+            const startTime = new Date(currentTime);
+            startTime.setDate(startTime.getDate() - days);
+
+            // Convert to seconds since epoch for comparison with timestamp
+            const startTimeSeconds = Math.floor(startTime.getTime() / 1000);
+
+            // Query the ShiftedData table
+            const queryParams = {
+                TableName: "ShiftedData",
+                KeyConditionExpression: "device_id = :deviceId AND #ts >= :startTime",
+                ExpressionAttributeValues: {
+                    ":deviceId": { S: deviceId },
+                    ":startTime": { N: startTimeSeconds.toString() }
+                },
+                ExpressionAttributeNames: {
+                    "#ts": "timestamp"  // Use expression attribute name for reserved keyword
+                },
+                ScanIndexForward: true // Return items in ascending order by sort key
+            };
+
+            const results = await dynamodb.query(queryParams);
+
+            if (!results.Items || results.Items.length === 0) {
+                return c.json({ error: 'No data found for this device' }, 404);
+            }
+
+            const deviceData = results.Items.map(item => {
+                const data = unmarshall(item);
+
+                // Ensure numeric fields are converted to numbers
+                return {
+                    device_id: data.device_id,
+                    timestamp: Number(data.timestamp),
+                    cumulative_energy: Number(data.cumulative_energy),
+                    instant_power: Number(data.instant_power),
+                    msg_number: Number(data.msg_number),
+                    operational_state: Number(data.operational_state)
+                };
+            });
+
+            return c.json(deviceDataSchema.parse(deviceData));
+        } catch (error) {
+            console.error('Error fetching device data:', error);
             return c.json({ error: 'Internal server error' }, 500);
         }
     })

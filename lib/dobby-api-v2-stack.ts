@@ -13,6 +13,7 @@ export class DobbyApiV2Stack extends cdk.Stack {
 
     const infoTable = dynamodb.Table.fromTableName(this, 'DobbyInfoTable', 'DobbyInfo')
     const eventTable = dynamodb.Table.fromTableName(this, 'DobbyEventTable', 'DobbyEvent')
+    const dataTable = dynamodb.Table.fromTableName(this, 'ShiftedDataTable', 'ShiftedData')
 
     // Create Cognito User Pool for authentication
     const userPool = new cognito.UserPool(this, 'DobbyUserPool', {
@@ -58,6 +59,7 @@ export class DobbyApiV2Stack extends cdk.Stack {
 
     infoTable.grantFullAccess(fn)
     eventTable.grantFullAccess(fn)
+    dataTable.grantFullAccess(fn)
 
     fn.addFunctionUrl({
       authType: lambda.FunctionUrlAuthType.NONE,
