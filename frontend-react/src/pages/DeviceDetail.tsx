@@ -310,7 +310,7 @@ const DeviceDetail: React.FC = () => {
                                                     />
                                                     <Legend />
                                                     <Line
-                                                        type="monotone"
+                                                        type="stepAfter"
                                                         dataKey={selectedMetric}
                                                         stroke="#3b82f6"
                                                         activeDot={{ r: 8 }}
