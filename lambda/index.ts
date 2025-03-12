@@ -6,9 +6,20 @@ import { Hono } from 'hono'
 import { openAPISpecs } from 'hono-openapi'
 import { apiReference } from '@scalar/hono-api-reference'
 import { auth } from './utils/auth'
+import { cors } from 'hono/cors'
 
 // Create the main app
 const app = new Hono()
+
+// Add CORS middleware to handle cross-origin requests
+app.use('*', cors({
+    origin: ['http://localhost:3000', 'https://localhost:3000', 'https://d1dz25mfg0xsp8.cloudfront.net', '*'],
+    allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+    allowHeaders: ['Content-Type', 'Authorization', 'X-API-Key', 'X-Origin-Verify', 'X-Requested-With'],
+    credentials: true,
+    maxAge: 86400, // 24 hours
+    exposeHeaders: ['Content-Length', 'Content-Type']
+}))
 
 // Create a separate router for public routes
 const publicRoutes = new Hono()
@@ -86,4 +97,4 @@ protectedRoutes.route('/events', events);
 app.route('/', protectedRoutes);
 
 // Export the handler
-export const handler = handle(app)
+export const handler = handle(app);
