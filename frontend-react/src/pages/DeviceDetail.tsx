@@ -66,11 +66,6 @@ const DeviceDetail: React.FC = () => {
 
     return (
         <div className="min-h-screen bg-gray-100">
-            <header className="bg-white shadow-sm">
-                <div className="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8">
-                    <h1 className="text-2xl font-semibold text-gray-900">Device Details</h1>
-                </div>
-            </header>
             <main>
                 <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
                     {isLoading ? (
@@ -193,39 +188,6 @@ const DeviceDetail: React.FC = () => {
                                             </div>
                                         )}
                                     </dl>
-                                </div>
-                            </div>
-
-                            {/* Action buttons section */}
-                            <div className="bg-white shadow overflow-hidden sm:rounded-lg">
-                                <div className="px-4 py-5 sm:px-6">
-                                    <h3 className="text-lg leading-6 font-medium text-gray-900">Device Actions</h3>
-                                    <p className="mt-1 max-w-2xl text-sm text-gray-500">Control and manage this device.</p>
-                                </div>
-                                <div className="border-t border-gray-200 px-4 py-5 sm:p-6">
-                                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
-                                        <button
-                                            type="button"
-                                            className="inline-flex justify-center items-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                                        >
-                                            <FiBattery className="mr-2 h-5 w-5" />
-                                            Check Status
-                                        </button>
-                                        <button
-                                            type="button"
-                                            className="inline-flex justify-center items-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-                                        >
-                                            <FiCpu className="mr-2 h-5 w-5" />
-                                            Update Firmware
-                                        </button>
-                                        <button
-                                            type="button"
-                                            className="inline-flex justify-center items-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-                                        >
-                                            <FiAlertCircle className="mr-2 h-5 w-5" />
-                                            Reset Device
-                                        </button>
-                                    </div>
                                 </div>
                             </div>
                         </>

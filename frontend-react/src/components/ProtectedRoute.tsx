@@ -1,6 +1,7 @@
 import React from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import NavigationBar from './ui/NavigationBar';
 
 interface ProtectedRouteProps {
     redirectPath?: string;
@@ -25,8 +26,15 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
         return <Navigate to={redirectPath} replace />;
     }
 
-    // If authenticated, render the child routes
-    return <Outlet />;
+    // If authenticated, render the NavigationBar and child routes
+    return (
+        <>
+            <NavigationBar />
+            <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+                <Outlet />
+            </main>
+        </>
+    );
 };
 
 export default ProtectedRoute; 
