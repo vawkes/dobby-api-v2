@@ -8,6 +8,7 @@ import * as route53 from 'aws-cdk-lib/aws-route53';
 import * as targets from 'aws-cdk-lib/aws-route53-targets';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 import * as path from 'path';
+import * as iam from 'aws-cdk-lib/aws-iam';
 
 export interface ReactFrontendStackProps extends cdk.StackProps {
     domainName?: string;
@@ -24,29 +25,73 @@ export class ReactFrontendStack extends cdk.Stack {
     constructor(scope: Construct, id: string, props?: ReactFrontendStackProps) {
         super(scope, id, props);
 
-        // Create an S3 bucket for the website
+        // Create an S3 bucket for the website content
         const siteBucket = new s3.Bucket(this, 'ReactSiteBucket', {
             bucketName: props?.domainName
                 ? `${props.subDomain || 'app'}.${props.domainName}`
                 : undefined,
             publicReadAccess: false,
             blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
-            removalPolicy: cdk.RemovalPolicy.RETAIN, // RETAIN for production to prevent accidental deletion
-            autoDeleteObjects: false, // Set to false for production
-            websiteIndexDocument: 'index.html',
-            websiteErrorDocument: 'index.html',
+            removalPolicy: cdk.RemovalPolicy.DESTROY, // Change to RETAIN for production
+            autoDeleteObjects: true,    // Set to false for production
         });
 
         this.bucketName = siteBucket.bucketName;
 
-        // CloudFront distribution configuration
-        let distributionConfig: cloudfront.DistributionProps = {
+        // Create Origin Access Identity for CloudFront
+        const cloudFrontOAI = new cloudfront.OriginAccessIdentity(this, 'CloudFrontOAI', {
+            comment: `OAI for ${id}`,
+        });
+
+        // Grant read permissions to CloudFront OAI
+        siteBucket.addToResourcePolicy(new iam.PolicyStatement({
+            actions: ['s3:GetObject'],
+            resources: [siteBucket.arnForObjects('*')],
+            principals: [new iam.CanonicalUserPrincipal(cloudFrontOAI.cloudFrontOriginAccessIdentityS3CanonicalUserId)],
+        }));
+
+        // Create a custom response headers policy for CORS
+        const corsHeadersPolicy = new cloudfront.ResponseHeadersPolicy(this, 'CorsHeadersPolicy', {
+            responseHeadersPolicyName: 'CorsHeadersPolicy',
+            corsBehavior: {
+                accessControlAllowOrigins: ['*'],
+                accessControlAllowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'HEAD', 'PATCH'],
+                accessControlAllowHeaders: ['*'],
+                accessControlAllowCredentials: true,
+                originOverride: true,
+            },
+            securityHeadersBehavior: {
+                contentSecurityPolicy: {
+                    contentSecurityPolicy: "default-src 'self' https:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https:; style-src 'self' 'unsafe-inline' https:; img-src 'self' data: https:;",
+                    override: true,
+                },
+                frameOptions: {
+                    frameOption: cloudfront.HeadersFrameOption.DENY,
+                    override: true,
+                },
+                strictTransportSecurity: {
+                    accessControlMaxAge: cdk.Duration.days(2 * 365),
+                    includeSubdomains: true,
+                    preload: true,
+                    override: true,
+                },
+            },
+        });
+
+        // API Gateway origin for proxy requests
+        const apiGatewayDomain = props?.apiUrl ? new URL(props.apiUrl).hostname : 'tzdokra5yf.execute-api.us-east-1.amazonaws.com';
+
+        // Create CloudFront distribution
+        const distribution = new cloudfront.Distribution(this, 'ReactSiteDistribution', {
             defaultBehavior: {
-                origin: new origins.S3Origin(siteBucket),
+                origin: origins.S3BucketOrigin.withOriginAccessIdentity(siteBucket, {
+                    originAccessIdentity: cloudFrontOAI
+                }),
                 viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
                 allowedMethods: cloudfront.AllowedMethods.ALLOW_GET_HEAD_OPTIONS,
                 cachePolicy: cloudfront.CachePolicy.CACHING_OPTIMIZED,
                 originRequestPolicy: cloudfront.OriginRequestPolicy.CORS_S3_ORIGIN,
+                responseHeadersPolicy: corsHeadersPolicy,
                 compress: true,
             },
             defaultRootObject: 'index.html',
@@ -66,31 +111,39 @@ export class ReactFrontendStack extends cdk.Stack {
             ],
             priceClass: cloudfront.PriceClass.PRICE_CLASS_100,
             enabled: true,
-        };
+            enableIpv6: true,
+        });
 
-        // Add certificate and custom domain if provided
+        this.distributionId = distribution.distributionId;
+        this.url = `https://${distribution.distributionDomainName}`;
+
+        // Deploy the React app
+        new s3deploy.BucketDeployment(this, 'DeployReactApp', {
+            sources: [s3deploy.Source.asset(path.join(__dirname, '../frontend-react/build'))],
+            destinationBucket: siteBucket,
+            distribution,
+            distributionPaths: ['/*'],
+        });
+
+        // Set up DNS if domain details provided
         if (props?.domainName && props?.subDomain && props?.certificateArn) {
             const certificate = acm.Certificate.fromCertificateArn(
                 this, 'Certificate', props.certificateArn
             );
 
-            distributionConfig = {
-                ...distributionConfig,
-                certificate,
-                domainNames: [`${props.subDomain}.${props.domainName}`],
-            };
-        }
+            const domainName = `${props.subDomain}.${props.domainName}`;
 
-        // Create CloudFront distribution
-        const distribution = new cloudfront.Distribution(
-            this, 'ReactSiteDistribution', distributionConfig
-        );
+            // Create custom domain for CloudFront
+            const cfnDistribution = distribution.node.defaultChild as cloudfront.CfnDistribution;
+            if (cfnDistribution.distributionConfig) {
+                cfnDistribution.addPropertyOverride('DistributionConfig.Aliases', [domainName]);
+                cfnDistribution.addPropertyOverride('DistributionConfig.ViewerCertificate', {
+                    AcmCertificateArn: certificate.certificateArn,
+                    SslSupportMethod: 'sni-only',
+                    MinimumProtocolVersion: 'TLSv1.2_2021'
+                });
+            }
 
-        this.distributionId = distribution.distributionId;
-        this.url = `https://${distribution.distributionDomainName}`;
-
-        // Set up DNS if domain details provided
-        if (props?.domainName && props?.subDomain && props?.certificateArn) {
             const zone = route53.HostedZone.fromLookup(this, 'Zone', {
                 domainName: props.domainName,
             });
@@ -103,12 +156,6 @@ export class ReactFrontendStack extends cdk.Stack {
                 ),
             });
         }
-
-        // Create a JSON config file with environment variables
-        const envConfigPath = path.join(__dirname, '../frontend-react/build/env-config.json');
-
-        // Create a deployment to the S3 bucket (only after the frontend is built)
-        // This will be done through the deploy-to-aws.js script instead of here
 
         // Outputs
         new cdk.CfnOutput(this, 'ReactBucketName', {

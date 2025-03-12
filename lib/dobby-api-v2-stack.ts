@@ -82,7 +82,9 @@ export class DobbyApiV2Stack extends cdk.Stack {
       defaultCorsPreflightOptions: {
         allowOrigins: apigw.Cors.ALL_ORIGINS,
         allowMethods: apigw.Cors.ALL_METHODS,
-        allowHeaders: [...apigw.Cors.DEFAULT_HEADERS, 'Authorization'],
+        allowHeaders: [...apigw.Cors.DEFAULT_HEADERS, 'Authorization', 'Content-Type'],
+        allowCredentials: true,
+        maxAge: cdk.Duration.days(1),
       },
     });
 
@@ -91,6 +93,16 @@ export class DobbyApiV2Stack extends cdk.Stack {
     publicResource.addMethod('GET', new apigw.LambdaIntegration(fn), {
       authorizationType: apigw.AuthorizationType.NONE,
     });
+
+    // Add an auth resource under public for login/registration
+    const authResource = publicResource.addResource('auth');
+
+    // Add specific resources for auth operations with explicit CORS configuration
+    const loginResource = authResource.addResource('login');
+    loginResource.addMethod('POST', new apigw.LambdaIntegration(fn), {
+      authorizationType: apigw.AuthorizationType.NONE,
+    });
+
     // Add a proxy at /public/* to handle all public routes
     publicResource.addProxy({
       defaultIntegration: new apigw.LambdaIntegration(fn),
