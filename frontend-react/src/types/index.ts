@@ -16,4 +16,14 @@ export interface Device {
     vendor_id: string;
     last_rx_rssi?: number;
     last_link_type?: number;
+}
+
+// Device data from ShiftedData table
+export interface DeviceDataPoint {
+    device_id: string;
+    timestamp: number; // Seconds since epoch
+    cumulative_energy: number;
+    instant_power: number;
+    msg_number: number;
+    operational_state: number;
 } 

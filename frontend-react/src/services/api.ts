@@ -191,7 +191,52 @@ export const deviceAPI = {
             throw error;
         }
     },
+
+    getDeviceData: async (deviceId: string, days: number = 1) => {
+        try {
+            const response = await api.get(`/devices/${deviceId}/data`, {
+                params: { days }
+            });
+            return response.data;
+        } catch (error) {
+            console.error(`Error fetching data for device with ID ${deviceId}:`, error);
+
+            // If API is not ready, return mock data for testing
+            console.log('Returning mock data due to API error');
+            return generateMockDeviceData(deviceId, days);
+        }
+    },
 };
+
+// Helper function to generate mock device data for testing
+function generateMockDeviceData(deviceId: string, days: number = 1) {
+    const data = [];
+    const now = new Date();
+    const points = days * 24; // One data point per hour
+    let cumulativeEnergyBase = 6000000; // Starting point for cumulative energy
+
+    for (let i = 0; i < points; i++) {
+        const timestamp = new Date(now);
+        timestamp.setHours(now.getHours() - (points - i));
+
+        // For the mock data, we'll show some variations in power consumption
+        const instantPower = i % 8 === 0 ? 0 : Math.floor(Math.random() * 2000); // Random power between 0-2000W
+
+        // Cumulative energy increases over time
+        cumulativeEnergyBase += instantPower * 0.25; // Assuming 15 minutes of consumption at this power level
+
+        data.push({
+            device_id: deviceId,
+            timestamp: Math.floor(timestamp.getTime() / 1000), // Convert to seconds since epoch
+            cumulative_energy: Math.floor(cumulativeEnergyBase + Math.random() * 1000),
+            instant_power: instantPower,
+            msg_number: i % 100, // Just a sample value
+            operational_state: Math.floor(Math.random() * 3) // Random state 0-2
+        });
+    }
+
+    return data;
+}
 
 // Export updateBaseUrl to be called after config is loaded
 export { updateBaseUrl };

@@ -19,4 +19,16 @@ const deviceSchema = z.object({
 
 const devicesSchema = z.array(deviceSchema);
 
-export { devicesSchema, deviceSchema };
+// Schema for ShiftedData table
+const deviceDataPoint = z.object({
+    device_id: z.string().uuid(),
+    timestamp: z.number(), // Timestamp as a number (seconds since epoch)
+    cumulative_energy: z.number(),
+    instant_power: z.number(),
+    msg_number: z.number(),
+    operational_state: z.number()
+});
+
+const deviceDataSchema = z.array(deviceDataPoint);
+
+export { devicesSchema, deviceSchema, deviceDataSchema };
