@@ -54,9 +54,24 @@ export class ReactFrontendStack extends cdk.Stack {
         const corsHeadersPolicy = new cloudfront.ResponseHeadersPolicy(this, 'CorsHeadersPolicy', {
             responseHeadersPolicyName: 'CorsHeadersPolicy',
             corsBehavior: {
-                accessControlAllowOrigins: ['*'],
+                accessControlAllowOrigins: [
+                    'https://d1dz25mfg0xsp8.cloudfront.net',
+                    'http://localhost:3000',
+                    'https://localhost:3000'
+                ],
                 accessControlAllowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'HEAD', 'PATCH'],
-                accessControlAllowHeaders: ['*'],
+                accessControlAllowHeaders: [
+                    'Authorization',
+                    'Content-Type',
+                    'Origin',
+                    'Accept',
+                    'X-Requested-With',
+                    'X-HTTP-Method-Override',
+                    'X-CSRF-Token',
+                    'X-Api-Key',
+                    'Access-Control-Request-Method',
+                    'Access-Control-Request-Headers'
+                ],
                 accessControlAllowCredentials: true,
                 originOverride: true,
             },
