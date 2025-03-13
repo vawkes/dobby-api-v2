@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { deviceAPI } from '../services/api';
 import { Device, DeviceDataPoint } from '../types';
 import { FiAlertCircle, FiArrowLeft, FiBattery, FiCpu, FiWifi, FiActivity } from 'react-icons/fi';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Label } from 'recharts';
 
 // Helper function to get link type name
 const getLinkTypeName = (linkType?: number): string => {
@@ -43,7 +43,7 @@ const DeviceDetail: React.FC = () => {
     const [isLoadingData, setIsLoadingData] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [dataError, setDataError] = useState<string | null>(null);
-    const [selectedMetric, setSelectedMetric] = useState<string>('instant_power');
+    const [selectedMetric, setSelectedMetric] = useState<string>('overlay');
     const [timeRange, setTimeRange] = useState<number>(1); // Default to 1 day
 
     useEffect(() => {
@@ -155,6 +155,7 @@ const DeviceDetail: React.FC = () => {
                                             onChange={(e) => setSelectedMetric(e.target.value)}
                                             className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
                                         >
+                                            <option value="overlay">All Metrics (Overlay)</option>
                                             <option value="instant_power">Instant Power (W)</option>
                                             <option value="cumulative_energy">Cumulative Energy (Wh)</option>
                                             <option value="operational_state">Operational State</option>
@@ -196,7 +197,7 @@ const DeviceDetail: React.FC = () => {
                                             <ResponsiveContainer width="100%" height="100%">
                                                 <LineChart
                                                     data={formattedChartData}
-                                                    margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                                                    margin={{ top: 5, right: 100, left: 20, bottom: 5 }}
                                                 >
                                                     <CartesianGrid strokeDasharray="3 3" />
                                                     <XAxis
@@ -205,30 +206,110 @@ const DeviceDetail: React.FC = () => {
                                                         domain={['auto', 'auto']}
                                                         type="number"
                                                         tickFormatter={formatXAxis}
-                                                        label={{ value: 'Time', position: 'insideBottomRight', offset: -10 }}
+                                                        label={{ value: 'Time', position: 'center' }}
                                                     />
+
+                                                    {/* Primary Y-axis - for instant power or selected single metric */}
                                                     <YAxis
-                                                        label={{
-                                                            value: getAxisLabel(selectedMetric),
-                                                            angle: -90,
-                                                            position: 'insideLeft'
-                                                        }}
+                                                        yAxisId="left"
                                                         domain={selectedMetric === 'cumulative_energy' ? ['auto', 'auto'] : [0, 'auto']}
-                                                    />
+                                                        tickFormatter={(value) => {
+                                                            // Convert Wh to kWh for cumulative energy
+                                                            if (selectedMetric === 'cumulative_energy') {
+                                                                return (value / 1000).toFixed(0);
+                                                            }
+                                                            return value;
+                                                        }}
+                                                    >
+                                                        <Label value={selectedMetric === 'overlay' ? 'Instant Power (W)' : getAxisLabel(selectedMetric)} position="left" angle={270} style={{ textAnchor: 'middle' }} />
+                                                    </YAxis>
+
+                                                    {/* Tertiary Y-axis for operational state (only shown in overlay mode) */}
+                                                    {selectedMetric === 'overlay' && (
+                                                        <YAxis
+                                                            yAxisId="right2"
+                                                            orientation="right"
+                                                        >
+                                                            <Label value="Operational State" position="right" angle={270} style={{ textAnchor: 'middle' }} />
+                                                        </YAxis>
+                                                    )}
+
+                                                    {/* Secondary Y-axis - for cumulative energy (only shown in overlay mode) */}
+                                                    {selectedMetric === 'overlay' && (
+                                                        <YAxis
+                                                            yAxisId="right"
+                                                            orientation="right"
+                                                            domain={['auto', 'auto']}
+                                                            tickFormatter={(value) => {
+                                                                // Convert Wh to kWh
+                                                                return (value / 1000).toFixed(0);
+                                                            }}
+                                                        >
+                                                            <Label value="Cumulative Energy (kWh)" position="right" angle={270} style={{ textAnchor: 'middle' }} />
+                                                        </YAxis>
+                                                    )}
+
+
+
                                                     <Tooltip
-                                                        formatter={(value) => [`${value} ${getUnitForMetric(selectedMetric)}`, getMetricLabel(selectedMetric)]}
+                                                        formatter={(value, name) => {
+                                                            // For overlay mode, format each metric with its own unit
+                                                            if (name === 'Instant Power') return [`${value} W`, name];
+                                                            if (name === 'Cumulative Energy') {
+                                                                // Convert Wh to kWh
+                                                                const kwhValue = (Number(value) / 1000).toFixed(3);
+                                                                return [`${kwhValue} kWh`, name];
+                                                            }
+                                                            if (name === 'Operational State') return [value, name];
+
+                                                            // For single metric mode
+                                                            if (selectedMetric === 'cumulative_energy') {
+                                                                // Convert Wh to kWh
+                                                                const kwhValue = (Number(value) / 1000).toFixed(3);
+                                                                return [`${kwhValue} kWh`, getMetricLabel(selectedMetric)];
+                                                            }
+                                                            return [`${value} ${getUnitForMetric(selectedMetric)}`, getMetricLabel(selectedMetric)];
+                                                        }}
                                                         labelFormatter={(label) => {
-                                                            return new Date(label).toLocaleString();
+                                                            return new Date(label as number).toLocaleString();
                                                         }}
                                                     />
+
                                                     <Legend />
-                                                    <Line
-                                                        type="stepAfter"
-                                                        dataKey={selectedMetric}
-                                                        stroke="#3b82f6"
-                                                        activeDot={{ r: 8 }}
-                                                        name={getMetricLabel(selectedMetric)}
-                                                    />
+
+                                                    {/* Conditional rendering of lines based on selected view */}
+                                                    {(selectedMetric === 'instant_power' || selectedMetric === 'overlay') && (
+                                                        <Line
+                                                            yAxisId="left"
+                                                            type="stepAfter"
+                                                            dataKey="instant_power"
+                                                            stroke="#3b82f6" // Blue
+                                                            activeDot={{ r: 8 }}
+                                                            name="Instant Power"
+                                                        />
+                                                    )}
+
+                                                    {(selectedMetric === 'cumulative_energy' || selectedMetric === 'overlay') && (
+                                                        <Line
+                                                            yAxisId={selectedMetric === 'overlay' ? "right" : "left"}
+                                                            type="stepAfter"
+                                                            dataKey="cumulative_energy"
+                                                            stroke="#10b981" // Green
+                                                            activeDot={{ r: 8 }}
+                                                            name="Cumulative Energy"
+                                                        />
+                                                    )}
+
+                                                    {(selectedMetric === 'operational_state' || selectedMetric === 'overlay') && (
+                                                        <Line
+                                                            yAxisId={selectedMetric === 'overlay' ? "right2" : "left"}
+                                                            type="stepAfter"
+                                                            dataKey="operational_state"
+                                                            stroke="#ef4444" // Red
+                                                            activeDot={{ r: 8 }}
+                                                            name="Operational State"
+                                                        />
+                                                    )}
                                                 </LineChart>
                                             </ResponsiveContainer>
                                         </div>
@@ -358,7 +439,7 @@ function getMetricLabel(metric: string): string {
 function getUnitForMetric(metric: string): string {
     switch (metric) {
         case 'instant_power': return 'W';
-        case 'cumulative_energy': return 'Wh';
+        case 'cumulative_energy': return 'kWh';
         case 'operational_state': return '';
         default: return '';
     }
