@@ -95,14 +95,25 @@ const DeviceDetail: React.FC = () => {
 
     // Format data for the chart
     const formattedChartData = deviceData.map(item => {
-        // Convert timestamp from seconds to milliseconds for JavaScript Date
-        const date = new Date(item.timestamp * 1000);
+        // Keep timestamp in milliseconds for x-axis
+        const timeMs = item.timestamp * 1000;
+        const date = new Date(timeMs);
         return {
             ...item,
+            timeMs,  // Use milliseconds timestamp for x-axis
             formattedTime: date.toLocaleTimeString(),
             formattedDate: date.toLocaleDateString(),
         };
     });
+
+    // Sort data by timestamp to ensure proper line rendering
+    formattedChartData.sort((a, b) => a.timeMs - b.timeMs);
+
+    // Time formatter for axis ticks
+    const formatXAxis = (tickItem: number) => {
+        const date = new Date(tickItem);
+        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    };
 
     return (
         <div className="min-h-screen bg-gray-100">
@@ -131,6 +142,100 @@ const DeviceDetail: React.FC = () => {
                                     Back to Devices
                                 </Link>
                             </div>
+                            {/* Device Data Chart Section */}
+                            <div className="bg-white shadow overflow-hidden sm:rounded-lg mb-8">
+                                <div className="px-4 py-5 sm:px-6 flex justify-between items-center">
+                                    <div>
+                                        <h3 className="text-lg leading-6 font-medium text-gray-900">Device Data</h3>
+                                        <p className="mt-1 max-w-2xl text-sm text-gray-500">Time series data from ShiftedData table.</p>
+                                    </div>
+                                    <div className="flex items-center space-x-4">
+                                        <select
+                                            value={selectedMetric}
+                                            onChange={(e) => setSelectedMetric(e.target.value)}
+                                            className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
+                                        >
+                                            <option value="instant_power">Instant Power (W)</option>
+                                            <option value="cumulative_energy">Cumulative Energy (Wh)</option>
+                                            <option value="operational_state">Operational State</option>
+                                        </select>
+                                        <select
+                                            value={timeRange}
+                                            onChange={(e) => setTimeRange(Number(e.target.value))}
+                                            className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
+                                        >
+                                            <option value={1}>Last 24 Hours</option>
+                                            <option value={7}>Last 7 Days</option>
+                                            <option value={30}>Last 30 Days</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div className="border-t border-gray-200">
+                                    {isLoadingData ? (
+                                        <div className="flex justify-center items-center h-64">
+                                            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-600"></div>
+                                        </div>
+                                    ) : dataError ? (
+                                        <div className="bg-red-50 border-l-4 border-red-600 p-4 mb-4">
+                                            <div className="flex">
+                                                <div className="flex-shrink-0">
+                                                    <FiAlertCircle className="h-5 w-5 text-red-600" />
+                                                </div>
+                                                <div className="ml-3">
+                                                    <p className="text-sm text-red-800">{dataError}</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ) : deviceData.length === 0 ? (
+                                        <div className="p-6 text-center text-gray-500">
+                                            <FiActivity className="h-12 w-12 mx-auto text-gray-400" />
+                                            <p className="mt-2">No data available for this device.</p>
+                                        </div>
+                                    ) : (
+                                        <div className="p-4 h-96">
+                                            <ResponsiveContainer width="100%" height="100%">
+                                                <LineChart
+                                                    data={formattedChartData}
+                                                    margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                                                >
+                                                    <CartesianGrid strokeDasharray="3 3" />
+                                                    <XAxis
+                                                        dataKey="timeMs"
+                                                        scale="time"
+                                                        domain={['auto', 'auto']}
+                                                        type="number"
+                                                        tickFormatter={formatXAxis}
+                                                        label={{ value: 'Time', position: 'insideBottomRight', offset: -10 }}
+                                                    />
+                                                    <YAxis
+                                                        label={{
+                                                            value: getAxisLabel(selectedMetric),
+                                                            angle: -90,
+                                                            position: 'insideLeft'
+                                                        }}
+                                                        domain={selectedMetric === 'cumulative_energy' ? ['auto', 'auto'] : [0, 'auto']}
+                                                    />
+                                                    <Tooltip
+                                                        formatter={(value) => [`${value} ${getUnitForMetric(selectedMetric)}`, getMetricLabel(selectedMetric)]}
+                                                        labelFormatter={(label) => {
+                                                            return new Date(label).toLocaleString();
+                                                        }}
+                                                    />
+                                                    <Legend />
+                                                    <Line
+                                                        type="stepAfter"
+                                                        dataKey={selectedMetric}
+                                                        stroke="#3b82f6"
+                                                        activeDot={{ r: 8 }}
+                                                        name={getMetricLabel(selectedMetric)}
+                                                    />
+                                                </LineChart>
+                                            </ResponsiveContainer>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
 
                             <div className="bg-white shadow overflow-hidden sm:rounded-lg mb-8">
                                 <div className="px-4 py-5 sm:px-6 flex justify-between items-center">
@@ -231,97 +336,7 @@ const DeviceDetail: React.FC = () => {
                                 </div>
                             </div>
 
-                            {/* Device Data Chart Section */}
-                            <div className="bg-white shadow overflow-hidden sm:rounded-lg mb-8">
-                                <div className="px-4 py-5 sm:px-6 flex justify-between items-center">
-                                    <div>
-                                        <h3 className="text-lg leading-6 font-medium text-gray-900">Device Data</h3>
-                                        <p className="mt-1 max-w-2xl text-sm text-gray-500">Time series data from ShiftedData table.</p>
-                                    </div>
-                                    <div className="flex items-center space-x-4">
-                                        <select
-                                            value={selectedMetric}
-                                            onChange={(e) => setSelectedMetric(e.target.value)}
-                                            className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
-                                        >
-                                            <option value="instant_power">Instant Power (W)</option>
-                                            <option value="cumulative_energy">Cumulative Energy (Wh)</option>
-                                            <option value="operational_state">Operational State</option>
-                                        </select>
-                                        <select
-                                            value={timeRange}
-                                            onChange={(e) => setTimeRange(Number(e.target.value))}
-                                            className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
-                                        >
-                                            <option value={1}>Last 24 Hours</option>
-                                            <option value={7}>Last 7 Days</option>
-                                            <option value={30}>Last 30 Days</option>
-                                        </select>
-                                    </div>
-                                </div>
-                                <div className="border-t border-gray-200">
-                                    {isLoadingData ? (
-                                        <div className="flex justify-center items-center h-64">
-                                            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-600"></div>
-                                        </div>
-                                    ) : dataError ? (
-                                        <div className="bg-red-50 border-l-4 border-red-600 p-4 mb-4">
-                                            <div className="flex">
-                                                <div className="flex-shrink-0">
-                                                    <FiAlertCircle className="h-5 w-5 text-red-600" />
-                                                </div>
-                                                <div className="ml-3">
-                                                    <p className="text-sm text-red-800">{dataError}</p>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    ) : deviceData.length === 0 ? (
-                                        <div className="p-6 text-center text-gray-500">
-                                            <FiActivity className="h-12 w-12 mx-auto text-gray-400" />
-                                            <p className="mt-2">No data available for this device.</p>
-                                        </div>
-                                    ) : (
-                                        <div className="p-4 h-96">
-                                            <ResponsiveContainer width="100%" height="100%">
-                                                <LineChart
-                                                    data={formattedChartData}
-                                                    margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                                                >
-                                                    <CartesianGrid strokeDasharray="3 3" />
-                                                    <XAxis
-                                                        dataKey="formattedTime"
-                                                        label={{ value: 'Time', position: 'insideBottomRight', offset: -10 }}
-                                                    />
-                                                    <YAxis
-                                                        label={{
-                                                            value: getAxisLabel(selectedMetric),
-                                                            angle: -90,
-                                                            position: 'insideLeft'
-                                                        }}
-                                                    />
-                                                    <Tooltip
-                                                        formatter={(value) => [`${value} ${getUnitForMetric(selectedMetric)}`, getMetricLabel(selectedMetric)]}
-                                                        labelFormatter={(label, payload) => {
-                                                            if (payload && payload.length > 0) {
-                                                                return `${payload[0].payload.formattedDate} ${label}`;
-                                                            }
-                                                            return label;
-                                                        }}
-                                                    />
-                                                    <Legend />
-                                                    <Line
-                                                        type="stepAfter"
-                                                        dataKey={selectedMetric}
-                                                        stroke="#3b82f6"
-                                                        activeDot={{ r: 8 }}
-                                                        name={getMetricLabel(selectedMetric)}
-                                                    />
-                                                </LineChart>
-                                            </ResponsiveContainer>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
+
                         </>
                     )}
                 </div>
