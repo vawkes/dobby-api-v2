@@ -58,6 +58,5 @@
     "mime-types": "^2.1.35",
     "postcss": "^8.4.38",
     "tailwindcss": "^3.4.1"
-  },
-  "proxy": "https://tzdokra5yf.execute-api.us-east-1.amazonaws.com/prod"
+  }
 }

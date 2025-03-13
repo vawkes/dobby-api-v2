@@ -24,14 +24,14 @@ const NavigationBar: React.FC = () => {
                     <div className="flex">
                         <div className="flex-shrink-0 flex items-center">
                             {/* You can add your logo here */}
-                            <span className="text-lg font-semibold text-gray-800">Dobby API</span>
+                            <span className="text-lg font-semibold text-gray-800">GridCube</span>
                         </div>
                         <div className="ml-6 flex space-x-8">
                             <NavLink
                                 to="/dashboard"
                                 className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${isActive('/dashboard')
-                                        ? 'border-indigo-500 text-gray-900'
-                                        : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                                    ? 'border-indigo-500 text-gray-900'
+                                    : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
                                     }`}
                             >
                                 Dashboard
@@ -39,8 +39,8 @@ const NavigationBar: React.FC = () => {
                             <NavLink
                                 to="/devices"
                                 className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${isActive('/devices')
-                                        ? 'border-indigo-500 text-gray-900'
-                                        : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                                    ? 'border-indigo-500 text-gray-900'
+                                    : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
                                     }`}
                             >
                                 Devices
