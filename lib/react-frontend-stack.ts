@@ -96,6 +96,12 @@ export class ReactFrontendStack extends cdk.Stack {
         // API Gateway origin for proxy requests
         const apiGatewayDomain = props?.apiUrl ? new URL(props.apiUrl).hostname : 'tzdokra5yf.execute-api.us-east-1.amazonaws.com';
 
+        // Create API Gateway origin
+        const apiGatewayOrigin = new origins.HttpOrigin(apiGatewayDomain, {
+            originPath: '/prod', // Include the stage name in the origin path
+            protocolPolicy: cloudfront.OriginProtocolPolicy.HTTPS_ONLY,
+        });
+
         // Create CloudFront distribution
         const distribution = new cloudfront.Distribution(this, 'ReactSiteDistribution', {
             defaultBehavior: {
@@ -108,6 +114,17 @@ export class ReactFrontendStack extends cdk.Stack {
                 originRequestPolicy: cloudfront.OriginRequestPolicy.CORS_S3_ORIGIN,
                 responseHeadersPolicy: corsHeadersPolicy,
                 compress: true,
+            },
+            additionalBehaviors: {
+                // Add a behavior for /api/* to proxy to API Gateway
+                '/api/*': {
+                    origin: apiGatewayOrigin,
+                    viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+                    allowedMethods: cloudfront.AllowedMethods.ALLOW_ALL,
+                    cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED,
+                    originRequestPolicy: cloudfront.OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
+                    responseHeadersPolicy: corsHeadersPolicy,
+                },
             },
             defaultRootObject: 'index.html',
             errorResponses: [
