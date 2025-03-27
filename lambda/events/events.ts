@@ -41,6 +41,55 @@ app.get("/",
         }
     })
 
+app.get("/device/:deviceId",
+    describeRoute({
+        description: "Fetch events for a specific device",
+        responses: {
+            200: {
+                description: "Retrieve events for a device",
+                content: {
+                    'application/json': {
+                        schema: resolver(eventsSchema),
+                    },
+                },
+            },
+            404: {
+                description: "No events found for this device",
+            },
+            500: {
+                description: "Internal Server Error",
+            },
+        },
+    }),
+    async (c) => {
+        try {
+            const deviceId = c.req.param("deviceId");
+            const dynamodb = new DynamoDB({ "region": "us-east-1" });
+
+            // Query the GSI (device_id)
+            const queryParams = {
+                TableName: "DobbyEvent",
+                IndexName: "device_id",
+                KeyConditionExpression: "device_id = :deviceId",
+                ExpressionAttributeValues: {
+                    ":deviceId": { S: deviceId }
+                }
+            };
+
+            const results = await dynamodb.query(queryParams);
+
+            if (!results.Items || results.Items.length === 0) {
+                return c.json({ error: "No events found for this device" }, 404);
+            }
+
+            const events = results.Items.map(item => unmarshall(item));
+            return c.json(eventsSchema.parse(events));
+        } catch (error) {
+            console.error("Error fetching device events:", error);
+            return c.json({ error: "Failed to fetch device events" }, 500);
+        }
+    })
+
 app.get("/:eventId",
     describeRoute({
         description: "Fetch single event",

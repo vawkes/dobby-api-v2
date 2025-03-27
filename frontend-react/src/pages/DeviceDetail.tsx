@@ -109,6 +109,19 @@ const DeviceDetail: React.FC = () => {
     // Sort data by timestamp to ensure proper line rendering
     formattedChartData.sort((a, b) => a.timeMs - b.timeMs);
 
+    // Calculate time domain for chart
+    const currentTime = Date.now(); // Current time in milliseconds
+    let startTime: number | 'auto' = 'auto';
+
+    // Only use calculated start time if we have data points
+    if (formattedChartData.length > 0) {
+        // Get the time range in milliseconds based on selection
+        const timeRangeMs = timeRange * 24 * 60 * 60 * 1000;
+        // Set the start time based on current time minus the selected time range
+        // This ensures that we use the same time range as the data fetch
+        startTime = Math.min(formattedChartData[0].timeMs, currentTime - timeRangeMs);
+    }
+
     // Time formatter for axis ticks
     const formatXAxis = (tickItem: number) => {
         const date = new Date(tickItem);
@@ -203,7 +216,7 @@ const DeviceDetail: React.FC = () => {
                                                     <XAxis
                                                         dataKey="timeMs"
                                                         scale="time"
-                                                        domain={['auto', 'auto']}
+                                                        domain={[startTime, currentTime]}
                                                         type="number"
                                                         tickFormatter={formatXAxis}
                                                         label={{ value: 'Time', position: 'center' }}
