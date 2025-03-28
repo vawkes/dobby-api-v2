@@ -50,4 +50,5 @@ export interface Event {
     event_id: string;
     event_type: EventType;
     event_data: EventData;
+    event_ack?: boolean;  // Acknowledgment status from device
 } 

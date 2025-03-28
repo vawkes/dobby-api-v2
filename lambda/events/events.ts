@@ -58,6 +58,13 @@ app.get("/",
                     }
                 }
 
+                // Copy event_ack directly to the top level of the event
+                if (event.event_ack !== undefined) {
+                    event.event_ack = event.event_ack;
+                } else {
+                    event.event_ack = false;
+                }
+
                 return event;
             }) || [];
 
@@ -132,6 +139,14 @@ app.get("/device/:deviceId",
                     }
                 }
 
+                // Copy event_ack directly to the top level of the event 
+                // This is for the frontend to have easy access to this field
+                if (event.event_ack !== undefined) {
+                    event.event_ack = event.event_ack;
+                } else {
+                    event.event_ack = false;
+                }
+
                 return event;
             });
 
@@ -189,6 +204,13 @@ app.get("/:eventId",
                         event.event_data.duration = event.duration || 0;
                     }
                 }
+            }
+
+            // Copy event_ack directly to the top level of the event
+            if (event.event_ack !== undefined) {
+                event.event_ack = event.event_ack;
+            } else {
+                event.event_ack = false;
             }
 
             return c.json(eventSchema.parse(event));

@@ -199,11 +199,11 @@ const DeviceEvents: React.FC<DeviceEventsProps> = ({ deviceId }) => {
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
-                                            <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${event.event_data.event_sent
+                                            <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${event.event_ack
                                                 ? 'bg-green-100 text-green-800'
-                                                : 'bg-red-100 text-red-800'
+                                                : 'bg-yellow-100 text-yellow-800'
                                                 }`}>
-                                                {event.event_data.event_sent ? 'Sent' : 'Failed'}
+                                                {event.event_ack ? 'Acknowledged' : 'Pending'}
                                             </span>
                                         </td>
                                     </tr>

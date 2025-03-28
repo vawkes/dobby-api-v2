@@ -1,6 +1,7 @@
 import { convertToGpsTimeEpoch } from "../../utils/convertGpsTime"
 import { EventMap } from "../models/eventType"
 import { sendToDobby } from "../../utils/sendToDobby"
+import { saveEventToDynamoDB } from "../../utils/saveEvent"
 import { EventSchemaType } from "../eventsSchema"
 import { v4 as uuidv4 } from 'uuid'
 import { EventType } from "../eventsSchema"
@@ -18,8 +19,8 @@ const handleEndShed = async (device_id: string, startTime?: Date): Promise<Event
     // Send to device
     const sentToDobby = await sendToDobby(device_id, view.buffer)
 
-    // Return event data
-    return {
+    // Create event object
+    const event: EventSchemaType = {
         event_id: uuidv4(),
         event_type: EventType.END_SHED,
         event_data: {
@@ -28,6 +29,11 @@ const handleEndShed = async (device_id: string, startTime?: Date): Promise<Event
             event_sent: sentToDobby
         }
     }
+
+    // Save the event to DynamoDB
+    await saveEventToDynamoDB(event)
+
+    return event
 }
 
 export { handleEndShed } 

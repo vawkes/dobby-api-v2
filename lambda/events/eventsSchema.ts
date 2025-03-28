@@ -63,6 +63,7 @@ const eventRequestSchema = z.object({
 
 const eventSchema = eventRequestSchema.and(z.object({
     event_id: z.string().uuid(),
+    event_ack: z.boolean().optional(),
 }));
 type EventSchemaType = z.infer<typeof eventSchema>;
 

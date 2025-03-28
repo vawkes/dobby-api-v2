@@ -5,6 +5,7 @@ import { Device, DeviceDataPoint } from '../types';
 import { FiAlertCircle, FiArrowLeft, FiBattery, FiCpu, FiWifi, FiActivity } from 'react-icons/fi';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Label } from 'recharts';
 import DeviceEvents from '../components/DeviceEvents';
+import ScheduleEvent from '../components/ScheduleEvent';
 
 // Extend the DeviceDataPoint type with our custom field
 interface FormattedDataPoint extends DeviceDataPoint {
@@ -54,6 +55,7 @@ const DeviceDetail: React.FC = () => {
     const [dataError, setDataError] = useState<string | null>(null);
     const [selectedMetric, setSelectedMetric] = useState<string>('overlay');
     const [timeRange, setTimeRange] = useState<number>(1); // Default to 1 day
+    const [eventsKey, setEventsKey] = useState<number>(0); // Used to force refresh of events component
 
     useEffect(() => {
         const fetchDeviceDetails = async () => {
@@ -155,6 +157,12 @@ const DeviceDetail: React.FC = () => {
     const formatXAxis = (tickItem: number) => {
         const date = new Date(tickItem);
         return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    };
+
+    // Function to refresh events after scheduling a new one
+    const handleEventScheduled = () => {
+        // Increment the key to force the DeviceEvents component to re-render
+        setEventsKey(prevKey => prevKey + 1);
     };
 
     return (
@@ -385,8 +393,22 @@ const DeviceDetail: React.FC = () => {
                                 </div>
                             </div>
 
-                            {/* Device Events Section */}
-                            <DeviceEvents deviceId={deviceId || ''} />
+                            {/* Only render event components if we have a valid deviceId */}
+                            {deviceId && (
+                                <>
+                                    {/* Schedule Event Section */}
+                                    <ScheduleEvent
+                                        deviceId={deviceId || ''}
+                                        onEventScheduled={handleEventScheduled}
+                                    />
+
+                                    {/* Device Events Section */}
+                                    <DeviceEvents
+                                        key={eventsKey}
+                                        deviceId={deviceId || ''}
+                                    />
+                                </>
+                            )}
 
                             <div className="bg-white shadow overflow-hidden sm:rounded-lg mb-8">
                                 <div className="px-4 py-5 sm:px-6 flex justify-between items-center">
