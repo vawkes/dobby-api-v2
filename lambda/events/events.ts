@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { DynamoDB } from "@aws-sdk/client-dynamodb";
 import { unmarshall } from "@aws-sdk/util-dynamodb";
-import { eventsSchema, eventSchema, eventRequestSchema, EventType, EventSchemaType } from './eventsSchema';
+import { eventsSchema, eventSchema, eventRequestSchema, bulkResponseSchema, EventType, EventSchemaType } from './eventsSchema';
 import { describeRoute } from 'hono-openapi';
 import { resolver, validator as zValidator } from "hono-openapi/zod";
 import { handleLoadUp } from "./eventHandlers/loadUp";
@@ -10,6 +10,7 @@ import { handleEndShed } from "./eventHandlers/endShed";
 import { handleGridEmergency } from "./eventHandlers/gridEmergency";
 import { handleCriticalPeak } from "./eventHandlers/criticalPeak";
 import { handleInfoRequest } from "./eventHandlers/infoRequest";
+import { v4 as uuidv4 } from 'uuid';
 
 const app = new Hono()
 
@@ -222,13 +223,13 @@ app.get("/:eventId",
 
 app.post("/",
     describeRoute({
-        description: "Create an event",
+        description: "Create event(s) for one or multiple devices",
         responses: {
             200: {
-                description: "Event created successfully",
+                description: "Event(s) created successfully",
                 content: {
                     'application/json': {
-                        schema: resolver(eventSchema),
+                        schema: resolver(bulkResponseSchema),
                     },
                 },
             },
@@ -243,58 +244,155 @@ app.post("/",
     zValidator('json', eventRequestSchema),
     async (c) => {
         try {
-            const body = await c.req.json()
-            const parsedBody = eventRequestSchema.parse(body)
+            const body = await c.req.json();
+            const parsedBody = eventRequestSchema.parse(body);
 
             let result: EventSchemaType | null = null;
             const eventType = parsedBody.event_type;
+            const eventData = parsedBody.event_data;
 
-            // Handle each event type
-            if (eventType === EventType.LOAD_UP) {
-                result = await handleLoadUp(parsedBody.event_data.device_id,
-                    parsedBody.event_data.start_time ? new Date(parsedBody.event_data.start_time) : undefined,
-                    parsedBody.event_data.duration);
+            // Handle both single device_id and array of device_ids
+            const deviceIds = Array.isArray(eventData.device_id)
+                ? eventData.device_id
+                : [eventData.device_id];
+
+            // If it's a single device ID, use the original flow
+            if (deviceIds.length === 1) {
+                const deviceId = deviceIds[0];
+
+                // Handle each event type based on its specific schema
+                if (eventType === EventType.LOAD_UP) {
+                    result = await handleLoadUp(
+                        deviceId,
+                        'start_time' in eventData && eventData.start_time ? new Date(eventData.start_time) : undefined,
+                        'duration' in eventData ? eventData.duration : undefined
+                    );
+                }
+                else if (eventType === EventType.GRID_EMERGENCY) {
+                    result = await handleGridEmergency(
+                        deviceId,
+                        'start_time' in eventData && eventData.start_time ? new Date(eventData.start_time) : undefined
+                    );
+                }
+                else if (eventType === EventType.CRITICAL_PEAK) {
+                    result = await handleCriticalPeak(
+                        deviceId,
+                        'start_time' in eventData && eventData.start_time ? new Date(eventData.start_time) : undefined
+                    );
+                }
+                else if (eventType === EventType.START_SHED) {
+                    result = await handleStartShed(
+                        deviceId,
+                        'start_time' in eventData && eventData.start_time ? new Date(eventData.start_time) : undefined,
+                        'duration' in eventData ? eventData.duration || 0 : 0
+                    );
+                }
+                else if (eventType === EventType.END_SHED) {
+                    result = await handleEndShed(
+                        deviceId,
+                        'start_time' in eventData && eventData.start_time ? new Date(eventData.start_time) : undefined
+                    );
+                }
+                else if (eventType === EventType.INFO_REQUEST) {
+                    result = await handleInfoRequest(
+                        deviceId,
+                        'timestamp' in eventData && eventData.timestamp ? new Date(eventData.timestamp) : undefined
+                    );
+                }
+                else {
+                    // Unsupported event type
+                    return c.json({
+                        statusCode: 400,
+                        body: { reason: `Unsupported event type: ${eventType}` }
+                    }, 400);
+                }
+
+                if (!result) {
+                    return c.json({
+                        statusCode: 500,
+                        body: { reason: "Failed to process event" }
+                    }, 500);
+                }
+
+                return c.json({
+                    statusCode: 200,
+                    body: {
+                        successful_events: [result],
+                        failed_events: []
+                    }
+                }, 200);
             }
-            else if (eventType === EventType.GRID_EMERGENCY) {
-                result = await handleGridEmergency(parsedBody.event_data.device_id,
-                    parsedBody.event_data.start_time ? new Date(parsedBody.event_data.start_time) : undefined);
-            }
-            else if (eventType === EventType.CRITICAL_PEAK) {
-                result = await handleCriticalPeak(parsedBody.event_data.device_id,
-                    parsedBody.event_data.start_time ? new Date(parsedBody.event_data.start_time) : undefined);
-            }
-            else if (eventType === EventType.START_SHED) {
-                result = await handleStartShed(parsedBody.event_data.device_id,
-                    parsedBody.event_data.start_time ? new Date(parsedBody.event_data.start_time) : undefined,
-                    parsedBody.event_data.duration || 0);
-            }
-            else if (eventType === EventType.END_SHED) {
-                result = await handleEndShed(parsedBody.event_data.device_id,
-                    parsedBody.event_data.start_time ? new Date(parsedBody.event_data.start_time) : undefined);
-            }
-            else if (eventType === EventType.INFO_REQUEST) {
-                result = await handleInfoRequest(parsedBody.event_data.device_id,
-                    parsedBody.event_data.timestamp ? new Date(parsedBody.event_data.timestamp) : undefined);
-            }
+            // Otherwise, handle as bulk operation
             else {
-                // Unsupported event type
-                return c.json({
-                    statusCode: 400,
-                    body: { reason: `Unsupported event type: ${eventType}` }
-                }, 400);
-            }
+                const successfulEvents: EventSchemaType[] = [];
+                const failedEvents: { device_id: string, error: string }[] = [];
 
-            if (!result) {
-                return c.json({
-                    statusCode: 500,
-                    body: { reason: "Failed to process event" }
-                }, 500);
-            }
+                // Process events for each device in parallel
+                await Promise.all(deviceIds.map(async (deviceId) => {
+                    try {
+                        let result: EventSchemaType | null = null;
 
-            return c.json({
-                statusCode: 200,
-                body: result
-            }, 200);
+                        // Create event with appropriate handler based on event type
+                        if (eventType === EventType.LOAD_UP) {
+                            result = await handleLoadUp(
+                                deviceId,
+                                'start_time' in eventData && eventData.start_time ? new Date(eventData.start_time) : undefined,
+                                'duration' in eventData ? eventData.duration : undefined
+                            );
+                        } else if (eventType === EventType.GRID_EMERGENCY) {
+                            result = await handleGridEmergency(
+                                deviceId,
+                                'start_time' in eventData && eventData.start_time ? new Date(eventData.start_time) : undefined
+                            );
+                        } else if (eventType === EventType.CRITICAL_PEAK) {
+                            result = await handleCriticalPeak(
+                                deviceId,
+                                'start_time' in eventData && eventData.start_time ? new Date(eventData.start_time) : undefined
+                            );
+                        } else if (eventType === EventType.START_SHED) {
+                            result = await handleStartShed(
+                                deviceId,
+                                'start_time' in eventData && eventData.start_time ? new Date(eventData.start_time) : undefined,
+                                'duration' in eventData ? eventData.duration || 0 : 0
+                            );
+                        } else if (eventType === EventType.END_SHED) {
+                            result = await handleEndShed(
+                                deviceId,
+                                'start_time' in eventData && eventData.start_time ? new Date(eventData.start_time) : undefined
+                            );
+                        } else if (eventType === EventType.INFO_REQUEST) {
+                            result = await handleInfoRequest(
+                                deviceId,
+                                'timestamp' in eventData && eventData.timestamp ? new Date(eventData.timestamp) : undefined
+                            );
+                        }
+
+                        if (result) {
+                            successfulEvents.push(result);
+                        } else {
+                            failedEvents.push({
+                                device_id: deviceId,
+                                error: "Failed to process event"
+                            });
+                        }
+                    } catch (error) {
+                        console.error(`Error processing event for device ${deviceId}:`, error);
+                        failedEvents.push({
+                            device_id: deviceId,
+                            error: error instanceof Error ? error.message : "Unknown error"
+                        });
+                    }
+                }));
+
+                // Return the results
+                return c.json({
+                    statusCode: 200,
+                    body: {
+                        successful_events: successfulEvents,
+                        failed_events: failedEvents.length > 0 ? failedEvents : []
+                    }
+                }, 200);
+            }
         } catch (error) {
             console.error("Error processing event:", error);
             return c.json({

@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { toast } from 'react-toastify';
 import { getConfig } from '../utils/config';
+import { v4 as uuidv4 } from 'uuid';
 
 // Define the base URL for the API 
 // In development, leave empty to use the proxy in package.json
@@ -351,12 +352,24 @@ export const eventsAPI = {
         }
     },
 
-    createEvent: async (eventData: any) => {
+    createBulkEvents: async (eventType: string, eventParams: any, deviceIds: string[]) => {
         try {
-            const response = await api.post('/events', eventData);
+            // Create a payload that conforms to the unified API
+            const eventData = {
+                ...eventParams,
+                device_id: deviceIds // Now using device_id for both single and bulk operations
+            };
+
+            const payload = {
+                event_id: uuidv4(), // Generate UUID on the client for both single & bulk
+                event_type: eventType,
+                event_data: eventData
+            };
+
+            const response = await api.post('/events', payload);
             return response.data;
         } catch (error) {
-            console.error('Error creating event:', error);
+            console.error('Error creating events:', error);
             throw error;
         }
     }

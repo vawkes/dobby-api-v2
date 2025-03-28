@@ -1,13 +1,12 @@
-import React, { useState } from 'react';
-import { eventsAPI } from '../services/api';
-import { EventType } from '../types';
+import React, { useState, useEffect } from 'react';
+import { eventsAPI, deviceAPI } from '../services/api';
+import { EventType, Device } from '../types';
 
-interface ScheduleEventProps {
-    deviceId: string;
-    onEventScheduled: () => void;
+interface BulkScheduleEventProps {
+    onEventsScheduled: () => void;
 }
 
-const ScheduleEvent: React.FC<ScheduleEventProps> = ({ deviceId, onEventScheduled }) => {
+const BulkScheduleEvent: React.FC<BulkScheduleEventProps> = ({ onEventsScheduled }) => {
     const [eventType, setEventType] = useState<EventType>(EventType.LOAD_UP);
     const [startTime, setStartTime] = useState('');
     const [scheduleForNow, setScheduleForNow] = useState(true);
@@ -16,22 +15,80 @@ const ScheduleEvent: React.FC<ScheduleEventProps> = ({ deviceId, onEventSchedule
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState(false);
 
+    // For device selection
+    const [devices, setDevices] = useState<Device[]>([]);
+    const [selectedDeviceIds, setSelectedDeviceIds] = useState<string[]>([]);
+    const [isLoadingDevices, setIsLoadingDevices] = useState(false);
+    const [loadDevicesError, setLoadDevicesError] = useState<string | null>(null);
+
+    // Summary of results after bulk scheduling
+    const [successCount, setSuccessCount] = useState(0);
+    const [failedCount, setFailedCount] = useState(0);
+
     // Determine if the selected event type requires duration
     const eventRequiresDuration = () => {
         return eventType === EventType.LOAD_UP || eventType === EventType.START_SHED;
     };
 
+    // Load devices
+    useEffect(() => {
+        const fetchDevices = async () => {
+            setIsLoadingDevices(true);
+            setLoadDevicesError(null);
+
+            try {
+                const response = await deviceAPI.getAllDevices();
+                setDevices(response);
+            } catch (err: any) {
+                console.error('Error loading devices:', err);
+                setLoadDevicesError(err.message || 'Failed to load devices');
+            } finally {
+                setIsLoadingDevices(false);
+            }
+        };
+
+        fetchDevices();
+    }, []);
+
+    const handleDeviceSelection = (deviceId: string) => {
+        setSelectedDeviceIds(prevSelected => {
+            if (prevSelected.includes(deviceId)) {
+                return prevSelected.filter(id => id !== deviceId);
+            } else {
+                return [...prevSelected, deviceId];
+            }
+        });
+    };
+
+    const handleSelectAll = () => {
+        if (selectedDeviceIds.length === devices.length) {
+            // If all are selected, deselect all
+            setSelectedDeviceIds([]);
+        } else {
+            // Otherwise, select all
+            setSelectedDeviceIds(devices.map(device => device.device_id));
+        }
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+
+        if (selectedDeviceIds.length === 0) {
+            setError("Please select at least one device");
+            return;
+        }
+
         setIsSubmitting(true);
         setError(null);
         setSuccess(false);
+        setSuccessCount(0);
+        setFailedCount(0);
 
         try {
             // Format date or use current time
             const eventTime = scheduleForNow ? new Date() : new Date(startTime);
 
-            // Create event params
+            // Create event parameters
             const eventParams: any = {};
 
             // Add appropriate time field based on event type
@@ -45,30 +102,30 @@ const ScheduleEvent: React.FC<ScheduleEventProps> = ({ deviceId, onEventSchedule
                 }
             }
 
-            // Call the bulk events API with a single device ID
+            // Call the updated API method with separate parameters
             const response = await eventsAPI.createBulkEvents(
                 eventType,
                 eventParams,
-                [deviceId] // Pass as an array with a single device ID
+                selectedDeviceIds
             );
 
-            if (response.body?.successful_events?.length > 0) {
-                setSuccess(true);
-            } else if (response.body?.failed_events?.length > 0) {
-                const failedDevice = response.body.failed_events[0];
-                setError(failedDevice.error || 'Failed to schedule event');
+            // Set success counts for summary
+            if (response.body) {
+                setSuccessCount(response.body.successful_events?.length || 0);
+                setFailedCount(response.body.failed_events?.length || 0);
             }
 
-            onEventScheduled();
+            setSuccess(true);
+            onEventsScheduled();
 
-            // Reset form
+            // Reset form (but keep device selection)
             setEventType(EventType.LOAD_UP);
             setStartTime('');
             setScheduleForNow(true);
             setDuration(300);
         } catch (err: any) {
-            console.error('Error scheduling event:', err);
-            setError(err.message || 'Failed to schedule event');
+            console.error('Error scheduling bulk events:', err);
+            setError(err.message || 'Failed to schedule events');
         } finally {
             setIsSubmitting(false);
         }
@@ -77,15 +134,19 @@ const ScheduleEvent: React.FC<ScheduleEventProps> = ({ deviceId, onEventSchedule
     return (
         <div className="bg-white shadow overflow-hidden sm:rounded-lg mb-8">
             <div className="px-4 py-5 sm:px-6">
-                <h3 className="text-lg leading-6 font-medium text-gray-900">Schedule Event</h3>
-                <p className="mt-1 max-w-2xl text-sm text-gray-500">Schedule a new event for this device.</p>
+                <h3 className="text-lg leading-6 font-medium text-gray-900">Bulk Schedule Events</h3>
+                <p className="mt-1 max-w-2xl text-sm text-gray-500">Schedule the same event for multiple devices.</p>
             </div>
             <div className="border-t border-gray-200 px-4 py-5 sm:p-6">
                 {success && (
                     <div className="bg-green-50 border-l-4 border-green-600 p-4 mb-4">
                         <div className="flex">
                             <div className="ml-3">
-                                <p className="text-sm text-green-800">Event scheduled successfully!</p>
+                                <p className="text-sm text-green-800">
+                                    Events scheduled successfully!
+                                    {successCount > 0 && ` ${successCount} device(s) succeeded.`}
+                                    {failedCount > 0 && ` ${failedCount} device(s) failed.`}
+                                </p>
                             </div>
                         </div>
                     </div>
@@ -198,15 +259,67 @@ const ScheduleEvent: React.FC<ScheduleEventProps> = ({ deviceId, onEventSchedule
                                 </p>
                             </div>
                         )}
+
+                        {/* Device Selection */}
+                        <div className="sm:col-span-6">
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Select Devices
+                            </label>
+
+                            {isLoadingDevices ? (
+                                <p>Loading devices...</p>
+                            ) : loadDevicesError ? (
+                                <p className="text-red-600">{loadDevicesError}</p>
+                            ) : (
+                                <>
+                                    <div className="mb-2">
+                                        <button
+                                            type="button"
+                                            onClick={handleSelectAll}
+                                            className="text-sm text-blue-600 hover:text-blue-800"
+                                        >
+                                            {selectedDeviceIds.length === devices.length ? 'Deselect All' : 'Select All'}
+                                        </button>
+                                        <span className="ml-2 text-sm text-gray-500">
+                                            {selectedDeviceIds.length} of {devices.length} selected
+                                        </span>
+                                    </div>
+
+                                    <div className="max-h-60 overflow-y-auto border border-gray-300 rounded-md p-2">
+                                        {devices.length === 0 ? (
+                                            <p className="text-gray-500">No devices available</p>
+                                        ) : (
+                                            devices.map((device) => (
+                                                <div key={device.device_id} className="flex items-center py-1">
+                                                    <input
+                                                        type="checkbox"
+                                                        className="focus:ring-blue-500 h-4 w-4 text-blue-600 border-gray-300 rounded"
+                                                        checked={selectedDeviceIds.includes(device.device_id)}
+                                                        onChange={() => handleDeviceSelection(device.device_id)}
+                                                        id={`device-${device.device_id}`}
+                                                    />
+                                                    <label
+                                                        htmlFor={`device-${device.device_id}`}
+                                                        className="ml-2 block text-sm text-gray-700"
+                                                    >
+                                                        {device.device_id}
+                                                    </label>
+                                                </div>
+                                            ))
+                                        )}
+                                    </div>
+                                </>
+                            )}
+                        </div>
                     </div>
 
                     <div className="mt-6">
                         <button
                             type="submit"
                             className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                            disabled={isSubmitting}
+                            disabled={isSubmitting || selectedDeviceIds.length === 0}
                         >
-                            {isSubmitting ? 'Scheduling...' : 'Schedule Event'}
+                            {isSubmitting ? 'Scheduling...' : 'Schedule Events'}
                         </button>
                     </div>
                 </form>
@@ -215,4 +328,4 @@ const ScheduleEvent: React.FC<ScheduleEventProps> = ({ deviceId, onEventSchedule
     );
 };
 
-export default ScheduleEvent; 
+export default BulkScheduleEvent; 
