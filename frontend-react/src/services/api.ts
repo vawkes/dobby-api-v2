@@ -33,6 +33,15 @@ const updateBaseUrl = () => {
     }
 };
 
+// Store a flag to avoid multiple concurrent refresh attempts
+let isRefreshing = false;
+// Store pending requests that should be retried after token refresh
+let pendingRequests: Array<{
+    config: any;
+    resolve: (value: any) => void;
+    reject: (reason: any) => void;
+}> = [];
+
 // Add a request interceptor to include the auth token in requests
 api.interceptors.request.use(
     (config) => {
@@ -67,16 +76,105 @@ api.interceptors.response.use(
         // Any status code within the range of 2xx triggers this function
         return response;
     },
-    (error) => {
+    async (error) => {
         // Any status codes outside the range of 2xx trigger this function
         console.error('API Error:', error);
 
-        // Handle unauthorized errors by redirecting to login
+        // Handle unauthorized errors by attempting token refresh
         if (error.response && error.response.status === 401) {
             console.error('Unauthorized access - token may be expired');
 
+            // Get the original request config
+            const originalRequest = error.config;
+
+            // Create an identifier for the current request
+            const isAuthEndpoint = originalRequest.url?.includes('/auth/');
+            const isRefreshEndpoint = originalRequest.url?.includes('/refresh-token');
+            const refreshToken = localStorage.getItem('refreshToken');
+
+            // Only proceed with token refresh if:
+            // 1. Not an auth endpoint itself
+            // 2. Not already trying to refresh
+            // 3. Refresh token exists
+            // 4. No _retryCount or _retryCount < 1 (to prevent infinite loops)
+            if (!isAuthEndpoint && !isRefreshEndpoint &&
+                refreshToken &&
+                (!originalRequest._retryCount || originalRequest._retryCount < 1)) {
+
+                // Mark the request as retried
+                originalRequest._retryCount = originalRequest._retryCount ? originalRequest._retryCount + 1 : 1;
+
+                // If we're already refreshing, queue this request
+                if (isRefreshing) {
+                    return new Promise((resolve, reject) => {
+                        pendingRequests.push({
+                            config: originalRequest,
+                            resolve,
+                            reject
+                        });
+                    });
+                }
+
+                // Start refreshing
+                isRefreshing = true;
+
+                try {
+                    console.log('Attempting to refresh the auth token');
+
+                    // Try to refresh the token
+                    const refreshResult = await authAPI.refreshToken(refreshToken);
+
+                    // If successful, update the tokens in localStorage
+                    if (refreshResult && refreshResult.token) {
+                        // Ensure token is properly formatted
+                        const tokenWithBearer = refreshResult.token.startsWith('Bearer ')
+                            ? refreshResult.token
+                            : `Bearer ${refreshResult.token}`;
+
+                        localStorage.setItem('token', tokenWithBearer);
+
+                        // Store the refresh token if provided
+                        if (refreshResult.refreshToken) {
+                            localStorage.setItem('refreshToken', refreshResult.refreshToken);
+                        }
+
+                        console.log('Token refresh successful, retrying original request');
+
+                        // Update the original request with the new token
+                        originalRequest.headers.Authorization = tokenWithBearer;
+
+                        // Process any pending requests with the new token
+                        pendingRequests.forEach(request => {
+                            request.config.headers.Authorization = tokenWithBearer;
+                            request.resolve(api(request.config));
+                        });
+
+                        // Clear the pending requests
+                        pendingRequests = [];
+
+                        // Retry the original request with the new token
+                        return api(originalRequest);
+                    }
+                } catch (refreshError) {
+                    console.error('Token refresh failed:', refreshError);
+
+                    // Reject all pending requests
+                    pendingRequests.forEach(request => {
+                        request.reject(refreshError);
+                    });
+
+                    // Clear the pending requests
+                    pendingRequests = [];
+                } finally {
+                    // Reset refreshing flag
+                    isRefreshing = false;
+                }
+            }
+
+            // If we get here, either token refresh failed or wasn't attempted
             // Clear authentication data from localStorage
             localStorage.removeItem('token');
+            localStorage.removeItem('refreshToken');
             localStorage.removeItem('user');
 
             // Only redirect if we're not already on the login page
@@ -118,9 +216,25 @@ export const authAPI = {
     login: async (email: string, password: string) => {
         try {
             const response = await api.post('/public/auth/login', { email, password });
+
+            // Store refresh token if available
+            if (response.data.refreshToken) {
+                localStorage.setItem('refreshToken', response.data.refreshToken);
+            }
+
             return response.data;
         } catch (error) {
             console.error('Login error:', error);
+            throw error;
+        }
+    },
+
+    refreshToken: async (refreshToken: string) => {
+        try {
+            const response = await api.post('/public/auth/refresh-token', { refreshToken });
+            return response.data;
+        } catch (error) {
+            console.error('Token refresh error:', error);
             throw error;
         }
     },
