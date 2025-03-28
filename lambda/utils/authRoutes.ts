@@ -37,6 +37,11 @@ const resetPasswordSchema = z.object({
     newPassword: z.string().min(8),
 });
 
+// Define refresh token schema
+const refreshTokenSchema = z.object({
+    refreshToken: z.string()
+});
+
 // Register a new user
 app.post(
     '/register',
@@ -193,6 +198,44 @@ app.post(
         } catch (error) {
             console.error('Reset password error:', error);
             return c.json({ message: 'Password reset failed', error: (error as Error).message }, 400);
+        }
+    }
+);
+
+// Refresh token
+app.post(
+    '/refresh-token',
+    describeRoute({
+        tags: ['Authentication'],
+        summary: 'Refresh auth token',
+        description: 'Get a new JWT token using a refresh token',
+    }),
+    zValidator('json', refreshTokenSchema),
+    async (c) => {
+        const { refreshToken } = c.req.valid('json');
+
+        try {
+            const result = await cognitoClient.initiateAuth({
+                ClientId: process.env.USER_POOL_CLIENT_ID,
+                AuthFlow: 'REFRESH_TOKEN_AUTH',
+                AuthParameters: {
+                    REFRESH_TOKEN: refreshToken,
+                },
+            });
+
+            if (!result.AuthenticationResult) {
+                return c.json({ message: 'Token refresh failed - Missing authentication result' }, 400);
+            }
+
+            return c.json({
+                message: 'Token refresh successful',
+                token: result.AuthenticationResult.IdToken,
+                refreshToken: result.AuthenticationResult.RefreshToken || refreshToken, // Use new refresh token if provided, otherwise keep the old one
+                expiresIn: result.AuthenticationResult.ExpiresIn,
+            }, 200);
+        } catch (error) {
+            console.error('Token refresh error:', error);
+            return c.json({ message: 'Token refresh failed', error: (error as Error).message }, 401);
         }
     }
 );
