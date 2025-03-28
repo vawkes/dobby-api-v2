@@ -88,28 +88,26 @@ const BulkScheduleEvent: React.FC<BulkScheduleEventProps> = ({ onEventsScheduled
             // Format date or use current time
             const eventTime = scheduleForNow ? new Date() : new Date(startTime);
 
-            // Create event payload
-            const eventData: any = {
-                device_ids: selectedDeviceIds
-            };
+            // Create event parameters
+            const eventParams: any = {};
 
             // Add appropriate time field based on event type
             if (eventType === EventType.INFO_REQUEST) {
-                eventData.timestamp = eventTime.toISOString();
+                eventParams.timestamp = eventTime.toISOString();
             } else {
-                eventData.start_time = eventTime.toISOString();
+                eventParams.start_time = eventTime.toISOString();
                 // Add duration if applicable
                 if (eventRequiresDuration() && duration) {
-                    eventData.duration = duration;
+                    eventParams.duration = duration;
                 }
             }
 
-            const payload = {
-                event_type: eventType,
-                event_data: eventData
-            };
-
-            const response = await eventsAPI.createBulkEvents(payload);
+            // Call the updated API method with separate parameters
+            const response = await eventsAPI.createBulkEvents(
+                eventType,
+                eventParams,
+                selectedDeviceIds
+            );
 
             // Set success counts for summary
             if (response.body) {

@@ -9,75 +9,48 @@ enum EventType {
     INFO_REQUEST = "INFO_REQUEST",
 }
 
+// Define device ID schema that accepts either a single UUID or an array of UUIDs
+const deviceIdSchema = z.union([
+    z.string().uuid(),
+    z.array(z.string().uuid())
+]);
+
 const startShedSchema = z.object({
-    device_id: z.string().uuid(),
+    device_id: deviceIdSchema,
     start_time: z.string().datetime(),
     duration: z.number().optional(),
     event_sent: z.boolean().optional(),
 });
 
 const endShedSchema = z.object({
-    device_id: z.string().uuid(),
+    device_id: deviceIdSchema,
     start_time: z.string().datetime().optional(),
     event_sent: z.boolean().optional(),
 });
 
 const loadUpSchema = z.object({
-    device_id: z.string().uuid(),
+    device_id: deviceIdSchema,
     start_time: z.string().datetime(),
     duration: z.number().optional(),
     event_sent: z.boolean().optional(),
 });
 
 const gridEmergencySchema = z.object({
-    device_id: z.string().uuid(),
+    device_id: deviceIdSchema,
     start_time: z.string().datetime(),
     event_sent: z.boolean().optional(),
 });
 
 const criticalPeakSchema = z.object({
-    device_id: z.string().uuid(),
+    device_id: deviceIdSchema,
     start_time: z.string().datetime(),
     event_sent: z.boolean().optional(),
 });
 
 const infoRequestSchema = z.object({
-    device_id: z.string().uuid(),
+    device_id: deviceIdSchema,
     timestamp: z.string().datetime().optional(),
     event_sent: z.boolean().optional(),
-});
-
-// Bulk event schemas with multiple device IDs
-const bulkStartShedSchema = z.object({
-    device_ids: z.array(z.string().uuid()),
-    start_time: z.string().datetime(),
-    duration: z.number().optional(),
-});
-
-const bulkEndShedSchema = z.object({
-    device_ids: z.array(z.string().uuid()),
-    start_time: z.string().datetime().optional(),
-});
-
-const bulkLoadUpSchema = z.object({
-    device_ids: z.array(z.string().uuid()),
-    start_time: z.string().datetime(),
-    duration: z.number().optional(),
-});
-
-const bulkGridEmergencySchema = z.object({
-    device_ids: z.array(z.string().uuid()),
-    start_time: z.string().datetime(),
-});
-
-const bulkCriticalPeakSchema = z.object({
-    device_ids: z.array(z.string().uuid()),
-    start_time: z.string().datetime(),
-});
-
-const bulkInfoRequestSchema = z.object({
-    device_ids: z.array(z.string().uuid()),
-    timestamp: z.string().datetime().optional(),
 });
 
 const eventRequestSchema = z.object({
@@ -94,20 +67,6 @@ const eventRequestSchema = z.object({
     ])
 );
 
-// Bulk event request schema
-const bulkEventRequestSchema = z.object({
-    event_type: z.nativeEnum(EventType),
-}).and(
-    z.union([
-        z.object({ event_type: z.literal(EventType.LOAD_UP), event_data: bulkLoadUpSchema }),
-        z.object({ event_type: z.literal(EventType.GRID_EMERGENCY), event_data: bulkGridEmergencySchema }),
-        z.object({ event_type: z.literal(EventType.CRITICAL_PEAK), event_data: bulkCriticalPeakSchema }),
-        z.object({ event_type: z.literal(EventType.START_SHED), event_data: bulkStartShedSchema }),
-        z.object({ event_type: z.literal(EventType.END_SHED), event_data: bulkEndShedSchema }),
-        z.object({ event_type: z.literal(EventType.INFO_REQUEST), event_data: bulkInfoRequestSchema }),
-    ])
-);
-
 const eventSchema = z.object({
     event_id: z.string(),
     event_type: z.nativeEnum(EventType),
@@ -117,8 +76,8 @@ const eventSchema = z.object({
 
 const eventsSchema = z.array(eventSchema);
 
-// Schema for bulk event response
-const bulkEventResponseSchema = z.object({
+// Schema for bulk operation response
+const bulkResponseSchema = z.object({
     successful_events: z.array(eventSchema),
     failed_events: z.array(z.object({
         device_id: z.string().uuid(),
@@ -128,4 +87,4 @@ const bulkEventResponseSchema = z.object({
 
 type EventSchemaType = z.infer<typeof eventSchema>;
 
-export { eventsSchema, eventSchema, eventRequestSchema, bulkEventRequestSchema, bulkEventResponseSchema, EventType, EventSchemaType };
+export { eventsSchema, eventSchema, eventRequestSchema, bulkResponseSchema, EventType, EventSchemaType };

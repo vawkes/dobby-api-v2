@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { eventsAPI } from '../services/api';
 import { EventType } from '../types';
-import { v4 as uuidv4 } from 'uuid';
 
 interface ScheduleEventProps {
     deviceId: string;
@@ -32,30 +31,34 @@ const ScheduleEvent: React.FC<ScheduleEventProps> = ({ deviceId, onEventSchedule
             // Format date or use current time
             const eventTime = scheduleForNow ? new Date() : new Date(startTime);
 
-            // Create event payload
-            const eventData: any = {
-                device_id: deviceId
-            };
+            // Create event params
+            const eventParams: any = {};
 
             // Add appropriate time field based on event type
             if (eventType === EventType.INFO_REQUEST) {
-                eventData.timestamp = eventTime.toISOString();
+                eventParams.timestamp = eventTime.toISOString();
             } else {
-                eventData.start_time = eventTime.toISOString();
+                eventParams.start_time = eventTime.toISOString();
                 // Add duration if applicable
                 if (eventRequiresDuration() && duration) {
-                    eventData.duration = duration;
+                    eventParams.duration = duration;
                 }
             }
 
-            const payload = {
-                event_id: uuidv4(),
-                event_type: eventType,
-                event_data: eventData
-            };
+            // Call the bulk events API with a single device ID
+            const response = await eventsAPI.createBulkEvents(
+                eventType,
+                eventParams,
+                [deviceId] // Pass as an array with a single device ID
+            );
 
-            await eventsAPI.createEvent(payload);
-            setSuccess(true);
+            if (response.body?.successful_events?.length > 0) {
+                setSuccess(true);
+            } else if (response.body?.failed_events?.length > 0) {
+                const failedDevice = response.body.failed_events[0];
+                setError(failedDevice.error || 'Failed to schedule event');
+            }
+
             onEventScheduled();
 
             // Reset form
