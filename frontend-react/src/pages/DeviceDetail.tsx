@@ -5,6 +5,14 @@ import { Device, DeviceDataPoint } from '../types';
 import { FiAlertCircle, FiArrowLeft, FiBattery, FiCpu, FiWifi, FiActivity } from 'react-icons/fi';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Label } from 'recharts';
 
+// Extend the DeviceDataPoint type with our custom field
+interface FormattedDataPoint extends DeviceDataPoint {
+    timeMs: number;
+    formattedTime: string;
+    formattedDate: string;
+    isVirtual?: boolean; // Add isVirtual as an optional property
+}
+
 // Helper function to get link type name
 const getLinkTypeName = (linkType?: number): string => {
     if (linkType === 1) return 'BLE';
@@ -113,6 +121,9 @@ const DeviceDetail: React.FC = () => {
     const currentTime = Date.now(); // Current time in milliseconds
     let startTime: number | 'auto' = 'auto';
 
+    // Create a separate array for rendering that includes a virtual point
+    let renderData = [...formattedChartData];
+
     // Only use calculated start time if we have data points
     if (formattedChartData.length > 0) {
         // Get the time range in milliseconds based on selection
@@ -120,6 +131,23 @@ const DeviceDetail: React.FC = () => {
         // Set the start time based on current time minus the selected time range
         // This ensures that we use the same time range as the data fetch
         startTime = Math.min(formattedChartData[0].timeMs, currentTime - timeRangeMs);
+
+        // Add a virtual data point at the current time to extend the line
+        // This uses the step-after interpolation by carrying forward the last value
+        if (formattedChartData.length > 0) {
+            const lastDataPoint = formattedChartData[formattedChartData.length - 1];
+
+            // Only add the virtual point if it's after the last real data point
+            if (currentTime > lastDataPoint.timeMs) {
+                const virtualDataPoint = {
+                    ...lastDataPoint,
+                    timeMs: currentTime,
+                    formattedTime: new Date(currentTime).toLocaleTimeString(),
+                    formattedDate: new Date(currentTime).toLocaleDateString()
+                };
+                renderData.push(virtualDataPoint);
+            }
+        }
     }
 
     // Time formatter for axis ticks
@@ -209,7 +237,7 @@ const DeviceDetail: React.FC = () => {
                                         <div className="p-4 h-96">
                                             <ResponsiveContainer width="100%" height="100%">
                                                 <LineChart
-                                                    data={formattedChartData}
+                                                    data={renderData}
                                                     margin={{ top: 5, right: 100, left: 20, bottom: 5 }}
                                                 >
                                                     <CartesianGrid strokeDasharray="3 3" />
@@ -262,8 +290,6 @@ const DeviceDetail: React.FC = () => {
                                                         </YAxis>
                                                     )}
 
-
-
                                                     <Tooltip
                                                         formatter={(value, name) => {
                                                             // For overlay mode, format each metric with its own unit
@@ -286,6 +312,31 @@ const DeviceDetail: React.FC = () => {
                                                         labelFormatter={(label) => {
                                                             return new Date(label as number).toLocaleString();
                                                         }}
+                                                        // Only show tooltip for real data points
+                                                        content={(props) => {
+                                                            // If it's the virtual point (last one) don't show the tooltip
+                                                            if (props.active && props.payload && props.payload.length) {
+                                                                const dataIndex = props.payload[0].payload.timeMs === currentTime &&
+                                                                    props.payload[0].payload.timeMs !== formattedChartData[formattedChartData.length - 1]?.timeMs;
+                                                                if (dataIndex) {
+                                                                    return null;
+                                                                }
+
+                                                                // Otherwise show the default tooltip
+                                                                return (
+                                                                    <div className="custom-tooltip bg-white p-2 border border-gray-300 rounded shadow">
+                                                                        <p className="font-semibold">{new Date(props.payload[0].payload.timeMs).toLocaleString()}</p>
+                                                                        {props.payload.map((entry, index) => (
+                                                                            <p key={`item-${index}`} style={{ color: entry.color }}>
+                                                                                {entry.name}: {entry.value} {entry.name === 'Instant Power' ? 'W' :
+                                                                                    entry.name === 'Cumulative Energy' ? 'Wh' : ''}
+                                                                            </p>
+                                                                        ))}
+                                                                    </div>
+                                                                );
+                                                            }
+                                                            return null;
+                                                        }}
                                                     />
 
                                                     <Legend />
@@ -297,7 +348,8 @@ const DeviceDetail: React.FC = () => {
                                                             type="stepAfter"
                                                             dataKey="instant_power"
                                                             stroke="#3b82f6" // Blue
-                                                            activeDot={{ r: 8 }}
+                                                            dot={false} // Hide all dots, simpler approach
+                                                            activeDot={true} // But show active dots on hover
                                                             name="Instant Power"
                                                         />
                                                     )}
@@ -308,7 +360,8 @@ const DeviceDetail: React.FC = () => {
                                                             type="stepAfter"
                                                             dataKey="cumulative_energy"
                                                             stroke="#10b981" // Green
-                                                            activeDot={{ r: 8 }}
+                                                            dot={false} // Hide all dots, simpler approach
+                                                            activeDot={true} // But show active dots on hover
                                                             name="Cumulative Energy"
                                                         />
                                                     )}
@@ -319,7 +372,8 @@ const DeviceDetail: React.FC = () => {
                                                             type="stepAfter"
                                                             dataKey="operational_state"
                                                             stroke="#ef4444" // Red
-                                                            activeDot={{ r: 8 }}
+                                                            dot={false} // Hide all dots, simpler approach
+                                                            activeDot={true} // But show active dots on hover
                                                             name="Operational State"
                                                         />
                                                     )}
