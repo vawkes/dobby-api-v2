@@ -6,6 +6,7 @@ enum EventType {
     CRITICAL_PEAK = "CRITICAL_PEAK",
     START_SHED = "START_SHED",
     END_SHED = "END_SHED",
+    INFO_REQUEST = "INFO_REQUEST",
 }
 
 const startShedSchema = z.object({
@@ -40,6 +41,12 @@ const criticalPeakSchema = z.object({
     event_sent: z.boolean().optional(),
 });
 
+const infoRequestSchema = z.object({
+    device_id: z.string().uuid(),
+    timestamp: z.string().datetime().optional(),
+    event_sent: z.boolean().optional(),
+});
+
 const eventRequestSchema = z.object({
     event_id: z.string().uuid(),
     event_type: z.nativeEnum(EventType),
@@ -50,11 +57,13 @@ const eventRequestSchema = z.object({
         z.object({ event_type: z.literal(EventType.CRITICAL_PEAK), event_data: criticalPeakSchema }),
         z.object({ event_type: z.literal(EventType.START_SHED), event_data: startShedSchema }),
         z.object({ event_type: z.literal(EventType.END_SHED), event_data: endShedSchema }),
+        z.object({ event_type: z.literal(EventType.INFO_REQUEST), event_data: infoRequestSchema }),
     ])
 );
 
 const eventSchema = eventRequestSchema.and(z.object({
     event_id: z.string().uuid(),
+    event_ack: z.boolean().optional(),
 }));
 type EventSchemaType = z.infer<typeof eventSchema>;
 

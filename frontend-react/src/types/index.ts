@@ -26,4 +26,29 @@ export interface DeviceDataPoint {
     instant_power: number;
     msg_number: number;
     operational_state: number;
+}
+
+// Event related types
+export enum EventType {
+    LOAD_UP = "LOAD_UP",
+    GRID_EMERGENCY = "GRID_EMERGENCY",
+    CRITICAL_PEAK = "CRITICAL_PEAK",
+    START_SHED = "START_SHED",
+    END_SHED = "END_SHED",
+    INFO_REQUEST = "INFO_REQUEST",
+}
+
+export interface EventData {
+    device_id: string;
+    start_time?: string;      // Used by most event types
+    timestamp?: string;       // Used by INFO_REQUEST events
+    duration?: number;
+    event_sent?: boolean;
+}
+
+export interface Event {
+    event_id: string;
+    event_type: EventType;
+    event_data: EventData;
+    event_ack?: boolean;  // Acknowledgment status from device
 } 
