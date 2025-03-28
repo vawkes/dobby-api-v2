@@ -359,6 +359,16 @@ export const eventsAPI = {
             console.error('Error creating event:', error);
             throw error;
         }
+    },
+
+    createBulkEvents: async (bulkEventData: any) => {
+        try {
+            const response = await api.post('/events/bulk', bulkEventData);
+            return response.data;
+        } catch (error) {
+            console.error('Error creating bulk events:', error);
+            throw error;
+        }
     }
 };
 

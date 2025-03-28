@@ -47,6 +47,39 @@ const infoRequestSchema = z.object({
     event_sent: z.boolean().optional(),
 });
 
+// Bulk event schemas with multiple device IDs
+const bulkStartShedSchema = z.object({
+    device_ids: z.array(z.string().uuid()),
+    start_time: z.string().datetime(),
+    duration: z.number().optional(),
+});
+
+const bulkEndShedSchema = z.object({
+    device_ids: z.array(z.string().uuid()),
+    start_time: z.string().datetime().optional(),
+});
+
+const bulkLoadUpSchema = z.object({
+    device_ids: z.array(z.string().uuid()),
+    start_time: z.string().datetime(),
+    duration: z.number().optional(),
+});
+
+const bulkGridEmergencySchema = z.object({
+    device_ids: z.array(z.string().uuid()),
+    start_time: z.string().datetime(),
+});
+
+const bulkCriticalPeakSchema = z.object({
+    device_ids: z.array(z.string().uuid()),
+    start_time: z.string().datetime(),
+});
+
+const bulkInfoRequestSchema = z.object({
+    device_ids: z.array(z.string().uuid()),
+    timestamp: z.string().datetime().optional(),
+});
+
 const eventRequestSchema = z.object({
     event_id: z.string().uuid(),
     event_type: z.nativeEnum(EventType),
@@ -61,12 +94,38 @@ const eventRequestSchema = z.object({
     ])
 );
 
-const eventSchema = eventRequestSchema.and(z.object({
-    event_id: z.string().uuid(),
-    event_ack: z.boolean().optional(),
-}));
-type EventSchemaType = z.infer<typeof eventSchema>;
+// Bulk event request schema
+const bulkEventRequestSchema = z.object({
+    event_type: z.nativeEnum(EventType),
+}).and(
+    z.union([
+        z.object({ event_type: z.literal(EventType.LOAD_UP), event_data: bulkLoadUpSchema }),
+        z.object({ event_type: z.literal(EventType.GRID_EMERGENCY), event_data: bulkGridEmergencySchema }),
+        z.object({ event_type: z.literal(EventType.CRITICAL_PEAK), event_data: bulkCriticalPeakSchema }),
+        z.object({ event_type: z.literal(EventType.START_SHED), event_data: bulkStartShedSchema }),
+        z.object({ event_type: z.literal(EventType.END_SHED), event_data: bulkEndShedSchema }),
+        z.object({ event_type: z.literal(EventType.INFO_REQUEST), event_data: bulkInfoRequestSchema }),
+    ])
+);
+
+const eventSchema = z.object({
+    event_id: z.string(),
+    event_type: z.nativeEnum(EventType),
+    event_data: z.object({}).passthrough(),
+    event_ack: z.boolean().optional().nullable(),
+});
 
 const eventsSchema = z.array(eventSchema);
 
-export { eventsSchema, eventSchema, eventRequestSchema, EventType, EventSchemaType };
+// Schema for bulk event response
+const bulkEventResponseSchema = z.object({
+    successful_events: z.array(eventSchema),
+    failed_events: z.array(z.object({
+        device_id: z.string().uuid(),
+        error: z.string()
+    })).optional()
+});
+
+type EventSchemaType = z.infer<typeof eventSchema>;
+
+export { eventsSchema, eventSchema, eventRequestSchema, bulkEventRequestSchema, bulkEventResponseSchema, EventType, EventSchemaType };

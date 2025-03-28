@@ -12,6 +12,7 @@ import ResetPasswordPage from './pages/ResetPassword';
 import Dashboard from './pages/Dashboard';
 import Devices from './pages/Devices';
 import DeviceDetail from './pages/DeviceDetail';
+import BulkSchedulePage from './pages/BulkSchedulePage';
 
 // Components
 import ProtectedRoute from './components/ProtectedRoute';
@@ -56,6 +57,7 @@ function App() {
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/devices" element={<Devices />} />
             <Route path="/devices/:deviceId" element={<DeviceDetail />} />
+            <Route path="/bulk-schedule" element={<BulkSchedulePage />} />
             {/* Add more protected routes here */}
           </Route>
 

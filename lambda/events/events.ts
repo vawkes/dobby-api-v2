@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { DynamoDB } from "@aws-sdk/client-dynamodb";
 import { unmarshall } from "@aws-sdk/util-dynamodb";
-import { eventsSchema, eventSchema, eventRequestSchema, EventType, EventSchemaType } from './eventsSchema';
+import { eventsSchema, eventSchema, eventRequestSchema, bulkEventRequestSchema, bulkEventResponseSchema, EventType, EventSchemaType } from './eventsSchema';
 import { describeRoute } from 'hono-openapi';
 import { resolver, validator as zValidator } from "hono-openapi/zod";
 import { handleLoadUp } from "./eventHandlers/loadUp";
@@ -10,6 +10,7 @@ import { handleEndShed } from "./eventHandlers/endShed";
 import { handleGridEmergency } from "./eventHandlers/gridEmergency";
 import { handleCriticalPeak } from "./eventHandlers/criticalPeak";
 import { handleInfoRequest } from "./eventHandlers/infoRequest";
+import { v4 as uuidv4 } from 'uuid';
 
 const app = new Hono()
 
@@ -297,6 +298,133 @@ app.post("/",
             }, 200);
         } catch (error) {
             console.error("Error processing event:", error);
+            return c.json({
+                statusCode: 500,
+                body: { reason: error instanceof Error ? error.message : "Unknown error" }
+            }, 500);
+        }
+    })
+
+app.post("/bulk",
+    describeRoute({
+        description: "Schedule events in bulk for multiple devices",
+        responses: {
+            200: {
+                description: "Events scheduled successfully",
+                content: {
+                    'application/json': {
+                        schema: resolver(bulkEventResponseSchema),
+                    },
+                },
+            },
+            400: {
+                description: "Bad Request",
+            },
+            500: {
+                description: "Internal Server Error",
+            },
+        },
+    }),
+    zValidator('json', bulkEventRequestSchema),
+    async (c) => {
+        try {
+            const body = await c.req.json();
+            const parsedBody = bulkEventRequestSchema.parse(body);
+
+            const eventType = parsedBody.event_type;
+            let deviceIds: string[] = [];
+
+            // Extract device IDs based on event type
+            if (eventType === EventType.LOAD_UP) {
+                deviceIds = parsedBody.event_data.device_ids;
+            } else if (eventType === EventType.GRID_EMERGENCY) {
+                deviceIds = parsedBody.event_data.device_ids;
+            } else if (eventType === EventType.CRITICAL_PEAK) {
+                deviceIds = parsedBody.event_data.device_ids;
+            } else if (eventType === EventType.START_SHED) {
+                deviceIds = parsedBody.event_data.device_ids;
+            } else if (eventType === EventType.END_SHED) {
+                deviceIds = parsedBody.event_data.device_ids;
+            } else if (eventType === EventType.INFO_REQUEST) {
+                deviceIds = parsedBody.event_data.device_ids;
+            } else {
+                // Unsupported event type
+                return c.json({
+                    statusCode: 400,
+                    body: { reason: `Unsupported event type: ${eventType}` }
+                }, 400);
+            }
+
+            const successfulEvents: EventSchemaType[] = [];
+            const failedEvents: { device_id: string, error: string }[] = [];
+
+            // Process events for each device in parallel
+            await Promise.all(deviceIds.map(async (deviceId) => {
+                try {
+                    let result: EventSchemaType | null = null;
+
+                    // Create event with appropriate handler based on event type
+                    if (eventType === EventType.LOAD_UP) {
+                        result = await handleLoadUp(
+                            deviceId,
+                            parsedBody.event_data.start_time ? new Date(parsedBody.event_data.start_time) : undefined,
+                            parsedBody.event_data.duration
+                        );
+                    } else if (eventType === EventType.GRID_EMERGENCY) {
+                        result = await handleGridEmergency(
+                            deviceId,
+                            parsedBody.event_data.start_time ? new Date(parsedBody.event_data.start_time) : undefined
+                        );
+                    } else if (eventType === EventType.CRITICAL_PEAK) {
+                        result = await handleCriticalPeak(
+                            deviceId,
+                            parsedBody.event_data.start_time ? new Date(parsedBody.event_data.start_time) : undefined
+                        );
+                    } else if (eventType === EventType.START_SHED) {
+                        result = await handleStartShed(
+                            deviceId,
+                            parsedBody.event_data.start_time ? new Date(parsedBody.event_data.start_time) : undefined,
+                            parsedBody.event_data.duration || 0
+                        );
+                    } else if (eventType === EventType.END_SHED) {
+                        result = await handleEndShed(
+                            deviceId,
+                            parsedBody.event_data.start_time ? new Date(parsedBody.event_data.start_time) : undefined
+                        );
+                    } else if (eventType === EventType.INFO_REQUEST) {
+                        result = await handleInfoRequest(
+                            deviceId,
+                            parsedBody.event_data.timestamp ? new Date(parsedBody.event_data.timestamp) : undefined
+                        );
+                    }
+
+                    if (result) {
+                        successfulEvents.push(result);
+                    } else {
+                        failedEvents.push({
+                            device_id: deviceId,
+                            error: "Failed to process event"
+                        });
+                    }
+                } catch (error) {
+                    console.error(`Error processing event for device ${deviceId}:`, error);
+                    failedEvents.push({
+                        device_id: deviceId,
+                        error: error instanceof Error ? error.message : "Unknown error"
+                    });
+                }
+            }));
+
+            // Return the results
+            return c.json({
+                statusCode: 200,
+                body: {
+                    successful_events: successfulEvents,
+                    failed_events: failedEvents.length > 0 ? failedEvents : undefined
+                }
+            }, 200);
+        } catch (error) {
+            console.error("Error processing bulk events:", error);
             return c.json({
                 statusCode: 500,
                 body: { reason: error instanceof Error ? error.message : "Unknown error" }
