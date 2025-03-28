@@ -205,6 +205,49 @@ export const deviceAPI = {
     },
 };
 
+// Events API calls
+export const eventsAPI = {
+    getAllEvents: async () => {
+        try {
+            const response = await api.get('/events');
+            return response.data;
+        } catch (error) {
+            console.error('Error fetching all events:', error);
+            throw error;
+        }
+    },
+
+    getEventById: async (eventId: string) => {
+        try {
+            const response = await api.get(`/events/${eventId}`);
+            return response.data;
+        } catch (error) {
+            console.error(`Error fetching event with ID ${eventId}:`, error);
+            throw error;
+        }
+    },
+
+    getEventsByDeviceId: async (deviceId: string) => {
+        try {
+            const response = await api.get(`/events/device/${deviceId}`);
+            return response.data;
+        } catch (error) {
+            console.error(`Error fetching events for device with ID ${deviceId}:`, error);
+            throw error;
+        }
+    },
+
+    createEvent: async (eventData: any) => {
+        try {
+            const response = await api.post('/events', eventData);
+            return response.data;
+        } catch (error) {
+            console.error('Error creating event:', error);
+            throw error;
+        }
+    }
+};
+
 // Export updateBaseUrl to be called after config is loaded
 export { updateBaseUrl };
 

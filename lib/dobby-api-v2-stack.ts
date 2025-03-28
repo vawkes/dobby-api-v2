@@ -72,6 +72,16 @@ export class DobbyApiV2Stack extends cdk.Stack {
       resources: ["*"],
     }));
 
+    // Add explicit permission for querying the GSI on DobbyEvent table
+    fn.addToRolePolicy(new iam.PolicyStatement({
+      actions: [
+        "dynamodb:Query",
+      ],
+      resources: [
+        `arn:aws:dynamodb:${this.region}:${this.account}:table/DobbyEvent/index/device_id-index`
+      ],
+    }));
+
     // Create the Cognito User Pool Authorizer
     const authorizer = new apigw.CognitoUserPoolsAuthorizer(this, 'DobbyAuthorizer', {
       cognitoUserPools: [userPool]

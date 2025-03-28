@@ -4,6 +4,7 @@ import { deviceAPI } from '../services/api';
 import { Device, DeviceDataPoint } from '../types';
 import { FiAlertCircle, FiArrowLeft, FiBattery, FiCpu, FiWifi, FiActivity } from 'react-icons/fi';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Label } from 'recharts';
+import DeviceEvents from '../components/DeviceEvents';
 
 // Extend the DeviceDataPoint type with our custom field
 interface FormattedDataPoint extends DeviceDataPoint {
@@ -384,6 +385,8 @@ const DeviceDetail: React.FC = () => {
                                 </div>
                             </div>
 
+                            {/* Device Events Section */}
+                            <DeviceEvents deviceId={deviceId || ''} />
 
                             <div className="bg-white shadow overflow-hidden sm:rounded-lg mb-8">
                                 <div className="px-4 py-5 sm:px-6 flex justify-between items-center">
@@ -483,8 +486,6 @@ const DeviceDetail: React.FC = () => {
                                     </dl>
                                 </div>
                             </div>
-
-
                         </>
                     )}
                 </div>

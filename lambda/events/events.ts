@@ -9,6 +9,7 @@ import { handleStartShed } from "./eventHandlers/startShed";
 import { handleEndShed } from "./eventHandlers/endShed";
 import { handleGridEmergency } from "./eventHandlers/gridEmergency";
 import { handleCriticalPeak } from "./eventHandlers/criticalPeak";
+import { handleInfoRequest } from "./eventHandlers/infoRequest";
 
 const app = new Hono()
 
@@ -33,7 +34,33 @@ app.get("/",
         try {
             const dynamodb = new DynamoDB({ "region": "us-east-1" });
             const results = await dynamodb.scan({ TableName: "DobbyEvent" });
-            const events = results.Items?.map(item => unmarshall(item)) || [];
+
+            // Transform the data to ensure it matches the schema
+            const events = results.Items?.map(item => {
+                const event = unmarshall(item);
+
+                // Make sure event_data exists and has the necessary structure
+                if (!event.event_data) {
+                    event.event_data = {
+                        device_id: event.device_id || ''
+                    };
+
+                    // Add appropriate fields based on event type
+                    if (event.event_type === EventType.INFO_REQUEST) {
+                        event.event_data.timestamp = event.timestamp || new Date().toISOString();
+                    } else if (['LOAD_UP', 'GRID_EMERGENCY', 'CRITICAL_PEAK', 'START_SHED', 'END_SHED'].includes(event.event_type)) {
+                        event.event_data.start_time = event.start_time || new Date().toISOString();
+
+                        // Add duration for event types that need it
+                        if (['LOAD_UP', 'START_SHED'].includes(event.event_type)) {
+                            event.event_data.duration = event.duration || 0;
+                        }
+                    }
+                }
+
+                return event;
+            }) || [];
+
             return c.json(eventsSchema.parse(events));
         } catch (error) {
             console.error("Error fetching events:", error);
@@ -69,7 +96,7 @@ app.get("/device/:deviceId",
             // Query the GSI (device_id)
             const queryParams = {
                 TableName: "DobbyEvent",
-                IndexName: "device_id",
+                IndexName: "device_id-index",
                 KeyConditionExpression: "device_id = :deviceId",
                 ExpressionAttributeValues: {
                     ":deviceId": { S: deviceId }
@@ -82,7 +109,32 @@ app.get("/device/:deviceId",
                 return c.json({ error: "No events found for this device" }, 404);
             }
 
-            const events = results.Items.map(item => unmarshall(item));
+            // Transform the data to ensure it matches the schema
+            const events = results.Items.map(item => {
+                const event = unmarshall(item);
+
+                // Make sure event_data exists and has the necessary structure
+                if (!event.event_data) {
+                    event.event_data = {
+                        device_id: event.device_id || deviceId
+                    };
+
+                    // Add appropriate fields based on event type
+                    if (event.event_type === EventType.INFO_REQUEST) {
+                        event.event_data.timestamp = event.timestamp || new Date().toISOString();
+                    } else if (['LOAD_UP', 'GRID_EMERGENCY', 'CRITICAL_PEAK', 'START_SHED', 'END_SHED'].includes(event.event_type)) {
+                        event.event_data.start_time = event.start_time || new Date().toISOString();
+
+                        // Add duration for event types that need it
+                        if (['LOAD_UP', 'START_SHED'].includes(event.event_type)) {
+                            event.event_data.duration = event.duration || 0;
+                        }
+                    }
+                }
+
+                return event;
+            });
+
             return c.json(eventsSchema.parse(events));
         } catch (error) {
             console.error("Error fetching device events:", error);
@@ -117,7 +169,28 @@ app.get("/:eventId",
             if (!results.Item) {
                 return c.json({ error: "Event not found" }, 404);
             }
+
             const event = unmarshall(results.Item);
+
+            // Make sure event_data exists and has the necessary structure
+            if (!event.event_data) {
+                event.event_data = {
+                    device_id: event.device_id || ''
+                };
+
+                // Add appropriate fields based on event type
+                if (event.event_type === EventType.INFO_REQUEST) {
+                    event.event_data.timestamp = event.timestamp || new Date().toISOString();
+                } else if (['LOAD_UP', 'GRID_EMERGENCY', 'CRITICAL_PEAK', 'START_SHED', 'END_SHED'].includes(event.event_type)) {
+                    event.event_data.start_time = event.start_time || new Date().toISOString();
+
+                    // Add duration for event types that need it
+                    if (['LOAD_UP', 'START_SHED'].includes(event.event_type)) {
+                        event.event_data.duration = event.duration || 0;
+                    }
+                }
+            }
+
             return c.json(eventSchema.parse(event));
         } catch (error) {
             console.error("Error fetching event:", error);
@@ -176,6 +249,10 @@ app.post("/",
             else if (eventType === EventType.END_SHED) {
                 result = await handleEndShed(parsedBody.event_data.device_id,
                     parsedBody.event_data.start_time ? new Date(parsedBody.event_data.start_time) : undefined);
+            }
+            else if (eventType === EventType.INFO_REQUEST) {
+                result = await handleInfoRequest(parsedBody.event_data.device_id,
+                    parsedBody.event_data.timestamp ? new Date(parsedBody.event_data.timestamp) : undefined);
             }
             else {
                 // Unsupported event type
