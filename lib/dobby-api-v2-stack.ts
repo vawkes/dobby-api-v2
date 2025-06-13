@@ -6,14 +6,41 @@ import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs'
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb'
 import * as iam from 'aws-cdk-lib/aws-iam'
 import * as cognito from 'aws-cdk-lib/aws-cognito'
+import * as iot from 'aws-cdk-lib/aws-iot'
 
 export class DobbyApiV2Stack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props)
 
-    const infoTable = dynamodb.Table.fromTableName(this, 'DobbyInfoTable', 'DobbyInfo')
-    const eventTable = dynamodb.Table.fromTableName(this, 'DobbyEventTable', 'DobbyEvent')
-    const dataTable = dynamodb.Table.fromTableName(this, 'ShiftedDataTable', 'ShiftedData')
+    // Create DynamoDB tables instead of referencing existing ones
+    const infoTable = new dynamodb.Table(this, 'DobbyInfoTable', {
+      tableName: 'DobbyInfo',
+      partitionKey: { name: 'device_id', type: dynamodb.AttributeType.STRING },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
+    })
+
+    const eventTable = new dynamodb.Table(this, 'DobbyEventTable', {
+      tableName: 'DobbyEvent',
+      partitionKey: { name: 'event_id', type: dynamodb.AttributeType.STRING },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
+    })
+
+    // Add GSI for querying events by device_id
+    eventTable.addGlobalSecondaryIndex({
+      indexName: 'device_id-index',
+      partitionKey: { name: 'device_id', type: dynamodb.AttributeType.STRING },
+      projectionType: dynamodb.ProjectionType.ALL
+    })
+
+    const dataTable = new dynamodb.Table(this, 'ShiftedDataTable', {
+      tableName: 'ShiftedData',
+      partitionKey: { name: 'device_id', type: dynamodb.AttributeType.STRING },
+      sortKey: { name: 'timestamp', type: dynamodb.AttributeType.NUMBER },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
+    })
 
     // Create Cognito User Pool for authentication
     const userPool = new cognito.UserPool(this, 'DobbyUserPool', {
@@ -56,6 +83,59 @@ export class DobbyApiV2Stack extends cdk.Stack {
         USER_POOL_CLIENT_ID: userPoolClient.userPoolClientId,
       },
     })
+
+    // Create the IoT Lambda function
+    const iotLambda = new NodejsFunction(this, 'GridCubeIoTLambda', {
+      entry: 'lambda/iot/gridCubeHandler.ts',
+      handler: 'handler',
+      runtime: lambda.Runtime.NODEJS_20_X,
+      timeout: cdk.Duration.seconds(30),
+      description: 'Processes IoT data from Grid Cube devices',
+    });
+
+    // Grant permissions to the IoT Lambda
+    infoTable.grantReadWriteData(iotLambda);
+    dataTable.grantWriteData(iotLambda);
+
+    // Add permissions for Timestream and IoT Wireless
+    iotLambda.addToRolePolicy(new iam.PolicyStatement({
+      actions: [
+        "timestream:WriteRecords",
+        "timestream:DescribeEndpoints"
+      ],
+      resources: ["*"],
+    }));
+
+    iotLambda.addToRolePolicy(new iam.PolicyStatement({
+      actions: [
+        "iotwireless:SendDataToWirelessDevice"
+      ],
+      resources: ["*"],
+    }));
+
+    // Create the IoT Core rule to trigger the Lambda
+    const iotRule = new iot.CfnTopicRule(this, 'GridCubeIoTRule', {
+      ruleName: 'GridCubeDataProcessingRule',
+      topicRulePayload: {
+        sql: "SELECT * FROM 'iot/topic/+/uplink'",
+        actions: [
+          {
+            lambda: {
+              functionArn: iotLambda.functionArn,
+            },
+          },
+        ],
+        description: 'Process incoming data from Grid Cube wireless devices',
+        ruleDisabled: false,
+      },
+    });
+
+    // Grant IoT Core permission to invoke the Lambda function
+    iotLambda.addPermission('AllowIotInvoke', {
+      principal: new iam.ServicePrincipal('iot.amazonaws.com'),
+      action: 'lambda:InvokeFunction',
+      sourceArn: iotRule.attrArn,
+    });
 
     infoTable.grantFullAccess(fn)
     eventTable.grantFullAccess(fn)

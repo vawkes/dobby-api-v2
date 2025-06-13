@@ -1,0 +1,13 @@
+{
+    "device_id": "01234567-89ab-cdef-0123-456789abcdef",
+    "timestamp": 1711669200,
+    "cumulative_energy": 12345.67,
+    "instant_power": 1200.5,
+    "msg_number": 42,
+    "operational_state": 1,
+    "signal_strength": -75,
+    "link_type": 4,
+    "battery_level": 87.5,
+    "temperature": 24.3,
+    "firmware_version": "1.2.3"
+}
