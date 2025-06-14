@@ -14,8 +14,8 @@ const handleStartShed = async (device_id: string, startTime?: Date, duration: nu
     const buffer = new ArrayBuffer(7) // 1 byte for event type + 4 bytes for time + 2 bytes for duration
     const view = new DataView(buffer)
     view.setUint8(0, EventMap.START_SHED) // Event type
-    view.setUint32(1, gpsTimeEpoch) // Start time in GPS epoch
-    view.setInt16(5, duration) // Duration
+    view.setUint32(1, gpsTimeEpoch, true) // Start time in GPS epoch
+    view.setInt16(5, duration, true) // Duration
 
     // Send to device
     const sentToDobby = await sendToDobby(device_id, view.buffer)

@@ -1,15 +1,16 @@
 import { Hono } from "hono";
 import { DynamoDB } from "@aws-sdk/client-dynamodb";
 import { unmarshall } from "@aws-sdk/util-dynamodb";
-import { eventsSchema, eventSchema, eventRequestSchema, bulkResponseSchema, EventType, EventSchemaType } from './eventsSchema';
+import { eventsSchema, eventSchema, eventRequestSchema, bulkResponseSchema, EventType, EventSchemaType } from './eventsSchema.ts';
 import { describeRoute } from 'hono-openapi';
 import { resolver, validator as zValidator } from "hono-openapi/zod";
-import { handleLoadUp } from "./eventHandlers/loadUp";
-import { handleStartShed } from "./eventHandlers/startShed";
-import { handleEndShed } from "./eventHandlers/endShed";
-import { handleGridEmergency } from "./eventHandlers/gridEmergency";
-import { handleCriticalPeak } from "./eventHandlers/criticalPeak";
-import { handleInfoRequest } from "./eventHandlers/infoRequest";
+import { handleLoadUp } from "./eventHandlers/loadUp.ts";
+import { handleStartShed } from "./eventHandlers/startShed.ts";
+import { handleEndShed } from "./eventHandlers/endShed.ts";
+import { handleGridEmergency } from "./eventHandlers/gridEmergency.ts";
+import { handleCriticalPeak } from "./eventHandlers/criticalPeak.ts";
+import { handleInfoRequest } from "./eventHandlers/infoRequest.ts";
+import { handleAdvancedLoadUp } from "./eventHandlers/advancedLoadUp.ts";
 import { v4 as uuidv4 } from 'uuid';
 
 const app = new Hono()
@@ -256,11 +257,11 @@ app.post("/",
                 ? eventData.device_id
                 : [eventData.device_id];
 
-            // If it's a single device ID, use the original flow
+            // If only one device, handle as single operation
             if (deviceIds.length === 1) {
                 const deviceId = deviceIds[0];
 
-                // Handle each event type based on its specific schema
+                // Create event with appropriate handler based on event type
                 if (eventType === EventType.LOAD_UP) {
                     result = await handleLoadUp(
                         deviceId,
@@ -299,6 +300,19 @@ app.post("/",
                         'timestamp' in eventData && eventData.timestamp ? new Date(eventData.timestamp) : undefined
                     );
                 }
+                else if (eventType === EventType.ADVANCED_LOAD_UP) {
+                    result = await handleAdvancedLoadUp(
+                        deviceId,
+                        'start_time' in eventData && eventData.start_time ? new Date(eventData.start_time) : undefined,
+                        'duration' in eventData ? eventData.duration : 0,
+                        'value' in eventData ? eventData.value : 0,
+                        'units' in eventData ? eventData.units : 0,
+                        'suggested_load_up_efficiency' in eventData ? eventData.suggested_load_up_efficiency : 0,
+                        'event_id' in eventData ? eventData.event_id : uuidv4(),
+                        'start_randomization' in eventData ? eventData.start_randomization : 0,
+                        'end_randomization' in eventData ? eventData.end_randomization : 0
+                    );
+                }
                 else {
                     // Unsupported event type
                     return c.json({
@@ -328,7 +342,7 @@ app.post("/",
                 const failedEvents: { device_id: string, error: string }[] = [];
 
                 // Process events for each device in parallel
-                await Promise.all(deviceIds.map(async (deviceId) => {
+                await Promise.all(deviceIds.map(async (deviceId: string) => {
                     try {
                         let result: EventSchemaType | null = null;
 
@@ -339,31 +353,49 @@ app.post("/",
                                 'start_time' in eventData && eventData.start_time ? new Date(eventData.start_time) : undefined,
                                 'duration' in eventData ? eventData.duration : undefined
                             );
-                        } else if (eventType === EventType.GRID_EMERGENCY) {
+                        }
+                        else if (eventType === EventType.GRID_EMERGENCY) {
                             result = await handleGridEmergency(
                                 deviceId,
                                 'start_time' in eventData && eventData.start_time ? new Date(eventData.start_time) : undefined
                             );
-                        } else if (eventType === EventType.CRITICAL_PEAK) {
+                        }
+                        else if (eventType === EventType.CRITICAL_PEAK) {
                             result = await handleCriticalPeak(
                                 deviceId,
                                 'start_time' in eventData && eventData.start_time ? new Date(eventData.start_time) : undefined
                             );
-                        } else if (eventType === EventType.START_SHED) {
+                        }
+                        else if (eventType === EventType.START_SHED) {
                             result = await handleStartShed(
                                 deviceId,
                                 'start_time' in eventData && eventData.start_time ? new Date(eventData.start_time) : undefined,
                                 'duration' in eventData ? eventData.duration || 0 : 0
                             );
-                        } else if (eventType === EventType.END_SHED) {
+                        }
+                        else if (eventType === EventType.END_SHED) {
                             result = await handleEndShed(
                                 deviceId,
                                 'start_time' in eventData && eventData.start_time ? new Date(eventData.start_time) : undefined
                             );
-                        } else if (eventType === EventType.INFO_REQUEST) {
+                        }
+                        else if (eventType === EventType.INFO_REQUEST) {
                             result = await handleInfoRequest(
                                 deviceId,
                                 'timestamp' in eventData && eventData.timestamp ? new Date(eventData.timestamp) : undefined
+                            );
+                        }
+                        else if (eventType === EventType.ADVANCED_LOAD_UP) {
+                            result = await handleAdvancedLoadUp(
+                                deviceId,
+                                'start_time' in eventData && eventData.start_time ? new Date(eventData.start_time) : undefined,
+                                'duration' in eventData ? eventData.duration : 0,
+                                'value' in eventData ? eventData.value : 0,
+                                'units' in eventData ? eventData.units : 0,
+                                'suggested_load_up_efficiency' in eventData ? eventData.suggested_load_up_efficiency : 0,
+                                'event_id' in eventData ? eventData.event_id : uuidv4(),
+                                'start_randomization' in eventData ? eventData.start_randomization : 0,
+                                'end_randomization' in eventData ? eventData.end_randomization : 0
                             );
                         }
 

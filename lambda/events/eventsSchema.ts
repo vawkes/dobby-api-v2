@@ -7,6 +7,7 @@ enum EventType {
     START_SHED = "START_SHED",
     END_SHED = "END_SHED",
     INFO_REQUEST = "INFO_REQUEST",
+    ADVANCED_LOAD_UP = "ADVANCED_LOAD_UP",
 }
 
 // Define device ID schema that accepts either a single UUID or an array of UUIDs
@@ -53,6 +54,19 @@ const infoRequestSchema = z.object({
     event_sent: z.boolean().optional(),
 });
 
+const advancedLoadUpSchema = z.object({
+    device_id: deviceIdSchema,
+    start_time: z.string().datetime(),
+    duration: z.number(),
+    value: z.number(),
+    units: z.number(),
+    suggested_load_up_efficiency: z.number(),
+    event_id: z.string(),
+    start_randomization: z.number(),
+    end_randomization: z.number(),
+    event_sent: z.boolean().optional(),
+});
+
 const eventRequestSchema = z.object({
     event_id: z.string().uuid(),
     event_type: z.nativeEnum(EventType),
@@ -64,6 +78,7 @@ const eventRequestSchema = z.object({
         z.object({ event_type: z.literal(EventType.START_SHED), event_data: startShedSchema }),
         z.object({ event_type: z.literal(EventType.END_SHED), event_data: endShedSchema }),
         z.object({ event_type: z.literal(EventType.INFO_REQUEST), event_data: infoRequestSchema }),
+        z.object({ event_type: z.literal(EventType.ADVANCED_LOAD_UP), event_data: advancedLoadUpSchema }),
     ])
 );
 

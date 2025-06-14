@@ -14,7 +14,7 @@ const handleCriticalPeak = async (device_id: string, startTime?: Date): Promise<
     const buffer = new ArrayBuffer(5) // 1 byte for event type + 4 bytes for time
     const view = new DataView(buffer)
     view.setUint8(0, EventMap.CRITICAL_PEAK) // Event type
-    view.setUint32(1, gpsTimeEpoch) // Start time in GPS epoch
+    view.setUint32(1, gpsTimeEpoch, true) // Start time in GPS epoch
 
     // Send to device
     const sentToDobby = await sendToDobby(device_id, view.buffer)
