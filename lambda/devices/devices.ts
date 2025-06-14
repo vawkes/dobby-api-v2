@@ -1,11 +1,33 @@
 import { Hono } from "hono";
 import { DynamoDB } from "@aws-sdk/client-dynamodb";
 import { unmarshall } from "@aws-sdk/util-dynamodb";
-import { devicesSchema, deviceSchema, deviceDataSchema } from './devicesSchema';
+import { devicesSchema, deviceSchema, deviceDataSchema, deviceIdSchema } from './devicesSchema';
 import { describeRoute } from 'hono-openapi';
 import { resolver } from 'hono-openapi/zod'
 
 const app = new Hono()
+
+// Helper function to get wireless device ID from production line table
+async function getWirelessDeviceId(dynamodb: DynamoDB, deviceId: string): Promise<string | null> {
+    try {
+        const result = await dynamodb.getItem({
+            TableName: "ProductionLine",
+            Key: {
+                'device_id': { S: deviceId }
+            }
+        });
+
+        if (!result.Item) {
+            return null;
+        }
+
+        const item = unmarshall(result.Item);
+        return item.wireless_device_id || null;
+    } catch (error) {
+        console.error('Error getting wireless device ID:', error);
+        return null;
+    }
+}
 
 app.get('/',
     describeRoute({
@@ -83,9 +105,28 @@ app.get('/:deviceId',
         try {
             const deviceId = c.req.param('deviceId');
             const dynamodb = new DynamoDB({ "region": "us-east-1" });
+
+            // Validate device ID format
+            const validationResult = deviceIdSchema.safeParse(deviceId);
+            if (!validationResult.success) {
+                return c.json({ error: 'Invalid device ID format' }, 400);
+            }
+
+            // If it's a 6-digit ID, look up the wireless device ID
+            let wirelessDeviceId = null;
+            if (/^\d{6}$/.test(deviceId)) {
+                wirelessDeviceId = await getWirelessDeviceId(dynamodb, deviceId);
+                if (!wirelessDeviceId) {
+                    return c.json({ error: 'Device not found in production line' }, 404);
+                }
+            }
+
+            // Use the wireless device ID if available, otherwise use the original device ID
+            const lookupId = wirelessDeviceId || deviceId;
             const result = await dynamodb.getItem({
-                TableName: "DobbyInfo", Key: {
-                    'device_id': { S: deviceId } // Assuming device_id is a string
+                TableName: "DobbyInfo",
+                Key: {
+                    'device_id': { S: lookupId }
                 }
             });
 
@@ -103,6 +144,9 @@ app.get('/:deviceId',
             if (device.last_link_type !== undefined && typeof device.last_link_type === 'string') {
                 device.last_link_type = Number(device.last_link_type);
             }
+
+            // Always return the original device ID in the response
+            device.device_id = deviceId;
 
             return c.json(deviceSchema.parse(device));
         } catch (error) {
@@ -136,6 +180,21 @@ app.get('/:deviceId/data',
             const deviceId = c.req.param('deviceId');
             const dynamodb = new DynamoDB({ "region": "us-east-1" });
 
+            // Validate device ID format
+            const validationResult = deviceIdSchema.safeParse(deviceId);
+            if (!validationResult.success) {
+                return c.json({ error: 'Invalid device ID format' }, 400);
+            }
+
+            // If it's a 6-digit ID, look up the wireless device ID
+            let wirelessDeviceId = null;
+            if (/^\d{6}$/.test(deviceId)) {
+                wirelessDeviceId = await getWirelessDeviceId(dynamodb, deviceId);
+                if (!wirelessDeviceId) {
+                    return c.json({ error: 'Device not found in production line' }, 404);
+                }
+            }
+
             // Get the timeframe from query parameters (default to last 24 hours)
             const days = parseInt(c.req.query('days') || '1');
             const currentTime = new Date();
@@ -145,12 +204,15 @@ app.get('/:deviceId/data',
             // Convert to seconds since epoch for comparison with timestamp
             const startTimeSeconds = Math.floor(startTime.getTime() / 1000);
 
+            // Use the wireless device ID if available, otherwise use the original device ID
+            const lookupId = wirelessDeviceId || deviceId;
+
             // Query the ShiftedData table
             const queryParams = {
                 TableName: "ShiftedData",
                 KeyConditionExpression: "device_id = :deviceId AND #ts >= :startTime",
                 ExpressionAttributeValues: {
-                    ":deviceId": { S: deviceId },
+                    ":deviceId": { S: lookupId },
                     ":startTime": { N: startTimeSeconds.toString() }
                 },
                 ExpressionAttributeNames: {
@@ -170,7 +232,7 @@ app.get('/:deviceId/data',
 
                 // Ensure numeric fields are converted to numbers
                 return {
-                    device_id: data.device_id,
+                    device_id: deviceId, // Always return the original device ID
                     timestamp: Number(data.timestamp),
                     cumulative_energy: Number(data.cumulative_energy),
                     instant_power: Number(data.instant_power),

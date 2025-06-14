@@ -15,6 +15,15 @@ export class DobbyApiV2Stack extends cdk.Stack {
     const eventTable = dynamodb.Table.fromTableName(this, 'DobbyEventTable', 'DobbyEvent')
     const dataTable = dynamodb.Table.fromTableName(this, 'ShiftedDataTable', 'ShiftedData')
 
+    // Create the production line table
+    const productionLineTable = new dynamodb.Table(this, 'ProductionLineTable', {
+      tableName: 'ProductionLine',
+      partitionKey: { name: 'device_id', type: dynamodb.AttributeType.STRING },
+      sortKey: { name: 'timestamp', type: dynamodb.AttributeType.NUMBER },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
+    });
+
     // Create Cognito User Pool for authentication
     const userPool = new cognito.UserPool(this, 'DobbyUserPool', {
       selfSignUpEnabled: true,
@@ -54,12 +63,14 @@ export class DobbyApiV2Stack extends cdk.Stack {
       environment: {
         USER_POOL_ID: userPool.userPoolId,
         USER_POOL_CLIENT_ID: userPoolClient.userPoolClientId,
+        PRODUCTION_LINE_TABLE: productionLineTable.tableName,
       },
     })
 
     infoTable.grantFullAccess(fn)
     eventTable.grantFullAccess(fn)
     dataTable.grantFullAccess(fn)
+    productionLineTable.grantFullAccess(fn)
 
     fn.addFunctionUrl({
       authType: lambda.FunctionUrlAuthType.NONE,

@@ -1,11 +1,20 @@
 import { z } from '@hono/zod-openapi'
 
+// Custom validator for 6-digit device ID
+const sixDigitDeviceId = z.string().regex(/^\d{6}$/, 'Device ID must be exactly 6 digits');
+
+// Custom validator for device ID that can be either UUID or 6-digit
+const deviceIdSchema = z.union([
+    z.string().uuid(),
+    sixDigitDeviceId
+]);
+
 const deviceSchema = z.object({
     updated_at: z.string().optional(), // ISO 8601 date-time string
     cta_version: z.string().optional(),
     firmware_date: z.string().optional(), // Assuming this is a date string
     model_number: z.string().optional(),
-    device_id: z.string().uuid(), // Assuming this is a UUID
+    device_id: deviceIdSchema, // Now accepts both UUID and 6-digit ID
     device_type: z.string().optional(), // Assuming this is a string, adjust if it's a number
     gridcube_firmware_version: z.string().optional(),
     capability_bitmap: z.string().optional(), // Assuming this is a string, adjust if it's a number
@@ -21,7 +30,7 @@ const devicesSchema = z.array(deviceSchema);
 
 // Schema for ShiftedData table
 const deviceDataPoint = z.object({
-    device_id: z.string().uuid(),
+    device_id: deviceIdSchema, // Now accepts both UUID and 6-digit ID
     timestamp: z.number(), // Timestamp as a number (seconds since epoch)
     cumulative_energy: z.number(),
     instant_power: z.number(),
@@ -31,4 +40,4 @@ const deviceDataPoint = z.object({
 
 const deviceDataSchema = z.array(deviceDataPoint);
 
-export { devicesSchema, deviceSchema, deviceDataSchema };
+export { devicesSchema, deviceSchema, deviceDataSchema, deviceIdSchema };

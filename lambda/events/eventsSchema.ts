@@ -8,6 +8,7 @@ enum EventType {
     END_SHED = "END_SHED",
     INFO_REQUEST = "INFO_REQUEST",
     ADVANCED_LOAD_UP = "ADVANCED_LOAD_UP",
+    CUSTOMER_OVERRIDE = "CUSTOMER_OVERRIDE",
 }
 
 // Define device ID schema that accepts either a single UUID or an array of UUIDs
@@ -67,6 +68,12 @@ const advancedLoadUpSchema = z.object({
     event_sent: z.boolean().optional(),
 });
 
+const customerOverrideSchema = z.object({
+    device_id: deviceIdSchema,
+    override: z.boolean(),
+    event_sent: z.boolean().optional(),
+});
+
 const eventRequestSchema = z.object({
     event_id: z.string().uuid(),
     event_type: z.nativeEnum(EventType),
@@ -79,6 +86,7 @@ const eventRequestSchema = z.object({
         z.object({ event_type: z.literal(EventType.END_SHED), event_data: endShedSchema }),
         z.object({ event_type: z.literal(EventType.INFO_REQUEST), event_data: infoRequestSchema }),
         z.object({ event_type: z.literal(EventType.ADVANCED_LOAD_UP), event_data: advancedLoadUpSchema }),
+        z.object({ event_type: z.literal(EventType.CUSTOMER_OVERRIDE), event_data: customerOverrideSchema }),
     ])
 );
 

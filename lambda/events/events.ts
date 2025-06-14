@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { DynamoDB } from "@aws-sdk/client-dynamodb";
+import { IoTWireless } from "@aws-sdk/client-iot-wireless";
 import { unmarshall } from "@aws-sdk/util-dynamodb";
 import { eventsSchema, eventSchema, eventRequestSchema, bulkResponseSchema, EventType, EventSchemaType } from './eventsSchema.ts';
 import { describeRoute } from 'hono-openapi';
@@ -11,6 +12,7 @@ import { handleGridEmergency } from "./eventHandlers/gridEmergency.ts";
 import { handleCriticalPeak } from "./eventHandlers/criticalPeak.ts";
 import { handleInfoRequest } from "./eventHandlers/infoRequest.ts";
 import { handleAdvancedLoadUp } from "./eventHandlers/advancedLoadUp.ts";
+import { handleCustomerOverride } from "./eventHandlers/customerOverride.ts";
 import { v4 as uuidv4 } from 'uuid';
 
 const app = new Hono()
@@ -50,7 +52,7 @@ app.get("/",
                     // Add appropriate fields based on event type
                     if (event.event_type === EventType.INFO_REQUEST) {
                         event.event_data.timestamp = event.timestamp || new Date().toISOString();
-                    } else if (['LOAD_UP', 'GRID_EMERGENCY', 'CRITICAL_PEAK', 'START_SHED', 'END_SHED'].includes(event.event_type)) {
+                    } else if (['LOAD_UP', 'GRID_EMERGENCY', 'CRITICAL_PEAK', 'START_SHED', 'END_SHED', 'CUSTOMER_OVERRIDE'].includes(event.event_type)) {
                         event.event_data.start_time = event.start_time || new Date().toISOString();
 
                         // Add duration for event types that need it
@@ -131,7 +133,7 @@ app.get("/device/:deviceId",
                     // Add appropriate fields based on event type
                     if (event.event_type === EventType.INFO_REQUEST) {
                         event.event_data.timestamp = event.timestamp || new Date().toISOString();
-                    } else if (['LOAD_UP', 'GRID_EMERGENCY', 'CRITICAL_PEAK', 'START_SHED', 'END_SHED'].includes(event.event_type)) {
+                    } else if (['LOAD_UP', 'GRID_EMERGENCY', 'CRITICAL_PEAK', 'START_SHED', 'END_SHED', 'CUSTOMER_OVERRIDE'].includes(event.event_type)) {
                         event.event_data.start_time = event.start_time || new Date().toISOString();
 
                         // Add duration for event types that need it
@@ -198,7 +200,7 @@ app.get("/:eventId",
                 // Add appropriate fields based on event type
                 if (event.event_type === EventType.INFO_REQUEST) {
                     event.event_data.timestamp = event.timestamp || new Date().toISOString();
-                } else if (['LOAD_UP', 'GRID_EMERGENCY', 'CRITICAL_PEAK', 'START_SHED', 'END_SHED'].includes(event.event_type)) {
+                } else if (['LOAD_UP', 'GRID_EMERGENCY', 'CRITICAL_PEAK', 'START_SHED', 'END_SHED', 'CUSTOMER_OVERRIDE'].includes(event.event_type)) {
                     event.event_data.start_time = event.start_time || new Date().toISOString();
 
                     // Add duration for event types that need it
@@ -301,16 +303,31 @@ app.post("/",
                     );
                 }
                 else if (eventType === EventType.ADVANCED_LOAD_UP) {
+                    const startTime = 'start_time' in eventData && eventData.start_time 
+                        ? new Date(eventData.start_time) 
+                        : new Date();
+                    const duration = 'duration' in eventData ? eventData.duration || 0 : 0;
+                    const value = 'value' in eventData ? eventData.value || 0 : 0;
+                    const units = 'units' in eventData ? eventData.units || 0 : 0;
+                    const suggestedLoadUpEfficiency = 'suggested_load_up_efficiency' in eventData ? eventData.suggested_load_up_efficiency || 0 : 0;
+                    const startRandomization = 'start_randomization' in eventData ? eventData.start_randomization || 0 : 0;
+                    const endRandomization = 'end_randomization' in eventData ? eventData.end_randomization || 0 : 0;
                     result = await handleAdvancedLoadUp(
                         deviceId,
-                        'start_time' in eventData && eventData.start_time ? new Date(eventData.start_time) : undefined,
-                        'duration' in eventData ? eventData.duration : 0,
-                        'value' in eventData ? eventData.value : 0,
-                        'units' in eventData ? eventData.units : 0,
-                        'suggested_load_up_efficiency' in eventData ? eventData.suggested_load_up_efficiency : 0,
+                        startTime,
+                        duration,
+                        value,
+                        units,
+                        suggestedLoadUpEfficiency,
                         'event_id' in eventData ? eventData.event_id : uuidv4(),
-                        'start_randomization' in eventData ? eventData.start_randomization : 0,
-                        'end_randomization' in eventData ? eventData.end_randomization : 0
+                        startRandomization,
+                        endRandomization
+                    );
+                }
+                else if (eventType === EventType.CUSTOMER_OVERRIDE) {
+                    result = await handleCustomerOverride(
+                        deviceId,
+                        'override' in eventData ? eventData.override : false
                     );
                 }
                 else {
@@ -386,16 +403,31 @@ app.post("/",
                             );
                         }
                         else if (eventType === EventType.ADVANCED_LOAD_UP) {
+                            const startTime = 'start_time' in eventData && eventData.start_time 
+                                ? new Date(eventData.start_time) 
+                                : new Date();
+                            const duration = 'duration' in eventData ? eventData.duration || 0 : 0;
+                            const value = 'value' in eventData ? eventData.value || 0 : 0;
+                            const units = 'units' in eventData ? eventData.units || 0 : 0;
+                            const suggestedLoadUpEfficiency = 'suggested_load_up_efficiency' in eventData ? eventData.suggested_load_up_efficiency || 0 : 0;
+                            const startRandomization = 'start_randomization' in eventData ? eventData.start_randomization || 0 : 0;
+                            const endRandomization = 'end_randomization' in eventData ? eventData.end_randomization || 0 : 0;
                             result = await handleAdvancedLoadUp(
                                 deviceId,
-                                'start_time' in eventData && eventData.start_time ? new Date(eventData.start_time) : undefined,
-                                'duration' in eventData ? eventData.duration : 0,
-                                'value' in eventData ? eventData.value : 0,
-                                'units' in eventData ? eventData.units : 0,
-                                'suggested_load_up_efficiency' in eventData ? eventData.suggested_load_up_efficiency : 0,
+                                startTime,
+                                duration,
+                                value,
+                                units,
+                                suggestedLoadUpEfficiency,
                                 'event_id' in eventData ? eventData.event_id : uuidv4(),
-                                'start_randomization' in eventData ? eventData.start_randomization : 0,
-                                'end_randomization' in eventData ? eventData.end_randomization : 0
+                                startRandomization,
+                                endRandomization
+                            );
+                        }
+                        else if (eventType === EventType.CUSTOMER_OVERRIDE) {
+                            result = await handleCustomerOverride(
+                                deviceId,
+                                'override' in eventData ? eventData.override : false
                             );
                         }
 
