@@ -9,6 +9,7 @@ enum EventType {
     INFO_REQUEST = "INFO_REQUEST",
     ADVANCED_LOAD_UP = "ADVANCED_LOAD_UP",
     CUSTOMER_OVERRIDE = "CUSTOMER_OVERRIDE",
+    SET_UTC_TIME = "SET_UTC_TIME",
 }
 
 // Define device ID schema that accepts either a single UUID or an array of UUIDs
@@ -74,6 +75,14 @@ const customerOverrideSchema = z.object({
     event_sent: z.boolean().optional(),
 });
 
+const setUtcTimeSchema = z.object({
+    device_id: deviceIdSchema,
+    utc_seconds: z.number(),
+    utc_offset: z.number(),
+    dst_offset: z.number(),
+    event_sent: z.boolean().optional(),
+});
+
 const eventRequestSchema = z.object({
     event_id: z.string().uuid(),
     event_type: z.nativeEnum(EventType),
@@ -87,6 +96,7 @@ const eventRequestSchema = z.object({
         z.object({ event_type: z.literal(EventType.INFO_REQUEST), event_data: infoRequestSchema }),
         z.object({ event_type: z.literal(EventType.ADVANCED_LOAD_UP), event_data: advancedLoadUpSchema }),
         z.object({ event_type: z.literal(EventType.CUSTOMER_OVERRIDE), event_data: customerOverrideSchema }),
+        z.object({ event_type: z.literal(EventType.SET_UTC_TIME), event_data: setUtcTimeSchema }),
     ])
 );
 

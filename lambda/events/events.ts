@@ -13,6 +13,7 @@ import { handleCriticalPeak } from "./eventHandlers/criticalPeak.ts";
 import { handleInfoRequest } from "./eventHandlers/infoRequest.ts";
 import { handleAdvancedLoadUp } from "./eventHandlers/advancedLoadUp.ts";
 import { handleCustomerOverride } from "./eventHandlers/customerOverride.ts";
+import { handleSetUtcTime } from "./eventHandlers/setUtcTime.ts";
 import { v4 as uuidv4 } from 'uuid';
 
 const app = new Hono()
@@ -330,6 +331,9 @@ app.post("/",
                         'override' in eventData ? eventData.override : false
                     );
                 }
+                else if (eventType === EventType.SET_UTC_TIME) {
+                    result = await handleSetUtcTime(eventData);
+                }
                 else {
                     // Unsupported event type
                     return c.json({
@@ -429,6 +433,9 @@ app.post("/",
                                 deviceId,
                                 'override' in eventData ? eventData.override : false
                             );
+                        }
+                        else if (eventType === EventType.SET_UTC_TIME) {
+                            result = await handleSetUtcTime(eventData);
                         }
 
                         if (result) {
