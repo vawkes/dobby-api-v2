@@ -6,14 +6,44 @@ import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs'
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb'
 import * as iam from 'aws-cdk-lib/aws-iam'
 import * as cognito from 'aws-cdk-lib/aws-cognito'
+import * as iotwireless from 'aws-cdk-lib/aws-iotwireless'
+import * as path from 'node:path'
 
 export class DobbyApiV2Stack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props)
 
-    const infoTable = dynamodb.Table.fromTableName(this, 'DobbyInfoTable', 'DobbyInfo')
-    const eventTable = dynamodb.Table.fromTableName(this, 'DobbyEventTable', 'DobbyEvent')
-    const dataTable = dynamodb.Table.fromTableName(this, 'ShiftedDataTable', 'ShiftedData')
+    // Create DynamoDB tables
+    const infoTable = new dynamodb.Table(this, 'DobbyInfoTable', {
+      tableName: 'DobbyInfo',
+      partitionKey: { name: 'device_id', type: dynamodb.AttributeType.STRING },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
+    });
+
+    const eventTable = new dynamodb.Table(this, 'DobbyEventTable', {
+      tableName: 'DobbyEvent',
+      partitionKey: { name: 'event_id', type: dynamodb.AttributeType.STRING },
+      sortKey: { name: 'timestamp', type: dynamodb.AttributeType.NUMBER },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
+    });
+
+    // Add GSI for device_id queries
+    eventTable.addGlobalSecondaryIndex({
+      indexName: 'device_id-index',
+      partitionKey: { name: 'device_id', type: dynamodb.AttributeType.STRING },
+      sortKey: { name: 'timestamp', type: dynamodb.AttributeType.NUMBER },
+      projectionType: dynamodb.ProjectionType.ALL,
+    });
+
+    const dataTable = new dynamodb.Table(this, 'ShiftedDataTable', {
+      tableName: 'ShiftedData',
+      partitionKey: { name: 'device_id', type: dynamodb.AttributeType.STRING },
+      sortKey: { name: 'timestamp', type: dynamodb.AttributeType.NUMBER },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
+    });
 
     // Create the production line table
     const productionLineTable = new dynamodb.Table(this, 'ProductionLineTable', {
@@ -144,5 +174,80 @@ export class DobbyApiV2Stack extends cdk.Stack {
         authorizationType: apigw.AuthorizationType.COGNITO,
       }
     });
+
+    // Create the data handler Lambda function
+    const dataHandlerFn = new NodejsFunction(this, 'DataHandlerFunction', {
+      entry: path.join(__dirname, '../data-handler-ts/src/index.ts'),
+      handler: 'handler',
+      runtime: lambda.Runtime.NODEJS_20_X,
+      timeout: cdk.Duration.seconds(30),
+      environment: {
+        PRODUCTION_LINE_TABLE: productionLineTable.tableName,
+      },
+    });
+
+    // Grant necessary permissions to the data handler
+    productionLineTable.grantFullAccess(dataHandlerFn);
+    infoTable.grantFullAccess(dataHandlerFn);
+    eventTable.grantFullAccess(dataHandlerFn);
+    dataTable.grantFullAccess(dataHandlerFn);
+
+    // Create IoT Wireless destination
+    const sidewalkDestination = new iotwireless.CfnDestination(this, 'SidewalkDestination', {
+      name: 'SidewalkDataDestination',
+      expression: 'SELECT * FROM "sidewalk/+/data"',
+      expressionType: 'SQL',
+      roleArn: new iam.Role(this, 'SidewalkDestinationRole', {
+        assumedBy: new iam.ServicePrincipal('iotwireless.amazonaws.com'),
+        inlinePolicies: {
+          'AllowLambdaInvoke': new iam.PolicyDocument({
+            statements: [
+              new iam.PolicyStatement({
+                actions: ['lambda:InvokeFunction'],
+                resources: [dataHandlerFn.functionArn],
+              }),
+            ],
+          }),
+        },
+      }).roleArn,
+    });
+
+    // Add permission for IoT Wireless to invoke the Lambda function
+    dataHandlerFn.addPermission('AllowIoTWirelessInvoke', {
+      principal: new iam.ServicePrincipal('iotwireless.amazonaws.com'),
+      action: 'lambda:InvokeFunction',
+      sourceArn: sidewalkDestination.attrArn,
+    });
+
+    // Create Sidewalk destination configuration
+    const sidewalkDestinationConfig = new iotwireless.CfnDestination(this, 'SidewalkDestinationConfig', {
+      name: 'SidewalkDestinationConfig',
+      expression: 'SELECT * FROM "sidewalk/+/data"',
+      expressionType: 'SQL',
+      roleArn: new iam.Role(this, 'SidewalkDestinationConfigRole', {
+        assumedBy: new iam.ServicePrincipal('iotwireless.amazonaws.com'),
+        inlinePolicies: {
+          'AllowLambdaInvoke': new iam.PolicyDocument({
+            statements: [
+              new iam.PolicyStatement({
+                actions: ['lambda:InvokeFunction'],
+                resources: [dataHandlerFn.functionArn],
+              }),
+            ],
+          }),
+        },
+      }).roleArn,
+    });
+
+    // Add Sidewalk-specific permissions to the data handler Lambda
+    dataHandlerFn.addToRolePolicy(new iam.PolicyStatement({
+      actions: [
+        'iotwireless:GetWirelessDevice',
+        'iotwireless:GetWirelessDeviceStatistics',
+        'iotwireless:ListWirelessDevices',
+        'iotwireless:UpdateWirelessDevice',
+      ],
+      resources: ['*'],
+    }));
   }
 }

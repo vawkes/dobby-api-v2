@@ -1,0 +1,36 @@
+import { writeToTimestream } from '../utils/timestream';
+import { convertFromGpsEpoch } from '../utils/gps-epoch';
+import { writeShiftedDataToDynamo } from '../utils/dynamo';
+import { sendToShifted } from '../utils/shifted';
+import { sendAck } from '../utils/ack';
+
+export const handleCumulativeEnergy = async (payload: Buffer, deviceId: string): Promise<void> => {
+  const msgNumber = payload[1];
+  const value = payload.readBigInt64BE(2);
+  const gpsTimestamp = payload.readUInt32BE(8);
+  const utcTimestamp = convertFromGpsEpoch(gpsTimestamp);
+
+  await sendAck(deviceId, 1, msgNumber);
+
+  console.log(`Cumulative Energy: ${value} WH`);
+  console.log(`Message Number: ${msgNumber}`);
+  console.log(`Timestamp: ${new Date(utcTimestamp * 1000).toISOString()}`);
+
+  const timestreamRecords = [
+    {
+      MeasureName: 'cumulative_energy',
+      MeasureValue: value.toString(),
+      MeasureValueType: 'BIGINT',
+    }
+  ];
+
+  await writeToTimestream(deviceId, utcTimestamp, timestreamRecords);
+  const rowEntry = await writeShiftedDataToDynamo(
+    deviceId,
+    utcTimestamp,
+    msgNumber,
+    'cumulative_energy',
+    value
+  );
+  await sendToShifted(rowEntry);
+}; 
