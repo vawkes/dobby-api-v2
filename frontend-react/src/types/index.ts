@@ -18,7 +18,7 @@ export interface Device {
     last_link_type?: number;
 }
 
-// Device data from ShiftedData table
+// Device data from DobbyData table
 export interface DeviceDataPoint {
     device_id: string;
     timestamp: number; // Seconds since epoch

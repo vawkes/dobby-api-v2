@@ -4,6 +4,7 @@ import { unmarshall } from "@aws-sdk/util-dynamodb";
 import { devicesSchema, deviceSchema, deviceDataSchema, deviceIdSchema } from './devicesSchema';
 import { describeRoute } from 'hono-openapi';
 import { resolver } from 'hono-openapi/zod'
+import { QueryCommand } from "@aws-sdk/client-dynamodb";
 
 const app = new Hono()
 
@@ -157,7 +158,7 @@ app.get('/:deviceId',
 
 app.get('/:deviceId/data',
     describeRoute({
-        description: "Fetch device data from ShiftedData table",
+        description: "Fetch device data from DobbyData table",
         responses: {
             200: {
                 content: {
@@ -207,9 +208,9 @@ app.get('/:deviceId/data',
             // Use the wireless device ID if available, otherwise use the original device ID
             const lookupId = wirelessDeviceId || deviceId;
 
-            // Query the ShiftedData table
-            const queryParams = {
-                TableName: "ShiftedData",
+            // Query the DobbyData table
+            const command = new QueryCommand({
+                TableName: "DobbyData",
                 KeyConditionExpression: "device_id = :deviceId AND #ts >= :startTime",
                 ExpressionAttributeValues: {
                     ":deviceId": { S: lookupId },
@@ -219,9 +220,9 @@ app.get('/:deviceId/data',
                     "#ts": "timestamp"  // Use expression attribute name for reserved keyword
                 },
                 ScanIndexForward: true // Return items in ascending order by sort key
-            };
+            });
 
-            const results = await dynamodb.query(queryParams);
+            const results = await dynamodb.query(command);
 
             if (!results.Items || results.Items.length === 0) {
                 return c.json({ error: 'No data found for this device' }, 404);
