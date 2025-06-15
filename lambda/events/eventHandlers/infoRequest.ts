@@ -12,7 +12,7 @@ const handleInfoRequest = async (device_id: string, timestamp?: Date): Promise<E
     const buffer = new ArrayBuffer(5)
     const view = new DataView(buffer)
     view.setUint8(0, EventMap.INFORMATION_REQUEST)
-    view.setUint32(1, gpsTimeEpoch)
+    view.setUint32(1, gpsTimeEpoch, true)
 
     const sentToDobby = await sendToDobby(device_id, view.buffer)
 

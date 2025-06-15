@@ -10,12 +10,14 @@ const handleStartShed = async (device_id: string, startTime?: Date, duration: nu
     // Convert start time to GPS epoch time if provided, otherwise use 0
     const gpsTimeEpoch = startTime ? convertToGpsTimeEpoch(startTime) : 0
 
+    const convertedDuration = Math.sqrt(duration / 2)
+
     // Create binary payload
     const buffer = new ArrayBuffer(7) // 1 byte for event type + 4 bytes for time + 2 bytes for duration
     const view = new DataView(buffer)
     view.setUint8(0, EventMap.START_SHED) // Event type
-    view.setUint32(1, gpsTimeEpoch) // Start time in GPS epoch
-    view.setInt16(5, duration) // Duration
+    view.setUint32(1, gpsTimeEpoch, true) // Start time in GPS epoch
+    view.setUint8(5, convertedDuration) // Duration
 
     // Send to device
     const sentToDobby = await sendToDobby(device_id, view.buffer)

@@ -16,7 +16,7 @@ const handleLoadUp = async (device_id: string, startTime?: Date, eventDurationSe
     const buffer = new ArrayBuffer(6)
     const view = new DataView(buffer)
     view.setUint8(0, EventMap.LOAD_UP)
-    view.setUint32(1, gpsTimeEpoch)
+    view.setUint32(1, gpsTimeEpoch, true)
     view.setUint8(5, convertedDuration)
 
     const sentToDobby = await sendToDobby(device_id, view.buffer)
