@@ -9,7 +9,7 @@
     "watch": "tsc -w",
     "test": "jest",
     "cdk": "cdk",
-    "deploy": "cdk deploy DobbyApiV2Stack --profile dobby_develop"
+    "deploy": "cdk deploy DobbyApiV2Stack --profile dobby_production"
   },
   "devDependencies": {
     "@types/jest": "^29.5.14",
@@ -27,6 +27,7 @@
     "@aws-sdk/client-cognito-identity-provider": "^3.524.0",
     "@aws-sdk/client-dynamodb": "^3.724.0",
     "@aws-sdk/client-iot-wireless": "^3.724.0",
+    "@aws-sdk/lib-dynamodb": "^3.724.0",
     "@aws-sdk/util-dynamodb": "^3.724.0",
     "@hono/swagger-ui": "^0.5.0",
     "@hono/zod-openapi": "^0.18.3",

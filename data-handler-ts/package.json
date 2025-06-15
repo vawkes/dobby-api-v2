@@ -7,6 +7,9 @@
     "build": "tsc",
     "test": "jest"
   },
+  "engines": {
+    "node": ">=22.0.0"
+  },
   "dependencies": {
     "@aws-sdk/client-timestream-write": "^3.0.0",
     "@aws-sdk/client-dynamodb": "^3.0.0",

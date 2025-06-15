@@ -7,8 +7,8 @@ const app = new cdk.App();
 
 // Environment values
 const env = {
-  account: process.env.CDK_DEFAULT_ACCOUNT,
-  region: process.env.CDK_DEFAULT_REGION
+  account: '530256939393',  // Production AWS account ID
+  region: 'us-east-1'       // Explicitly set the region
 };
 
 // Deploy the API stack
@@ -26,6 +26,11 @@ const apiStack = new DobbyApiV2Stack(app, 'DobbyApiV2Stack', {
   // env: { account: '123456789012', region: 'us-east-1' },
 
   /* For more information, see https://docs.aws.amazon.com/cdk/latest/guide/environments.html */
+  description: 'Dobby API V2 Stack for Production',
+  tags: {
+    Environment: 'production',
+    Project: 'dobby-api-v2'
+  }
 });
 
 // Deploy the new React frontend stack

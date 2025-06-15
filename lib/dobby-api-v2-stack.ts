@@ -89,13 +89,20 @@ export class DobbyApiV2Stack extends cdk.Stack {
     const fn = new NodejsFunction(this, 'lambda', {
       entry: 'lambda/index.ts',
       handler: 'handler',
-      runtime: lambda.Runtime.NODEJS_20_X,
+      runtime: lambda.Runtime.NODEJS_22_X,
       timeout: cdk.Duration.seconds(30),
       environment: {
         USER_POOL_ID: userPool.userPoolId,
         USER_POOL_CLIENT_ID: userPoolClient.userPoolClientId,
         PRODUCTION_LINE_TABLE: productionLineTable.tableName,
       },
+      bundling: {
+        minify: true,
+        sourceMap: true,
+        target: 'node22',
+        externalModules: ['aws-sdk'],
+        nodeModules: ['@aws-sdk/client-dynamodb', '@aws-sdk/lib-dynamodb', '@aws-sdk/client-iot-wireless']
+      }
     })
 
     infoTable.grantFullAccess(fn)
@@ -111,7 +118,9 @@ export class DobbyApiV2Stack extends cdk.Stack {
       actions: [
         "iotwireless:SendDataToWirelessDevice",
       ],
-      resources: ["*"],
+      resources: [
+        `arn:aws:iotwireless:${this.region}:${this.account}:WirelessDevice/*`
+      ],
     }));
 
     // Add explicit permission for querying the GSI on DobbyEvent table
@@ -180,18 +189,57 @@ export class DobbyApiV2Stack extends cdk.Stack {
     const dataHandlerFn = new NodejsFunction(this, 'DataHandlerFunction', {
       entry: path.join(__dirname, '../data-handler-ts/src/index.ts'),
       handler: 'handler',
-      runtime: lambda.Runtime.NODEJS_20_X,
+      runtime: lambda.Runtime.NODEJS_22_X,
       timeout: cdk.Duration.seconds(30),
       environment: {
         PRODUCTION_LINE_TABLE: productionLineTable.tableName,
       },
+      bundling: {
+        minify: true,
+        sourceMap: true,
+        target: 'node22',
+        externalModules: ['aws-sdk'],
+        nodeModules: ['@aws-sdk/client-dynamodb', '@aws-sdk/lib-dynamodb', '@aws-sdk/client-iot-wireless']
+      }
     });
 
     // Grant necessary permissions to the data handler
-    productionLineTable.grantFullAccess(dataHandlerFn);
-    infoTable.grantFullAccess(dataHandlerFn);
-    eventTable.grantFullAccess(dataHandlerFn);
-    dataTable.grantFullAccess(dataHandlerFn);
+    productionLineTable.grantReadWriteData(dataHandlerFn);
+    infoTable.grantReadWriteData(dataHandlerFn);
+    eventTable.grantReadWriteData(dataHandlerFn);
+    dataTable.grantReadWriteData(dataHandlerFn);
+
+    // Add IoT Wireless permissions
+    dataHandlerFn.addToRolePolicy(new iam.PolicyStatement({
+      actions: [
+        'iotwireless:SendDataToWirelessDevice',
+        'iotwireless:GetWirelessDevice',
+        'iotwireless:ListWirelessDevices'
+      ],
+      resources: ['*']  // IoT Wireless doesn't support resource-level permissions yet
+    }));
+
+    // Add explicit DynamoDB permissions
+    dataHandlerFn.addToRolePolicy(new iam.PolicyStatement({
+      actions: [
+        'dynamodb:PutItem',
+        'dynamodb:GetItem',
+        'dynamodb:UpdateItem',
+        'dynamodb:DeleteItem',
+        'dynamodb:Query',
+        'dynamodb:Scan'
+      ],
+      resources: [
+        productionLineTable.tableArn,
+        infoTable.tableArn,
+        eventTable.tableArn,
+        dataTable.tableArn,
+        `${productionLineTable.tableArn}/index/*`,
+        `${infoTable.tableArn}/index/*`,
+        `${eventTable.tableArn}/index/*`,
+        `${dataTable.tableArn}/index/*`
+      ]
+    }));
 
     // Create IoT rule for Sidewalk app data
     const sidewalkRule = new iot.CfnTopicRule(this, 'SidewalkAppDataRule', {

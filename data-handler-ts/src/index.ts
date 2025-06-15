@@ -12,14 +12,14 @@ import { handleGridcubeFwVersion } from './packet-handlers/gridcube-fw-version';
 export const handler = async (event: any): Promise<APIGatewayProxyResult> => {
   try {
     console.log('Event:', JSON.stringify(event));
-    
+
     const deviceId = event.WirelessDeviceId;
     const payload = event.PayloadData;
 
     // First decode base64 to get hex string
     const base64Decoded = Buffer.from(payload, 'base64').toString();
     console.log('Base64 decoded (hex string):', base64Decoded);
-    
+
     // Then decode hex string to get actual bytes
     const decodedPayload = Buffer.from(base64Decoded, 'hex');
     console.log('Final decoded payload:', decodedPayload);

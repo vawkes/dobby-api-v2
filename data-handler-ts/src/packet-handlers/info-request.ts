@@ -2,10 +2,10 @@ import { writeDeviceInfoToDynamo } from '../utils/dynamo';
 
 export const handleInfoRequest = async (payload: Buffer, deviceId: string): Promise<void> => {
   const ctaVersion = payload[1];
-  const vendorId = payload.readUInt16LE(3);
-  const deviceType = payload.readUInt16LE(5);
-  const deviceRevision = payload.readUInt16LE(7);
-  const capabilityBitmap = payload.readUInt32LE(9);
+  const vendorId = payload.readUInt16BE(3);
+  const deviceType = payload.readUInt16BE(5);
+  const deviceRevision = payload.readUInt16BE(7);
+  const capabilityBitmap = payload.readUInt32BE(9);
 
   console.log(`CTA Version: ${String.fromCharCode(ctaVersion)}`);
   console.log(`Vendor ID: ${vendorId}`);
