@@ -9,15 +9,17 @@ interface ShiftedData {
 }
 
 export const sendToShifted = async (data: ShiftedData): Promise<void> => {
-  try {
-    await axios.post(process.env.SHIFTED_API_ENDPOINT!, data, {
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.SHIFTED_API_KEY}`
-      }
-    });
-  } catch (error) {
-    console.error('Error sending data to Shifted:', error);
-    throw error;
-  }
+  // try {
+  //   await axios.post(process.env.SHIFTED_API_ENDPOINT!, data, {
+  //     headers: {
+  //       'Content-Type': 'application/json',
+  //       'Authorization': `Bearer ${process.env.SHIFTED_API_KEY}`
+  //     }
+  //   });
+  // } catch (error) {
+  //   console.error('Error sending data to Shifted:', error);
+  //   throw error;
+  // }
+  console.log("Sending to shifted disabled.")
+  return
 }; 

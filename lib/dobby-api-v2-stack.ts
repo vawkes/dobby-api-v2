@@ -16,14 +16,14 @@ export class DobbyApiV2Stack extends cdk.Stack {
 
     // Create DynamoDB tables
     const infoTable = new dynamodb.Table(this, 'DobbyInfoTable', {
-      tableName: 'TestDobbyInfo',
+      tableName: 'DobbyInfo',
       partitionKey: { name: 'device_id', type: dynamodb.AttributeType.STRING },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
       removalPolicy: cdk.RemovalPolicy.RETAIN,
     });
 
     const eventTable = new dynamodb.Table(this, 'DobbyEventTable', {
-      tableName: 'TestDobbyEvent',
+      tableName: 'DobbyEvent',
       partitionKey: { name: 'event_id', type: dynamodb.AttributeType.STRING },
       sortKey: { name: 'timestamp', type: dynamodb.AttributeType.NUMBER },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
@@ -38,8 +38,8 @@ export class DobbyApiV2Stack extends cdk.Stack {
       projectionType: dynamodb.ProjectionType.ALL,
     });
 
-    const dataTable = new dynamodb.Table(this, 'ShiftedDataTable', {
-      tableName: 'TestShiftedData',
+    const dataTable = new dynamodb.Table(this, 'DobbyDataTable', {
+      tableName: 'DobbyData',
       partitionKey: { name: 'device_id', type: dynamodb.AttributeType.STRING },
       sortKey: { name: 'timestamp', type: dynamodb.AttributeType.NUMBER },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
@@ -48,7 +48,7 @@ export class DobbyApiV2Stack extends cdk.Stack {
 
     // Create the production line table
     const productionLineTable = new dynamodb.Table(this, 'ProductionLineTable', {
-      tableName: 'TestProductionLine',
+      tableName: 'ProductionLine',
       partitionKey: { name: 'device_id', type: dynamodb.AttributeType.STRING },
       sortKey: { name: 'timestamp', type: dynamodb.AttributeType.NUMBER },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,

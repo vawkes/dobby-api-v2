@@ -1,5 +1,5 @@
 import { convertFromGpsEpoch } from '../utils/gps-epoch';
-import { writeShiftedDataToDynamo } from '../utils/dynamo';
+import { writeDobbyDataToDynamo } from '../utils/dynamo';
 import { sendToShifted } from '../utils/shifted';
 import { sendAck } from '../utils/ack';
 import { writeDeviceInfoToDynamo } from '../utils/dynamo';
@@ -18,7 +18,7 @@ export const handleCumulativeEnergy = async (payload: Buffer, deviceId: string):
   console.log(`Message Number: ${msgNumber}`);
   console.log(`Timestamp: ${new Date(utcTimestamp * 1000).toISOString()}`);
 
-  const rowEntry = await writeShiftedDataToDynamo(
+  const rowEntry = await writeDobbyDataToDynamo(
     deviceId,
     utcTimestamp,
     msgNumber,

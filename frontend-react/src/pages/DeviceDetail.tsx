@@ -197,7 +197,7 @@ const DeviceDetail: React.FC = () => {
                                 <div className="px-4 py-5 sm:px-6 flex justify-between items-center">
                                     <div>
                                         <h3 className="text-lg leading-6 font-medium text-gray-900">Device Data</h3>
-                                        <p className="mt-1 max-w-2xl text-sm text-gray-500">Time series data from ShiftedData table.</p>
+                                        <p className="mt-1 max-w-2xl text-sm text-gray-500">Time series data from DobbyData table.</p>
                                     </div>
                                     <div className="flex items-center space-x-4">
                                         <select

@@ -28,7 +28,7 @@ const deviceSchema = z.object({
 
 const devicesSchema = z.array(deviceSchema);
 
-// Schema for ShiftedData table
+// Schema for DobbyData table
 const deviceDataPoint = z.object({
     device_id: deviceIdSchema, // Now accepts both UUID and 6-digit ID
     timestamp: z.number(), // Timestamp as a number (seconds since epoch)

@@ -1,21 +1,26 @@
-import { writeDeviceInfoToDynamo } from '../utils/dynamo';
-// import { send_to_shifted } from '../utils/send_to_shifted';
+import { convertFromGpsEpoch } from '../utils/gps-epoch';
+import { writeDobbyDataToDynamo } from '../utils/dynamo';
+import { sendToShifted } from '../utils/shifted';
+import { sendAck } from '../utils/ack';
 
 export const handleOperationalState = async (payload: Buffer, deviceId: string): Promise<void> => {
-  const messageNumber = payload[1];
+  const msgNumber = payload[1];
   const state = payload[2];
   const gpsTimestamp = payload.readUInt32BE(3);
+  const utcTimestamp = convertFromGpsEpoch(gpsTimestamp);
 
-  console.log(`Message Number: ${messageNumber}`);
-  console.log(`State: ${state}`);
-  console.log(`GPS Timestamp: ${gpsTimestamp}`);
+  await sendAck(deviceId, 2, msgNumber);
 
-  const row_entry = {
-    device_id: deviceId,
-    timestamp: gpsTimestamp,
-    state: state,
-    message_number: messageNumber,
-  };
+  console.log(`Operational State: ${state}`);
+  console.log(`Message Number: ${msgNumber}`);
+  console.log(`Timestamp: ${new Date(utcTimestamp * 1000).toISOString()}`);
 
-  // send_to_shifted(row_entry);
+  const rowEntry = await writeDobbyDataToDynamo(
+    deviceId,
+    utcTimestamp,
+    msgNumber,
+    'operational_state',
+    state
+  );
+  await sendToShifted(rowEntry);
 }; 
