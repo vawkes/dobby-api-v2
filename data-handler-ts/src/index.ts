@@ -13,45 +13,49 @@ export const handler = async (event: any): Promise<APIGatewayProxyResult> => {
   try {
     console.log('Event:', JSON.stringify(event));
     
-    const deviceId = event.uplink.WirelessDeviceId;
-    const payload = event.uplink.PayloadData;
+    const deviceId = event.WirelessDeviceId;
+    const payload = event.PayloadData;
 
-    // Decode base64 payload
-    const decodedPayload = Buffer.from(payload, 'base64');
-    const convertedPayload = Buffer.from(decodedPayload.toString('hex'), 'hex');
-    console.log('Converted payload:', convertedPayload);
+    // First decode base64 to get hex string
+    const base64Decoded = Buffer.from(payload, 'base64').toString();
+    console.log('Base64 decoded (hex string):', base64Decoded);
+    
+    // Then decode hex string to get actual bytes
+    const decodedPayload = Buffer.from(base64Decoded, 'hex');
+    console.log('Final decoded payload:', decodedPayload);
 
     // Get payload type from first byte
-    const payloadType = convertedPayload[0];
+    const payloadType = decodedPayload[0];
+    console.log('Payload type:', payloadType);
 
     // Handle different packet types
     switch (payloadType) {
       case 0:
-        await handleInstantPower(convertedPayload, deviceId);
+        await handleInstantPower(decodedPayload, deviceId);
         break;
       case 1:
-        await handleCumulativeEnergy(convertedPayload, deviceId);
+        await handleCumulativeEnergy(decodedPayload, deviceId);
         break;
       case 2:
-        await handleInfoRequest(convertedPayload, deviceId);
+        await handleInfoRequest(decodedPayload, deviceId);
         break;
       case 3:
-        await handleModelNumber(convertedPayload, deviceId);
+        await handleModelNumber(decodedPayload, deviceId);
         break;
       case 4:
-        await handleSerialNumber(convertedPayload, deviceId);
+        await handleSerialNumber(decodedPayload, deviceId);
         break;
       case 5:
-        await handleFwVersion(convertedPayload, deviceId);
+        await handleFwVersion(decodedPayload, deviceId);
         break;
       case 6:
-        await handleOperationalState(convertedPayload, deviceId);
+        await handleOperationalState(decodedPayload, deviceId);
         break;
       case 7:
-        await handleConnectionInfo(convertedPayload, deviceId);
+        await handleConnectionInfo(decodedPayload, deviceId);
         break;
       case 8:
-        await handleGridcubeFwVersion(convertedPayload, deviceId);
+        await handleGridcubeFwVersion(decodedPayload, deviceId);
         break;
       default:
         console.log(`No handler for payload type ${payloadType}`);
