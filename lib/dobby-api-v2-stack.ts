@@ -7,6 +7,7 @@ import * as dynamodb from 'aws-cdk-lib/aws-dynamodb'
 import * as iam from 'aws-cdk-lib/aws-iam'
 import * as cognito from 'aws-cdk-lib/aws-cognito'
 import * as iotwireless from 'aws-cdk-lib/aws-iotwireless'
+import * as iot from 'aws-cdk-lib/aws-iot'
 import * as path from 'node:path'
 
 export class DobbyApiV2Stack extends cdk.Stack {
@@ -15,14 +16,14 @@ export class DobbyApiV2Stack extends cdk.Stack {
 
     // Create DynamoDB tables
     const infoTable = new dynamodb.Table(this, 'DobbyInfoTable', {
-      tableName: 'DobbyInfo',
+      tableName: 'TestDobbyInfo',
       partitionKey: { name: 'device_id', type: dynamodb.AttributeType.STRING },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
       removalPolicy: cdk.RemovalPolicy.RETAIN,
     });
 
     const eventTable = new dynamodb.Table(this, 'DobbyEventTable', {
-      tableName: 'DobbyEvent',
+      tableName: 'TestDobbyEvent',
       partitionKey: { name: 'event_id', type: dynamodb.AttributeType.STRING },
       sortKey: { name: 'timestamp', type: dynamodb.AttributeType.NUMBER },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
@@ -38,7 +39,7 @@ export class DobbyApiV2Stack extends cdk.Stack {
     });
 
     const dataTable = new dynamodb.Table(this, 'ShiftedDataTable', {
-      tableName: 'ShiftedData',
+      tableName: 'TestShiftedData',
       partitionKey: { name: 'device_id', type: dynamodb.AttributeType.STRING },
       sortKey: { name: 'timestamp', type: dynamodb.AttributeType.NUMBER },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
@@ -47,7 +48,7 @@ export class DobbyApiV2Stack extends cdk.Stack {
 
     // Create the production line table
     const productionLineTable = new dynamodb.Table(this, 'ProductionLineTable', {
-      tableName: 'ProductionLine',
+      tableName: 'TestProductionLine',
       partitionKey: { name: 'device_id', type: dynamodb.AttributeType.STRING },
       sortKey: { name: 'timestamp', type: dynamodb.AttributeType.NUMBER },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
@@ -192,38 +193,36 @@ export class DobbyApiV2Stack extends cdk.Stack {
     eventTable.grantFullAccess(dataHandlerFn);
     dataTable.grantFullAccess(dataHandlerFn);
 
-    // Create IoT Wireless destination
-    const sidewalkDestination = new iotwireless.CfnDestination(this, 'SidewalkDestination', {
-      name: 'SidewalkDataDestination',
-      expression: 'SELECT * FROM "sidewalk/+/data"',
-      expressionType: 'SQL',
-      roleArn: new iam.Role(this, 'SidewalkDestinationRole', {
-        assumedBy: new iam.ServicePrincipal('iotwireless.amazonaws.com'),
-        inlinePolicies: {
-          'AllowLambdaInvoke': new iam.PolicyDocument({
-            statements: [
-              new iam.PolicyStatement({
-                actions: ['lambda:InvokeFunction'],
-                resources: [dataHandlerFn.functionArn],
-              }),
-            ],
-          }),
-        },
-      }).roleArn,
+    // Create IoT rule for Sidewalk app data
+    const sidewalkRule = new iot.CfnTopicRule(this, 'SidewalkAppDataRule', {
+      ruleName: 'sidewalk_data_rule',
+      topicRulePayload: {
+        sql: 'SELECT * FROM "sidewalk/app_data"',
+        ruleDisabled: false,
+        awsIotSqlVersion: '2016-03-23',
+        actions: [
+          {
+            lambda: {
+              functionArn: dataHandlerFn.functionArn
+            }
+          }
+        ]
+      }
     });
 
-    // Add permission for IoT Wireless to invoke the Lambda function
-    dataHandlerFn.addPermission('AllowIoTWirelessInvoke', {
-      principal: new iam.ServicePrincipal('iotwireless.amazonaws.com'),
+    // Grant IoT permission to invoke the Lambda function
+    dataHandlerFn.addPermission('AllowIoTRuleInvoke', {
+      principal: new iam.ServicePrincipal('iot.amazonaws.com'),
       action: 'lambda:InvokeFunction',
-      sourceArn: sidewalkDestination.attrArn,
+      sourceArn: sidewalkRule.attrArn
     });
 
     // Create Sidewalk destination configuration
     const sidewalkDestinationConfig = new iotwireless.CfnDestination(this, 'SidewalkDestinationConfig', {
       name: 'SidewalkDestinationConfig',
-      expression: 'SELECT * FROM "sidewalk/+/data"',
-      expressionType: 'SQL',
+      description: 'Configuration destination for Sidewalk device data',
+      expression: 'sidewalk_data_rule',
+      expressionType: 'RuleName',
       roleArn: new iam.Role(this, 'SidewalkDestinationConfigRole', {
         assumedBy: new iam.ServicePrincipal('iotwireless.amazonaws.com'),
         inlinePolicies: {
@@ -237,6 +236,54 @@ export class DobbyApiV2Stack extends cdk.Stack {
           }),
         },
       }).roleArn,
+      tags: [
+        {
+          key: 'Environment',
+          value: 'Production'
+        },
+        {
+          key: 'Service',
+          value: 'Sidewalk'
+        }
+      ]
+    });
+
+    // Create the main Sidewalk destination
+    const sidewalkDestination = new iotwireless.CfnDestination(this, 'SidewalkDestination', {
+      name: 'SidewalkDataDestination',
+      description: 'Main destination for Sidewalk device data processing',
+      expression: 'sidewalk_data_rule',
+      expressionType: 'RuleName',
+      roleArn: new iam.Role(this, 'SidewalkDestinationRole', {
+        assumedBy: new iam.ServicePrincipal('iotwireless.amazonaws.com'),
+        inlinePolicies: {
+          'AllowLambdaInvoke': new iam.PolicyDocument({
+            statements: [
+              new iam.PolicyStatement({
+                actions: ['lambda:InvokeFunction'],
+                resources: [dataHandlerFn.functionArn],
+              }),
+            ],
+          }),
+        },
+      }).roleArn,
+      tags: [
+        {
+          key: 'Environment',
+          value: 'Production'
+        },
+        {
+          key: 'Service',
+          value: 'Sidewalk'
+        }
+      ]
+    });
+
+    // Add permission for IoT Wireless to invoke the Lambda function
+    dataHandlerFn.addPermission('AllowIoTWirelessInvoke', {
+      principal: new iam.ServicePrincipal('iotwireless.amazonaws.com'),
+      action: 'lambda:InvokeFunction',
+      sourceArn: sidewalkDestination.attrArn,
     });
 
     // Add Sidewalk-specific permissions to the data handler Lambda
