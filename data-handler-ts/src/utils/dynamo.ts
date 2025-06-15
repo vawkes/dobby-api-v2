@@ -34,7 +34,7 @@ export const writeShiftedDataToDynamo = async (
   };
 
   const command = new PutCommand({
-    TableName: process.env.DYNAMODB_TABLE,
+    TableName: 'TestShiftedData',
     Item: item
   });
 
@@ -59,7 +59,7 @@ export const writeDeviceInfoToDynamo = async (
   };
 
   const command = new PutCommand({
-    TableName: process.env.DEVICE_INFO_TABLE,
+    TableName: 'TestDobbyInfo',
     Item: item
   });
 

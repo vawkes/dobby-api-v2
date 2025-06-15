@@ -11,6 +11,7 @@
     "@aws-sdk/client-timestream-write": "^3.0.0",
     "@aws-sdk/client-dynamodb": "^3.0.0",
     "@aws-sdk/lib-dynamodb": "^3.0.0",
+    "@aws-sdk/client-iot-wireless": "^3.0.0",
     "axios": "^1.6.0"
   },
   "devDependencies": {
@@ -21,4 +22,4 @@
     "@types/jest": "^29.0.0",
     "ts-jest": "^29.0.0"
   }
-} 
+}

@@ -1,17 +1,17 @@
-import axios from 'axios';
+import { sendToDobby } from './send-to-dobby';
 
 export const sendAck = async (deviceId: string, ackType: number, messageNumber: number): Promise<void> => {
   try {
-    await axios.post(process.env.ACK_API_ENDPOINT!, {
-      device_id: deviceId,
-      ack_type: ackType,
-      message_number: messageNumber
-    }, {
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.ACK_API_KEY}`
-      }
-    });
+    // Create buffer and DataView for 3 bytes
+    const buffer = Buffer.alloc(3);
+    const view = new DataView(buffer.buffer, buffer.byteOffset, buffer.byteLength);
+
+    // Write bytes in big-endian format
+    view.setUint8(0, 13);  // ACK message type
+    view.setUint8(1, ackType);
+    view.setUint8(2, messageNumber);
+
+    await sendToDobby(deviceId, buffer);
   } catch (error) {
     console.error('Error sending ACK:', error);
     throw error;
