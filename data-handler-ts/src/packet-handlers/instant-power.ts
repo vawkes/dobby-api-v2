@@ -5,8 +5,8 @@ import { sendAck } from '../utils/ack';
 
 export const handleInstantPower = async (payload: Buffer, deviceId: string): Promise<void> => {
   const msgNumber = payload[1];
-  const value = payload.readBigInt64BE(2);
-  const gpsTimestamp = payload.readUInt32BE(8);
+  const value = payload.readBigInt64LE(2);
+  const gpsTimestamp = payload.readUInt32LE(8);
   const utcTimestamp = convertFromGpsEpoch(gpsTimestamp);
 
   await sendAck(deviceId, 0, msgNumber);
