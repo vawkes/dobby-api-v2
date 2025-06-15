@@ -10,6 +10,8 @@ enum EventType {
     ADVANCED_LOAD_UP = "ADVANCED_LOAD_UP",
     CUSTOMER_OVERRIDE = "CUSTOMER_OVERRIDE",
     SET_UTC_TIME = "SET_UTC_TIME",
+    GET_UTC_TIME = "GET_UTC_TIME",
+    SET_BITMAP = 'SET_BITMAP',
 }
 
 // Define device ID schema that accepts either a single UUID or an array of UUIDs
@@ -83,22 +85,31 @@ const setUtcTimeSchema = z.object({
     event_sent: z.boolean().optional(),
 });
 
-const eventRequestSchema = z.object({
-    event_id: z.string().uuid(),
-    event_type: z.nativeEnum(EventType),
-}).and(
-    z.union([
-        z.object({ event_type: z.literal(EventType.LOAD_UP), event_data: loadUpSchema }),
-        z.object({ event_type: z.literal(EventType.GRID_EMERGENCY), event_data: gridEmergencySchema }),
-        z.object({ event_type: z.literal(EventType.CRITICAL_PEAK), event_data: criticalPeakSchema }),
-        z.object({ event_type: z.literal(EventType.START_SHED), event_data: startShedSchema }),
-        z.object({ event_type: z.literal(EventType.END_SHED), event_data: endShedSchema }),
-        z.object({ event_type: z.literal(EventType.INFO_REQUEST), event_data: infoRequestSchema }),
-        z.object({ event_type: z.literal(EventType.ADVANCED_LOAD_UP), event_data: advancedLoadUpSchema }),
-        z.object({ event_type: z.literal(EventType.CUSTOMER_OVERRIDE), event_data: customerOverrideSchema }),
-        z.object({ event_type: z.literal(EventType.SET_UTC_TIME), event_data: setUtcTimeSchema }),
-    ])
-);
+const getUtcTimeSchema = z.object({
+    device_id: deviceIdSchema,
+    event_sent: z.boolean().optional(),
+});
+
+const setBitmapSchema = z.object({
+    device_id: z.string(),
+    bit_number: z.number().min(0).max(255),
+    set_value: z.boolean(),
+    event_sent: z.boolean().optional()
+});
+
+const eventRequestSchema = z.discriminatedUnion('event_type', [
+    z.object({ event_id: z.string(), event_type: z.literal(EventType.LOAD_UP), event_data: loadUpSchema }),
+    z.object({ event_id: z.string(), event_type: z.literal(EventType.GRID_EMERGENCY), event_data: gridEmergencySchema }),
+    z.object({ event_id: z.string(), event_type: z.literal(EventType.CRITICAL_PEAK), event_data: criticalPeakSchema }),
+    z.object({ event_id: z.string(), event_type: z.literal(EventType.START_SHED), event_data: startShedSchema }),
+    z.object({ event_id: z.string(), event_type: z.literal(EventType.END_SHED), event_data: endShedSchema }),
+    z.object({ event_id: z.string(), event_type: z.literal(EventType.INFO_REQUEST), event_data: infoRequestSchema }),
+    z.object({ event_id: z.string(), event_type: z.literal(EventType.ADVANCED_LOAD_UP), event_data: advancedLoadUpSchema }),
+    z.object({ event_id: z.string(), event_type: z.literal(EventType.CUSTOMER_OVERRIDE), event_data: customerOverrideSchema }),
+    z.object({ event_id: z.string(), event_type: z.literal(EventType.SET_UTC_TIME), event_data: setUtcTimeSchema }),
+    z.object({ event_id: z.string(), event_type: z.literal(EventType.GET_UTC_TIME), event_data: getUtcTimeSchema }),
+    z.object({ event_id: z.string(), event_type: z.literal(EventType.SET_BITMAP), event_data: setBitmapSchema }),
+]);
 
 const eventSchema = z.object({
     event_id: z.string(),

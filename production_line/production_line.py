@@ -329,12 +329,14 @@ class ProductionLine:
         Store device information in DynamoDB
         """
         try:
+            current_time = datetime.utcnow()
             item = {
-                'deviceId': device_id,
+                'device_id': device_id,
                 'wireless_device_id': wireless_device_id,
                 'wireless_device_arn': wireless_device_arn,
                 'thing_arn': thing_arn,
-                'created_at': datetime.utcnow().isoformat(),
+                'created_at': current_time.isoformat(),
+                'timestamp': int(current_time.timestamp()),  # Add timestamp as Unix timestamp
                 'status': 'active'
             }
             

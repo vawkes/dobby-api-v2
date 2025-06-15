@@ -14,6 +14,8 @@ import { handleInfoRequest } from "./eventHandlers/infoRequest.ts";
 import { handleAdvancedLoadUp } from "./eventHandlers/advancedLoadUp.ts";
 import { handleCustomerOverride } from "./eventHandlers/customerOverride.ts";
 import { handleSetUtcTime } from "./eventHandlers/setUtcTime.ts";
+import { handleGetUtcTime } from "./eventHandlers/getUtcTime.ts";
+import { handleSetBitmap } from './eventHandlers/setBitmap.ts';
 import { v4 as uuidv4 } from 'uuid';
 
 const app = new Hono()
@@ -334,6 +336,12 @@ app.post("/",
                 else if (eventType === EventType.SET_UTC_TIME) {
                     result = await handleSetUtcTime(eventData);
                 }
+                else if (eventType === EventType.GET_UTC_TIME) {
+                    result = await handleGetUtcTime(eventData);
+                }
+                else if (eventType === EventType.SET_BITMAP) {
+                    result = await handleSetBitmap(eventData);
+                }
                 else {
                     // Unsupported event type
                     return c.json({
@@ -436,6 +444,12 @@ app.post("/",
                         }
                         else if (eventType === EventType.SET_UTC_TIME) {
                             result = await handleSetUtcTime(eventData);
+                        }
+                        else if (eventType === EventType.GET_UTC_TIME) {
+                            result = await handleGetUtcTime(eventData);
+                        }
+                        else if (eventType === EventType.SET_BITMAP) {
+                            result = await handleSetBitmap(eventData);
                         }
 
                         if (result) {

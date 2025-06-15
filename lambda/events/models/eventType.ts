@@ -14,4 +14,6 @@ export enum EventMap {
     START_DATA_PUBLISH = 12,
     END_DATA_PUBLISH = 13,
     REQUEST_CONNECTION_INFO = 14,
+    SET_BITMAP = 16,
+    GET_UTC_TIME = 17,
 }
