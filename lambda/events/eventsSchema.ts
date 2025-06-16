@@ -12,6 +12,7 @@ enum EventType {
     SET_UTC_TIME = "SET_UTC_TIME",
     GET_UTC_TIME = "GET_UTC_TIME",
     SET_BITMAP = 'SET_BITMAP',
+    REQUEST_CONNECTION_INFO = 'REQUEST_CONNECTION_INFO',
 }
 
 // Define device ID schema that accepts either a single UUID or an array of UUIDs
@@ -97,6 +98,14 @@ const setBitmapSchema = z.object({
     event_sent: z.boolean().optional()
 });
 
+const requestConnectionInfoSchema = z.object({
+    device_id: deviceIdSchema,
+    event_sent: z.boolean().optional(),
+    last_rx_rssi: z.number().optional(),  // Last received signal strength indicator
+    last_rx_snr: z.number().optional(),   // Last received signal-to-noise ratio
+    last_rx_link_type: z.number().optional()  // Last received link type
+});
+
 const eventRequestSchema = z.discriminatedUnion('event_type', [
     z.object({ event_id: z.string(), event_type: z.literal(EventType.LOAD_UP), event_data: loadUpSchema }),
     z.object({ event_id: z.string(), event_type: z.literal(EventType.GRID_EMERGENCY), event_data: gridEmergencySchema }),
@@ -109,6 +118,7 @@ const eventRequestSchema = z.discriminatedUnion('event_type', [
     z.object({ event_id: z.string(), event_type: z.literal(EventType.SET_UTC_TIME), event_data: setUtcTimeSchema }),
     z.object({ event_id: z.string(), event_type: z.literal(EventType.GET_UTC_TIME), event_data: getUtcTimeSchema }),
     z.object({ event_id: z.string(), event_type: z.literal(EventType.SET_BITMAP), event_data: setBitmapSchema }),
+    z.object({ event_id: z.string(), event_type: z.literal(EventType.REQUEST_CONNECTION_INFO), event_data: requestConnectionInfoSchema }),
 ]);
 
 const eventSchema = z.object({
