@@ -220,6 +220,11 @@ class ProductionLine:
                 print("\nFlashing firmware hex file...")
                 api.program_file(firmware_hex_path)
                 print("Firmware hex file flashed successfully")
+
+                # Enable read protection
+                print("\nEnabling read protection...")
+                api.readback_protect(API.ReadbackProtection.ENABLE)
+                print("Read protection enabled successfully")
                 
                 # Reset sequence
                 print("\nResetting device...")
@@ -351,10 +356,91 @@ class ProductionLine:
             traceback.print_exc()
             raise
 
+    def delete_sidewalk_device(self, wireless_device_id):
+        """
+        Delete a Sidewalk device
+        """
+        try:
+            print(f"\nDeleting Sidewalk device {wireless_device_id}...")
+            self.sidewalk_client.delete_wireless_device(
+                Id=wireless_device_id
+            )
+            print("Successfully deleted Sidewalk device")
+            return True
+        except Exception as e:
+            print(f"\nError deleting Sidewalk device:")
+            print(f"Exception type: {type(e).__name__}")
+            print(f"Exception message: {str(e)}")
+            print("\nFull traceback:")
+            traceback.print_exc()
+            return False
+
+    def delete_iot_thing(self, device_id):
+        """
+        Delete an IoT thing
+        """
+        try:
+            print(f"\nDeleting IoT thing {device_id}...")
+            self.iot_client.delete_thing(
+                thingName=device_id
+            )
+            print("Successfully deleted IoT thing")
+            return True
+        except Exception as e:
+            print(f"\nError deleting IoT thing:")
+            print(f"Exception type: {type(e).__name__}")
+            print(f"Exception message: {str(e)}")
+            print("\nFull traceback:")
+            traceback.print_exc()
+            return False
+
+    def delete_device_info(self, device_id):
+        """
+        Delete device information from DynamoDB
+        """
+        try:
+            print(f"\nDeleting device information for {device_id}...")
+            self.table.delete_item(
+                Key={
+                    'device_id': device_id
+                }
+            )
+            print("Successfully deleted device information")
+            return True
+        except Exception as e:
+            print(f"\nError deleting device information:")
+            print(f"Exception type: {type(e).__name__}")
+            print(f"Exception message: {str(e)}")
+            print("\nFull traceback:")
+            traceback.print_exc()
+            return False
+
+    def cleanup_resources(self, device_id, wireless_device_id, thing_arn):
+        """
+        Clean up all AWS resources created for a device
+        """
+        print("\nCleaning up AWS resources...")
+        
+        # Delete device info from DynamoDB
+        self.delete_device_info(device_id)
+        
+        # Delete IoT thing if it exists
+        if thing_arn:
+            self.delete_iot_thing(device_id)
+        
+        # Delete Sidewalk device if it exists
+        if wireless_device_id:
+            self.delete_sidewalk_device(wireless_device_id)
+        
+        print("Resource cleanup completed")
+
     def process_device(self, device_id):
         """
         Process a single device through the production line
         """
+        wireless_device_id = None
+        thing_arn = None
+        
         try:
             # Create Sidewalk device
             wireless_device_id, wireless_device_arn = self.create_sidewalk_device(device_id)
@@ -399,6 +485,9 @@ class ProductionLine:
             print(f"Exception message: {str(e)}")
             print("\nFull traceback:")
             traceback.print_exc()
+            
+            # Clean up resources in case of failure
+            self.cleanup_resources(device_id, wireless_device_id, thing_arn)
             return False
 
 def main():
