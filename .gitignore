@@ -6,6 +6,15 @@ node_modules
 # CDK asset staging directory
 .cdk.staging
 cdk.out
+
+# Deployment outputs
+cdk-outputs.json
+deployment-outputs.json
+
+# Environment-specific files
+.env.local
+.env.develop
+.env.production
 production_line/device_files/*
 production_line/.DS_Store
 production_line/.env

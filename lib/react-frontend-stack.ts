@@ -9,12 +9,14 @@ import * as targets from 'aws-cdk-lib/aws-route53-targets';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 import * as path from 'path';
 import * as iam from 'aws-cdk-lib/aws-iam';
+import { EnvironmentConfig } from '../deployment/config';
 
 export interface ReactFrontendStackProps extends cdk.StackProps {
     domainName?: string;
     subDomain?: string;
     certificateArn?: string;
-    apiUrl?: string; // URL of the API for environment configuration
+    apiUrl?: string;
+    environmentConfig: EnvironmentConfig;
 }
 
 export class ReactFrontendStack extends cdk.Stack {
@@ -22,18 +24,23 @@ export class ReactFrontendStack extends cdk.Stack {
     public readonly distributionId: string;
     public readonly url: string;
 
-    constructor(scope: Construct, id: string, props?: ReactFrontendStackProps) {
+    constructor(scope: Construct, id: string, props: ReactFrontendStackProps) {
         super(scope, id, props);
 
-        // Create an S3 bucket for the website content
+        const { environmentConfig } = props;
+        const envSuffix = environmentConfig.name === 'production' ? '' : `-${environmentConfig.name}`;
+
+        // Create an S3 bucket for the website content with environment-specific naming
         const siteBucket = new s3.Bucket(this, 'ReactSiteBucket', {
-            bucketName: props?.domainName
-                ? `${props.subDomain || 'app'}.${props.domainName}`
-                : undefined,
+            bucketName: props.domainName
+                ? `${props.subDomain || 'app'}.${props.domainName}${envSuffix}`
+                : `dobby-frontend${envSuffix}`,
             publicReadAccess: false,
             blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
-            removalPolicy: cdk.RemovalPolicy.DESTROY, // Change to RETAIN for production
-            autoDeleteObjects: true,    // Set to false for production
+            removalPolicy: environmentConfig.name === 'production'
+                ? cdk.RemovalPolicy.RETAIN
+                : cdk.RemovalPolicy.DESTROY,
+            autoDeleteObjects: environmentConfig.name !== 'production',
         });
 
         this.bucketName = siteBucket.bucketName;
@@ -50,9 +57,9 @@ export class ReactFrontendStack extends cdk.Stack {
             principals: [new iam.CanonicalUserPrincipal(cloudFrontOAI.cloudFrontOriginAccessIdentityS3CanonicalUserId)],
         }));
 
-        // Create a custom response headers policy for CORS
+        // Create a custom response headers policy for CORS with environment-specific name
         const corsHeadersPolicy = new cloudfront.ResponseHeadersPolicy(this, 'CorsHeadersPolicy', {
-            responseHeadersPolicyName: 'CorsHeadersPolicy',
+            responseHeadersPolicyName: `CorsHeadersPolicy${envSuffix}`,
             corsBehavior: {
                 accessControlAllowOrigins: [
                     'https://d1dz25mfg0xsp8.cloudfront.net',
@@ -94,11 +101,13 @@ export class ReactFrontendStack extends cdk.Stack {
         });
 
         // API Gateway origin for proxy requests
-        const apiGatewayDomain = props?.apiUrl ? new URL(props.apiUrl).hostname : 'tzdokra5yf.execute-api.us-east-1.amazonaws.com';
+        // Note: Using default API Gateway domain since API URL is configured at runtime
+        const stageName = environmentConfig.api.stageName;
+        const apiGatewayDomain = 'tzdokra5yf.execute-api.us-east-1.amazonaws.com';
 
         // Create API Gateway origin
         const apiGatewayOrigin = new origins.HttpOrigin(apiGatewayDomain, {
-            originPath: '/prod', // Include the stage name in the origin path
+            originPath: `/${stageName}`, // Use environment-specific stage name
             protocolPolicy: cloudfront.OriginProtocolPolicy.HTTPS_ONLY,
         });
 
@@ -189,30 +198,30 @@ export class ReactFrontendStack extends cdk.Stack {
             });
         }
 
-        // Outputs
+        // Outputs with environment-specific export names
         new cdk.CfnOutput(this, 'ReactBucketName', {
             value: siteBucket.bucketName,
             description: 'S3 Bucket Name for React frontend',
-            exportName: 'ReactFrontendBucketName',
+            exportName: `ReactFrontendBucketName-${environmentConfig.name}`,
         });
 
         new cdk.CfnOutput(this, 'ReactDistributionId', {
             value: distribution.distributionId,
             description: 'CloudFront Distribution ID for React frontend',
-            exportName: 'ReactFrontendDistributionId',
+            exportName: `ReactFrontendDistributionId-${environmentConfig.name}`,
         });
 
         new cdk.CfnOutput(this, 'ReactWebsiteURL', {
             value: this.url,
             description: 'React Website URL',
-            exportName: 'ReactFrontendURL',
+            exportName: `ReactFrontendURL-${environmentConfig.name}`,
         });
 
         if (props?.apiUrl) {
             new cdk.CfnOutput(this, 'ApiEndpoint', {
                 value: props.apiUrl,
                 description: 'API Gateway endpoint URL',
-                exportName: 'ApiEndpointUrl',
+                exportName: `ApiEndpointUrl-${environmentConfig.name}`,
             });
         }
     }

@@ -2,56 +2,51 @@
 import * as cdk from 'aws-cdk-lib';
 import { DobbyApiV2Stack } from '../lib/dobby-api-v2-stack';
 import { ReactFrontendStack } from '../lib/react-frontend-stack';
+import { getEnvironmentConfig } from '../deployment/config';
 
 const app = new cdk.App();
 
-// Environment values
+// Get environment from context or default to develop
+const environmentName = app.node.tryGetContext('environment') || 'develop';
+const envConfig = getEnvironmentConfig(environmentName);
+
+console.log(`Deploying to environment: ${environmentName}`);
+console.log(`Using AWS profile: ${envConfig.awsProfile}`);
+
+// Environment values for CDK
 const env = {
-  account: '530256939393',  // Production AWS account ID
-  region: 'us-east-1'       // Explicitly set the region
+  account: envConfig.account,
+  region: envConfig.region,
 };
 
 // Deploy the API stack
-const apiStack = new DobbyApiV2Stack(app, 'DobbyApiV2Stack', {
-  /* If you don't specify 'env', this stack will be environment-agnostic.
-   * Account/Region-dependent features and context lookups will not work,
-   * but a single synthesized template can be deployed anywhere. */
-
-  /* Uncomment the next line to specialize this stack for the AWS Account
-   * and Region that are implied by the current CLI configuration. */
+const apiStack = new DobbyApiV2Stack(app, `DobbyApiV2Stack`, {
   env,
-
-  /* Uncomment the next line if you know exactly what Account and Region you
-   * want to deploy the stack to. */
-  // env: { account: '123456789012', region: 'us-east-1' },
-
-  /* For more information, see https://docs.aws.amazon.com/cdk/latest/guide/environments.html */
-  description: 'Dobby API V2 Stack for Production',
-  tags: {
-    Environment: 'production',
-    Project: 'dobby-api-v2'
-  }
+  description: `Dobby API V2 Stack for ${envConfig.name}`,
+  // tags: envConfig.tags,  // Temporarily remove stack-level tags
+  environmentConfig: envConfig,
 });
 
-// Deploy the new React frontend stack
-const reactFrontendStack = new ReactFrontendStack(app, 'ReactFrontendStack', {
-  // Domain configuration
-  domainName: process.env.DOMAIN_NAME,
-  subDomain: process.env.SUB_DOMAIN || 'app',
-  certificateArn: process.env.CERTIFICATE_ARN,
-
-  // API URL - use the output from the API stack if available
-  // This can be accessed later in the frontend code
-  // apiUrl: apiStack.apiEndpoint, // Uncomment if apiEndpoint is exported from the API stack
-
+// Deploy the React frontend stack with environment-specific naming
+const reactFrontendStack = new ReactFrontendStack(app, `ReactFrontendStack`, {
+  domainName: envConfig.domain?.name,
+  subDomain: envConfig.domain?.subdomain,
+  certificateArn: envConfig.domain?.certificateArn,
+  // Note: API URL will be configured at runtime in the frontend deployment
   env,
-  description: 'Static React frontend deployment stack with S3 and CloudFront',
+  description: `Static React frontend deployment stack for ${envConfig.name}`,
+  environmentConfig: envConfig,
 });
 
-// Add tags to all stacks
-for (const stack of [apiStack, reactFrontendStack]) {
-  cdk.Tags.of(stack).add('Project', 'dobby-api-v2');
-  cdk.Tags.of(stack).add('Environment', process.env.ENVIRONMENT || 'development');
-}
+// Add dependency to ensure API stack is deployed first
+reactFrontendStack.addDependency(apiStack);
+
+// Add environment-specific tags to all stacks
+// TEMPORARILY COMMENTED OUT FOR IMPORT OPERATION
+// for (const stack of [apiStack, reactFrontendStack]) {
+//   Object.entries(envConfig.tags).forEach(([key, value]) => {
+//     cdk.Tags.of(stack).add(key, value);
+//   });
+// }
 
 app.synth();

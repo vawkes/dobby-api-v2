@@ -9,10 +9,21 @@ import * as cognito from 'aws-cdk-lib/aws-cognito'
 import * as iotwireless from 'aws-cdk-lib/aws-iotwireless'
 import * as iot from 'aws-cdk-lib/aws-iot'
 import * as path from 'node:path'
+import { EnvironmentConfig } from '../deployment/config'
+
+export interface DobbyApiV2StackProps extends cdk.StackProps {
+  environmentConfig: EnvironmentConfig;
+}
 
 export class DobbyApiV2Stack extends cdk.Stack {
-  constructor(scope: Construct, id: string, props?: cdk.StackProps) {
+  public readonly apiEndpoint: string;
+
+  constructor(scope: Construct, id: string, props: DobbyApiV2StackProps) {
     super(scope, id, props)
+
+    const { environmentConfig } = props;
+    const envSuffix = environmentConfig.name === 'production' ? '' : `-${environmentConfig.name}`;
+    const iotSuffix = environmentConfig.name === 'production' ? '' : `_${environmentConfig.name}`;
 
     // Create DynamoDB tables
     const infoTable = new dynamodb.Table(this, 'DobbyInfoTable', {
@@ -89,7 +100,7 @@ export class DobbyApiV2Stack extends cdk.Stack {
     const fn = new NodejsFunction(this, 'lambda', {
       entry: 'lambda/index.ts',
       handler: 'handler',
-      runtime: lambda.Runtime.NODEJS_22_X,
+      runtime: lambda.Runtime.NODEJS_20_X,
       timeout: cdk.Duration.seconds(30),
       environment: {
         USER_POOL_ID: userPool.userPoolId,
@@ -99,7 +110,7 @@ export class DobbyApiV2Stack extends cdk.Stack {
       bundling: {
         minify: true,
         sourceMap: true,
-        target: 'node22',
+        target: 'node20',
         externalModules: ['aws-sdk'],
         nodeModules: ['@aws-sdk/client-dynamodb', '@aws-sdk/lib-dynamodb', '@aws-sdk/client-iot-wireless']
       }
@@ -129,7 +140,7 @@ export class DobbyApiV2Stack extends cdk.Stack {
         "dynamodb:Query",
       ],
       resources: [
-        `arn:aws:dynamodb:${this.region}:${this.account}:table/DobbyEvent/index/device_id-index`
+        `${eventTable.tableArn}/index/device_id-index`
       ],
     }));
 
@@ -189,7 +200,7 @@ export class DobbyApiV2Stack extends cdk.Stack {
     const dataHandlerFn = new NodejsFunction(this, 'DataHandlerFunction', {
       entry: path.join(__dirname, '../data-handler-ts/src/index.ts'),
       handler: 'handler',
-      runtime: lambda.Runtime.NODEJS_22_X,
+      runtime: lambda.Runtime.NODEJS_20_X,
       timeout: cdk.Duration.seconds(30),
       environment: {
         PRODUCTION_LINE_TABLE: productionLineTable.tableName,
@@ -197,7 +208,7 @@ export class DobbyApiV2Stack extends cdk.Stack {
       bundling: {
         minify: true,
         sourceMap: true,
-        target: 'node22',
+        target: 'node20',
         externalModules: ['aws-sdk'],
         nodeModules: ['@aws-sdk/client-dynamodb', '@aws-sdk/lib-dynamodb', '@aws-sdk/client-iot-wireless']
       }
@@ -241,9 +252,9 @@ export class DobbyApiV2Stack extends cdk.Stack {
       ]
     }));
 
-    // Create IoT rule for Sidewalk app data
+    // Create IoT rule for Sidewalk app data with environment-specific name
     const sidewalkRule = new iot.CfnTopicRule(this, 'SidewalkAppDataRule', {
-      ruleName: 'sidewalk_data_rule',
+      ruleName: `sidewalk_data_rule${iotSuffix}`,
       topicRulePayload: {
         sql: 'SELECT * FROM "sidewalk/app_data"',
         ruleDisabled: false,
@@ -265,11 +276,11 @@ export class DobbyApiV2Stack extends cdk.Stack {
       sourceArn: sidewalkRule.attrArn
     });
 
-    // Create Sidewalk destination configuration
+    // Create Sidewalk destination configuration with environment-specific names
     const sidewalkDestinationConfig = new iotwireless.CfnDestination(this, 'SidewalkDestinationConfig', {
-      name: 'SidewalkDestinationConfig',
-      description: 'Configuration destination for Sidewalk device data',
-      expression: 'sidewalk_data_rule',
+      name: `SidewalkDestinationConfig${envSuffix}`,
+      description: `Configuration destination for Sidewalk device data - ${environmentConfig.name}`,
+      expression: `sidewalk_data_rule${iotSuffix}`,
       expressionType: 'RuleName',
       roleArn: new iam.Role(this, 'SidewalkDestinationConfigRole', {
         assumedBy: new iam.ServicePrincipal('iotwireless.amazonaws.com'),
@@ -287,7 +298,7 @@ export class DobbyApiV2Stack extends cdk.Stack {
       tags: [
         {
           key: 'Environment',
-          value: 'Production'
+          value: environmentConfig.name
         },
         {
           key: 'Service',
@@ -296,11 +307,11 @@ export class DobbyApiV2Stack extends cdk.Stack {
       ]
     });
 
-    // Create the main Sidewalk destination
+    // Create the main Sidewalk destination with environment-specific names
     const sidewalkDestination = new iotwireless.CfnDestination(this, 'SidewalkDestination', {
-      name: 'SidewalkDataDestination',
-      description: 'Main destination for Sidewalk device data processing',
-      expression: 'sidewalk_data_rule',
+      name: `SidewalkDataDestination${envSuffix}`,
+      description: `Main destination for Sidewalk device data processing - ${environmentConfig.name}`,
+      expression: `sidewalk_data_rule${iotSuffix}`,
       expressionType: 'RuleName',
       roleArn: new iam.Role(this, 'SidewalkDestinationRole', {
         assumedBy: new iam.ServicePrincipal('iotwireless.amazonaws.com'),
@@ -318,7 +329,7 @@ export class DobbyApiV2Stack extends cdk.Stack {
       tags: [
         {
           key: 'Environment',
-          value: 'Production'
+          value: environmentConfig.name
         },
         {
           key: 'Service',
@@ -344,5 +355,15 @@ export class DobbyApiV2Stack extends cdk.Stack {
       ],
       resources: ['*'],
     }));
+
+    // Export the API endpoint
+    this.apiEndpoint = api.url;
+
+    // Output the API endpoint
+    new cdk.CfnOutput(this, 'ApiEndpoint', {
+      value: this.apiEndpoint,
+      description: 'API Gateway endpoint URL',
+      exportName: `${environmentConfig.name}-ApiEndpoint`,
+    });
   }
 }

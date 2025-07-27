@@ -9,7 +9,15 @@
     "watch": "tsc -w",
     "test": "jest",
     "cdk": "cdk",
-    "deploy": "cdk deploy DobbyApiV2Stack --profile dobby_production"
+    "deploy": "ts-node deployment/deploy.ts",
+    "deploy:develop": "npm run deploy -- --env develop",
+    "deploy:production": "npm run deploy -- --env production",
+    "deploy:backend": "npm run deploy -- --skip-frontend",
+    "deploy:frontend": "npm run deploy -- --skip-backend",
+    "destroy": "cdk destroy --all",
+    "destroy:develop": "cdk destroy --all --profile dobby_develop -c environment=develop",
+    "destroy:production": "cdk destroy --all --profile dobby_production -c environment=production",
+    "bootstrap": "chmod +x scripts/bootstrap.sh && ./scripts/bootstrap.sh"
   },
   "devDependencies": {
     "@types/jest": "^29.5.14",
