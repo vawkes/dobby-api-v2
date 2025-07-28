@@ -32,7 +32,9 @@
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
-    "deploy": "node deploy-to-aws.js"
+    "deploy": "node deploy-to-aws.js",
+    "deploy:develop": "ENVIRONMENT=develop node deploy-to-aws.js",
+    "deploy:production": "ENVIRONMENT=production node deploy-to-aws.js"
   },
   "eslintConfig": {
     "extends": [

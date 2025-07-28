@@ -149,10 +149,13 @@ export class DobbyApiV2Stack extends cdk.Stack {
       cognitoUserPools: [userPool]
     });
 
-    // Create API with the authorizer
+    // Create API with the authorizer and environment-specific stage
     const api = new apigw.LambdaRestApi(this, 'myapi', {
       handler: fn,
       proxy: false,
+      deployOptions: {
+        stageName: environmentConfig.api.stageName,
+      },
       defaultCorsPreflightOptions: {
         allowOrigins: apigw.Cors.ALL_ORIGINS,
         allowMethods: apigw.Cors.ALL_METHODS,

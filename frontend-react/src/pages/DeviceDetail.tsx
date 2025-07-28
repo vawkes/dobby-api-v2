@@ -300,27 +300,6 @@ const DeviceDetail: React.FC = () => {
                                                     )}
 
                                                     <Tooltip
-                                                        formatter={(value, name) => {
-                                                            // For overlay mode, format each metric with its own unit
-                                                            if (name === 'Instant Power') return [`${value} W`, name];
-                                                            if (name === 'Cumulative Energy') {
-                                                                // Convert Wh to kWh
-                                                                const kwhValue = (Number(value) / 1000).toFixed(3);
-                                                                return [`${kwhValue} kWh`, name];
-                                                            }
-                                                            if (name === 'Operational State') return [value, name];
-
-                                                            // For single metric mode
-                                                            if (selectedMetric === 'cumulative_energy') {
-                                                                // Convert Wh to kWh
-                                                                const kwhValue = (Number(value) / 1000).toFixed(3);
-                                                                return [`${kwhValue} kWh`, getMetricLabel(selectedMetric)];
-                                                            }
-                                                            return [`${value} ${getUnitForMetric(selectedMetric)}`, getMetricLabel(selectedMetric)];
-                                                        }}
-                                                        labelFormatter={(label) => {
-                                                            return new Date(label as number).toLocaleString();
-                                                        }}
                                                         // Only show tooltip for real data points
                                                         content={(props) => {
                                                             // If it's the virtual point (last one) don't show the tooltip
@@ -335,12 +314,33 @@ const DeviceDetail: React.FC = () => {
                                                                 return (
                                                                     <div className="custom-tooltip bg-white p-2 border border-gray-300 rounded shadow">
                                                                         <p className="font-semibold">{new Date(props.payload[0].payload.timeMs).toLocaleString()}</p>
-                                                                        {props.payload.map((entry, index) => (
-                                                                            <p key={`item-${index}`} style={{ color: entry.color }}>
-                                                                                {entry.name}: {entry.value} {entry.name === 'Instant Power' ? 'W' :
-                                                                                    entry.name === 'Cumulative Energy' ? 'Wh' : ''}
-                                                                            </p>
-                                                                        ))}
+                                                                        {props.payload.map((entry, index) => {
+                                                                            let formattedValue = entry.value;
+                                                                            let unit = '';
+
+                                                                            // Format based on metric type
+                                                                            if (entry.name === 'Instant Power') {
+                                                                                unit = 'W';
+                                                                            } else if (entry.name === 'Cumulative Energy') {
+                                                                                // Convert Wh to kWh
+                                                                                formattedValue = (Number(entry.value) / 1000).toFixed(3);
+                                                                                unit = 'kWh';
+                                                                            } else if (entry.name === 'Operational State') {
+                                                                                unit = '';
+                                                                            } else if (selectedMetric === 'cumulative_energy') {
+                                                                                // Convert Wh to kWh for single metric mode
+                                                                                formattedValue = (Number(entry.value) / 1000).toFixed(3);
+                                                                                unit = 'kWh';
+                                                                            } else {
+                                                                                unit = getUnitForMetric(selectedMetric);
+                                                                            }
+
+                                                                            return (
+                                                                                <p key={`item-${index}`} style={{ color: entry.color }}>
+                                                                                    {entry.name}: {formattedValue} {unit}
+                                                                                </p>
+                                                                            );
+                                                                        })}
                                                                     </div>
                                                                 );
                                                             }
