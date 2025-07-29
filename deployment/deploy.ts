@@ -48,7 +48,7 @@ class Deployer {
         // Note: Skipping TypeScript build as CDK handles Lambda bundling internally
         console.log('📦 CDK will handle TypeScript compilation for Lambda functions...');
 
-        // Deploy CDK stacks
+        // Deploy CDK stacks - certificates are now handled by CDK automatically
         const cdkCommand = `npx cdk deploy --all --require-approval never --profile ${this.envConfig.awsProfile} -c environment=${this.options.environment}`;
         this.runCommand(cdkCommand);
 
@@ -79,15 +79,28 @@ class Deployer {
         console.log(`🌍 Region: ${this.envConfig.region}`);
 
         try {
+            // Step 1: Deploy backend infrastructure (unless skipped)
             if (!this.options.skipBackend) {
                 await this.deployBackend();
             }
 
+            // Step 2: Deploy frontend (unless skipped)
             if (!this.options.skipFrontend) {
                 await this.deployFrontend();
             }
 
             console.log(`🎉 Deployment to ${this.options.environment} completed successfully!`);
+
+            // Show final URLs
+            if (this.envConfig.domain) {
+                const fullDomain = `${this.envConfig.domain.subdomain}.${this.envConfig.domain.name}`;
+                console.log(`🌐 Your application should be available at: https://${fullDomain}`);
+                console.log(`📋 Check CDK outputs for any manual DNS setup instructions`);
+            } else {
+                console.log(`🌐 Your application is available at the CloudFront distribution URL`);
+                console.log(`📋 Check CDK outputs for the CloudFront URL`);
+            }
+
         } catch (error) {
             console.error(`❌ Deployment failed:`, error);
             process.exit(1);
@@ -133,7 +146,7 @@ Options:
   -h, --help                 Show this help message
 
 Examples:
-  npm run deploy                          # Deploy develop environment
+  npm run deploy                          # Deploy develop environment (full deployment)
   npm run deploy -- --env production      # Deploy production environment
   npm run deploy -- --env develop --skip-frontend  # Deploy only backend to develop
         `);

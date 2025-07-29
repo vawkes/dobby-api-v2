@@ -7,6 +7,9 @@ export interface EnvironmentConfig {
         name: string;
         subdomain: string;
         certificateArn: string;
+        // Add support for cross-account Route53
+        dnsAccount?: string;
+        dnsProfile?: string;
     };
     api: {
         stageName: string;
@@ -20,11 +23,14 @@ export const environments: Record<string, EnvironmentConfig> = {
         account: '322327555253', // Update with your develop account
         region: 'us-east-1',
         awsProfile: 'dobby_develop',
-        // domain: {
-        //   name: 'dev.yourdomain.com',
-        //   subdomain: 'app',
-        //   certificateArn: 'arn:aws:acm:us-east-1:xxx:certificate/xxx'
-        // },
+        domain: {
+            name: 'vawkes.com',
+            subdomain: 'gridcube.dev',
+            certificateArn: process.env.CERTIFICATE_ARN_DEV || '',
+            // DNS is in main account with default profile
+            dnsAccount: '383688137294',
+            dnsProfile: 'default'
+        },
         api: {
             stageName: 'dev',
         },
@@ -40,9 +46,12 @@ export const environments: Record<string, EnvironmentConfig> = {
         region: 'us-east-1',
         awsProfile: 'dobby_production',
         domain: {
-            name: process.env.DOMAIN_NAME || '',
-            subdomain: process.env.SUB_DOMAIN || 'app',
-            certificateArn: process.env.CERTIFICATE_ARN || '',
+            name: 'vawkes.com',
+            subdomain: 'gridcube',
+            certificateArn: process.env.CERTIFICATE_ARN_PROD || '',
+            // DNS is in main account with default profile
+            dnsAccount: '383688137294',
+            dnsProfile: 'default'
         },
         api: {
             stageName: 'prod',

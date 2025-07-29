@@ -14,9 +14,12 @@ import { EnvironmentConfig } from '../deployment/config';
 export interface ReactFrontendStackProps extends cdk.StackProps {
     domainName?: string;
     subDomain?: string;
-    certificateArn?: string;
+    certificate?: acm.ICertificate;
     apiUrl?: string;
     environmentConfig: EnvironmentConfig;
+    // Cross-account DNS configuration
+    dnsAccountId?: string;
+    dnsProfile?: string;
 }
 
 export class ReactFrontendStack extends cdk.Stack {
@@ -156,7 +159,9 @@ export class ReactFrontendStack extends cdk.Stack {
         });
 
         this.distributionId = distribution.distributionId;
-        this.url = `https://${distribution.distributionDomainName}`;
+        this.url = props?.domainName && props?.subDomain
+            ? `https://${props.subDomain}.${props.domainName}`
+            : `https://${distribution.distributionDomainName}`;
 
         // Deploy the React app
         new s3deploy.BucketDeployment(this, 'DeployReactApp', {
@@ -167,10 +172,8 @@ export class ReactFrontendStack extends cdk.Stack {
         });
 
         // Set up DNS if domain details provided
-        if (props?.domainName && props?.subDomain && props?.certificateArn) {
-            const certificate = acm.Certificate.fromCertificateArn(
-                this, 'Certificate', props.certificateArn
-            );
+        if (props?.domainName && props?.subDomain && props?.certificate) {
+            const certificate = props.certificate;
 
             const domainName = `${props.subDomain}.${props.domainName}`;
 
@@ -185,16 +188,53 @@ export class ReactFrontendStack extends cdk.Stack {
                 });
             }
 
-            const zone = route53.HostedZone.fromLookup(this, 'Zone', {
-                domainName: props.domainName,
-            });
+            // Handle Route53 based on whether DNS is in the same account
+            const useManualDns = props.dnsAccountId && props.dnsAccountId !== environmentConfig.account;
 
-            new route53.ARecord(this, 'SiteAliasRecord', {
-                recordName: props.subDomain,
-                zone,
-                target: route53.RecordTarget.fromAlias(
-                    new targets.CloudFrontTarget(distribution)
-                ),
+            if (useManualDns) {
+                // Cross-account DNS - provide instructions for manual setup
+                new cdk.CfnOutput(this, 'DNSSetupInstructions', {
+                    value: `Create CNAME record in Route53: ${domainName} -> ${distribution.distributionDomainName}`,
+                    description: 'Manual DNS setup required (cross-account)',
+                });
+
+                new cdk.CfnOutput(this, 'Route53Instructions', {
+                    value: `In AWS account ${props.dnsAccountId}, create CNAME: ${domainName} pointing to ${distribution.distributionDomainName}`,
+                    description: 'Route53 setup instructions for DNS account',
+                });
+            } else {
+                // Same-account DNS - can create Route53 records automatically
+                try {
+                    const zone = route53.HostedZone.fromLookup(this, 'Zone', {
+                        domainName: props.domainName,
+                    });
+
+                    new route53.CnameRecord(this, 'DomainCNAME', {
+                        zone,
+                        recordName: props.subDomain,
+                        domainName: distribution.distributionDomainName,
+                        ttl: cdk.Duration.minutes(5),
+                        comment: `CNAME for ${environmentConfig.name} environment`,
+                    });
+
+                    new cdk.CfnOutput(this, 'DNSSetupComplete', {
+                        value: `DNS automatically configured: ${domainName} -> ${distribution.distributionDomainName}`,
+                        description: 'Automatic DNS setup completed',
+                    });
+                } catch (error) {
+                    // Fallback to manual instructions if automatic setup fails
+                    new cdk.CfnOutput(this, 'DNSSetupInstructions', {
+                        value: `Create CNAME record: ${domainName} -> ${distribution.distributionDomainName}`,
+                        description: 'Manual DNS setup required (automatic setup failed)',
+                    });
+                }
+            }
+
+            // Output DNS setup information for manual configuration
+            new cdk.CfnOutput(this, 'CustomDomainName', {
+                value: domainName,
+                description: 'Custom domain name for the frontend',
+                exportName: `ReactFrontendCustomDomain-${environmentConfig.name}`,
             });
         }
 
@@ -211,9 +251,15 @@ export class ReactFrontendStack extends cdk.Stack {
             exportName: `ReactFrontendDistributionId-${environmentConfig.name}`,
         });
 
-        new cdk.CfnOutput(this, 'ReactWebsiteURL', {
+        new cdk.CfnOutput(this, 'ReactDistributionDomainName', {
+            value: distribution.distributionDomainName,
+            description: 'CloudFront Distribution Domain Name for DNS setup',
+            exportName: `ReactFrontendDistributionDomainName-${environmentConfig.name}`,
+        });
+
+        new cdk.CfnOutput(this, 'ReactFrontendURL', {
             value: this.url,
-            description: 'React Website URL',
+            description: 'Frontend URL (custom domain or CloudFront)',
             exportName: `ReactFrontendURL-${environmentConfig.name}`,
         });
 
