@@ -1,6 +1,8 @@
 {
-    "API_URL": "https://api.dobby-api-v2.com",
-    "ENVIRONMENT": "production",
+    "API_URL": "/api",
+    "DIRECT_API_URL": "https://tzdokra5yf.execute-api.us-east-1.amazonaws.com/dev",
+    "ENVIRONMENT": "develop",
     "VERSION": "1.0.0",
-    "ALLOW_MOCK_AUTH": "true"
+    "ALLOW_MOCK_AUTH": "true",
+    "USING_PROXY": "true"
 }

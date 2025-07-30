@@ -60,8 +60,8 @@ class Deployer {
 
         const frontendDir = path.join(process.cwd(), 'frontend-react');
 
-        // Install frontend dependencies
-        this.runCommand('npm install', frontendDir);
+        // Install frontend dependencies with legacy peer deps to resolve TypeScript conflicts
+        this.runCommand('npm install --legacy-peer-deps', frontendDir);
 
         // Build the React app
         this.runCommand('npm run build', frontendDir);

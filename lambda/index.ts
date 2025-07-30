@@ -13,7 +13,13 @@ const app = new Hono()
 
 // Add CORS middleware to handle cross-origin requests
 app.use('*', cors({
-    origin: ['http://localhost:3000', 'https://localhost:3000', 'https://d1dz25mfg0xsp8.cloudfront.net', '*'],
+    origin: [
+        'http://localhost:3000',
+        'https://localhost:3000',
+        'https://d1dz25mfg0xsp8.cloudfront.net',
+        'https://gridcube.dev.vawkes.com',  // Development custom domain
+        'https://gridcube.vawkes.com',      // Production custom domain
+    ],
     allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
     allowHeaders: ['Content-Type', 'Authorization', 'X-API-Key', 'X-Origin-Verify', 'X-Requested-With'],
     credentials: true,
