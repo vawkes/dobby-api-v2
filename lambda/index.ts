@@ -16,7 +16,10 @@ app.use('*', cors({
     origin: [
         'http://localhost:3000',
         'https://localhost:3000',
-        'https://d1dz25mfg0xsp8.cloudfront.net',
+        'http://localhost:3001',  // Additional localhost port
+        'https://d1dz25mfg0xsp8.cloudfront.net', // Development CloudFront
+        'https://d2996moha39e78.cloudfront.net', // Production CloudFront (actual)
+        'https://E3RXTTM5UE3ZQE.cloudfront.net', // Production CloudFront (alternate)
         'https://gridcube.dev.vawkes.com',  // Development custom domain
         'https://gridcube.vawkes.com',      // Production custom domain
     ],

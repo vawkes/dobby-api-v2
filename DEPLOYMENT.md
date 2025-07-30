@@ -89,8 +89,9 @@ npm run deploy -- --env production --profile my-custom-profile
 - **Develop**: Resources are destroyed with stacks for easier cleanup
 
 ### Stack Names
-- **Production**: `DobbyApiV2Stack-production`, `ReactFrontendStack-production`
-- **Develop**: `DobbyApiV2Stack`, `ReactFrontendStack`
+All environments use consistent stack names:
+- **All Environments**: `DobbyApiV2Stack`, `ReactFrontendStack`, `CertificateStack`
+- Environment-specific naming is handled within the stacks for individual resources
 
 ## What Gets Deployed
 
