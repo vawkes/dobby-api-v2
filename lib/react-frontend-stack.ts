@@ -4,8 +4,6 @@ import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as cloudfront from 'aws-cdk-lib/aws-cloudfront';
 import * as origins from 'aws-cdk-lib/aws-cloudfront-origins';
 import * as s3deploy from 'aws-cdk-lib/aws-s3-deployment';
-import * as route53 from 'aws-cdk-lib/aws-route53';
-import * as targets from 'aws-cdk-lib/aws-route53-targets';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 import * as path from 'path';
 import * as iam from 'aws-cdk-lib/aws-iam';
@@ -67,7 +65,8 @@ export class ReactFrontendStack extends cdk.Stack {
                 accessControlAllowOrigins: [
                     'https://d1dz25mfg0xsp8.cloudfront.net',
                     'http://localhost:3000',
-                    'https://localhost:3000'
+                    'https://localhost:3000',
+                    'https://*.vawkes.com'
                 ],
                 accessControlAllowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'HEAD', 'PATCH'],
                 accessControlAllowHeaders: [
@@ -105,12 +104,11 @@ export class ReactFrontendStack extends cdk.Stack {
 
         // API Gateway origin for proxy requests
         // Note: Using default API Gateway domain since API URL is configured at runtime
-        const stageName = environmentConfig.api.stageName;
+        // const stageName = environmentConfig.api.stageName;
         const apiGatewayDomain = 'tzdokra5yf.execute-api.us-east-1.amazonaws.com';
 
         // Create API Gateway origin
         const apiGatewayOrigin = new origins.HttpOrigin(apiGatewayDomain, {
-            originPath: `/${stageName}`, // Use environment-specific stage name
             protocolPolicy: cloudfront.OriginProtocolPolicy.HTTPS_ONLY,
         });
 
@@ -126,17 +124,6 @@ export class ReactFrontendStack extends cdk.Stack {
                 originRequestPolicy: cloudfront.OriginRequestPolicy.CORS_S3_ORIGIN,
                 responseHeadersPolicy: corsHeadersPolicy,
                 compress: true,
-            },
-            additionalBehaviors: {
-                // Add a behavior for /api/* to proxy to API Gateway
-                '/api/*': {
-                    origin: apiGatewayOrigin,
-                    viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
-                    allowedMethods: cloudfront.AllowedMethods.ALLOW_ALL,
-                    cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED,
-                    originRequestPolicy: cloudfront.OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
-                    responseHeadersPolicy: corsHeadersPolicy,
-                },
             },
             defaultRootObject: 'index.html',
             errorResponses: [
@@ -188,48 +175,11 @@ export class ReactFrontendStack extends cdk.Stack {
                 });
             }
 
-            // Handle Route53 based on whether DNS is in the same account
-            const useManualDns = props.dnsAccountId && props.dnsAccountId !== environmentConfig.account;
-
-            if (useManualDns) {
-                // Cross-account DNS - provide instructions for manual setup
-                new cdk.CfnOutput(this, 'DNSSetupInstructions', {
-                    value: `Create CNAME record in Route53: ${domainName} -> ${distribution.distributionDomainName}`,
-                    description: 'Manual DNS setup required (cross-account)',
-                });
-
-                new cdk.CfnOutput(this, 'Route53Instructions', {
-                    value: `In AWS account ${props.dnsAccountId}, create CNAME: ${domainName} pointing to ${distribution.distributionDomainName}`,
-                    description: 'Route53 setup instructions for DNS account',
-                });
-            } else {
-                // Same-account DNS - can create Route53 records automatically
-                try {
-                    const zone = route53.HostedZone.fromLookup(this, 'Zone', {
-                        domainName: props.domainName,
-                    });
-
-                    new route53.CnameRecord(this, 'DomainCNAME', {
-                        zone,
-                        recordName: props.subDomain,
-                        domainName: distribution.distributionDomainName,
-                        ttl: cdk.Duration.minutes(5),
-                        comment: `CNAME for ${environmentConfig.name} environment`,
-                    });
-
-                    new cdk.CfnOutput(this, 'DNSSetupComplete', {
-                        value: `DNS automatically configured: ${domainName} -> ${distribution.distributionDomainName}`,
-                        description: 'Automatic DNS setup completed',
-                    });
-                } catch (error) {
-                    // Fallback to manual instructions if automatic setup fails
-                    new cdk.CfnOutput(this, 'DNSSetupInstructions', {
-                        value: `Create CNAME record: ${domainName} -> ${distribution.distributionDomainName}`,
-                        description: 'Manual DNS setup required (automatic setup failed)',
-                    });
-                }
-            }
-
+            new cdk.CfnOutput(this, 'Route53Instructions', {
+                value: `In AWS account ${props.dnsAccountId}, create CNAME: ${domainName} pointing to ${distribution.distributionDomainName}`,
+                description: 'Route53 setup instructions for DNS account',
+            });
+            
             // Output DNS setup information for manual configuration
             new cdk.CfnOutput(this, 'CustomDomainName', {
                 value: domainName,
@@ -262,13 +212,5 @@ export class ReactFrontendStack extends cdk.Stack {
             description: 'Frontend URL (custom domain or CloudFront)',
             exportName: `ReactFrontendURL-${environmentConfig.name}`,
         });
-
-        if (props?.apiUrl) {
-            new cdk.CfnOutput(this, 'ApiEndpoint', {
-                value: props.apiUrl,
-                description: 'API Gateway endpoint URL',
-                exportName: `ApiEndpointUrl-${environmentConfig.name}`,
-            });
-        }
     }
 } 

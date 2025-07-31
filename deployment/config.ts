@@ -3,15 +3,21 @@ export interface EnvironmentConfig {
     account: string;
     region: string;
     awsProfile: string;
-    domain?: {
-        name: string;
+    frontend?: {
+        domain: string;
         subdomain: string;
-        certificateArn: string;
-        // Add support for cross-account Route53
-        dnsAccount?: string;
-        dnsProfile?: string;
     };
-    api: {
+    api?: {
+        domain: string;
+        subdomain: string;
+    };
+    // DNS configuration for cross-account Route53
+    dns?: {
+        account: string;
+        profile: string;
+        roleArn: string;
+    };
+    apiStage: {
         stageName: string;
     };
     tags: Record<string, string>;
@@ -20,18 +26,23 @@ export interface EnvironmentConfig {
 export const environments: Record<string, EnvironmentConfig> = {
     develop: {
         name: 'develop',
-        account: '322327555253', // Update with your develop account
+        account: '322327555253',
         region: 'us-east-1',
         awsProfile: 'dobby_develop',
-        domain: {
-            name: 'vawkes.com',
+        frontend: {
+            domain: 'vawkes.com',
             subdomain: 'gridcube.dev',
-            certificateArn: process.env.CERTIFICATE_ARN_DEV || '',
-            // DNS is in main account with default profile
-            dnsAccount: '383688137294',
-            dnsProfile: 'default'
         },
         api: {
+            domain: 'vawkes.com',
+            subdomain: 'api.gridcube.dev',
+        },
+        dns: {
+            account: '383688137294',
+            profile: 'default',
+            roleArn: 'arn:aws:iam::322327555253:role/main_account_route_53' // Fixed: Use develop account role
+        },
+        apiStage: {
             stageName: 'dev',
         },
         tags: {
@@ -45,15 +56,20 @@ export const environments: Record<string, EnvironmentConfig> = {
         account: '530256939393',
         region: 'us-east-1',
         awsProfile: 'dobby_production',
-        domain: {
-            name: 'vawkes.com',
+        frontend: {
+            domain: 'vawkes.com',
             subdomain: 'gridcube',
-            certificateArn: process.env.CERTIFICATE_ARN_PROD || '',
-            // DNS is in main account with default profile
-            dnsAccount: '383688137294',
-            dnsProfile: 'default'
         },
         api: {
+            domain: 'vawkes.com',
+            subdomain: 'api.gridcube',
+        },
+        dns: {
+            account: '383688137294',
+            profile: 'default',
+            roleArn: 'arn:aws:iam::530256939393:role/main_account_route_53'
+        },
+        apiStage: {
             stageName: 'prod',
         },
         tags: {

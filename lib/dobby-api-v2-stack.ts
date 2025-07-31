@@ -10,9 +10,11 @@ import * as iotwireless from 'aws-cdk-lib/aws-iotwireless'
 import * as iot from 'aws-cdk-lib/aws-iot'
 import * as path from 'node:path'
 import { EnvironmentConfig } from '../deployment/config'
+import * as acm from 'aws-cdk-lib/aws-certificatemanager'
 
 export interface DobbyApiV2StackProps extends cdk.StackProps {
   environmentConfig: EnvironmentConfig;
+  certificateArn?: string;
 }
 
 export class DobbyApiV2Stack extends cdk.Stack {
@@ -106,13 +108,6 @@ export class DobbyApiV2Stack extends cdk.Stack {
         USER_POOL_ID: userPool.userPoolId,
         USER_POOL_CLIENT_ID: userPoolClient.userPoolClientId,
         PRODUCTION_LINE_TABLE: productionLineTable.tableName,
-      },
-      bundling: {
-        minify: true,
-        sourceMap: true,
-        target: 'node20',
-        externalModules: ['aws-sdk'],
-        nodeModules: ['@aws-sdk/client-dynamodb', '@aws-sdk/lib-dynamodb', '@aws-sdk/client-iot-wireless']
       }
     })
 
@@ -149,13 +144,13 @@ export class DobbyApiV2Stack extends cdk.Stack {
       cognitoUserPools: [userPool]
     });
 
-    // Create API with the authorizer and environment-specific stage
-    const api = new apigw.LambdaRestApi(this, 'myapi', {
+    // Create API with custom domain and environment-specific stage
+    const api = new apigw.LambdaRestApi(this, 'dobbyapi', {
       handler: fn,
       proxy: false,
-      deployOptions: {
-        stageName: environmentConfig.api.stageName,
-      },
+      // deployOptions: {
+      //   stageName: environmentConfig.apiStage.stageName,
+      // },
       defaultCorsPreflightOptions: {
         allowOrigins: [
           'http://localhost:3000',
@@ -163,9 +158,7 @@ export class DobbyApiV2Stack extends cdk.Stack {
           'http://localhost:3001',  // Additional localhost port
           'https://d1dz25mfg0xsp8.cloudfront.net', // Development CloudFront
           'https://d2996moha39e78.cloudfront.net', // Production CloudFront (actual)
-          'https://E3RXTTM5UE3ZQE.cloudfront.net', // Production CloudFront (alternate)
-          'https://gridcube.dev.vawkes.com',  // Development custom domain
-          'https://gridcube.vawkes.com',      // Production custom domain
+          'https://*.vawkes.com',      // Production custom domain
         ],
         allowMethods: apigw.Cors.ALL_METHODS,
         allowHeaders: [...apigw.Cors.DEFAULT_HEADERS, 'Authorization', 'Content-Type'],
@@ -174,10 +167,37 @@ export class DobbyApiV2Stack extends cdk.Stack {
       },
     });
 
-    // Create an unauthenticated route for public endpoints (like login, docs, etc.)
+    // Add custom domain for API if configured
+    let apiDomainName: string | undefined;
+    let customDomain: apigw.DomainName | undefined;
+    
+    if (environmentConfig.api && props.certificateArn) {
+      apiDomainName = `${environmentConfig.api.subdomain}.${environmentConfig.api.domain}`;
+
+      // Create custom domain for API Gateway
+      customDomain = new apigw.DomainName(this, 'ApiCustomDomain', {
+        domainName: apiDomainName,
+        certificate: acm.Certificate.fromCertificateArn(this, 'ApiCertificate', props.certificateArn),
+        endpointType: apigw.EndpointType.REGIONAL,
+        securityPolicy: apigw.SecurityPolicy.TLS_1_2,
+      });
+
+      // Create base path mapping for the custom domain
+      new apigw.BasePathMapping(this, 'ApiBasePathMapping', {
+        domainName: customDomain,
+        restApi: api,
+        stage: api.deploymentStage,
+      });
+    }
+    
+    // Create public routes (NO AUTH)
     const publicResource = api.root.addResource('public');
-    publicResource.addMethod('GET', new apigw.LambdaIntegration(fn), {
-      authorizationType: apigw.AuthorizationType.NONE,
+    publicResource.addProxy({
+      defaultIntegration: new apigw.LambdaIntegration(fn),
+      anyMethod: true,
+      defaultMethodOptions: {
+        authorizationType: apigw.AuthorizationType.NONE,
+      }
     });
 
     // Add an auth resource under public for login/registration
@@ -189,17 +209,8 @@ export class DobbyApiV2Stack extends cdk.Stack {
       authorizationType: apigw.AuthorizationType.NONE,
     });
 
-    // Add a proxy at /public/* to handle all public routes
-    publicResource.addProxy({
-      defaultIntegration: new apigw.LambdaIntegration(fn),
-      anyMethod: true,
-      defaultMethodOptions: {
-        authorizationType: apigw.AuthorizationType.NONE,
-      }
-    });
-
     // Add a proxy resource for all other API paths that require authentication
-    const protectedProxy = api.root.addProxy({
+    api.root.addProxy({
       defaultIntegration: new apigw.LambdaIntegration(fn),
       anyMethod: true,
       defaultMethodOptions: {
@@ -207,6 +218,7 @@ export class DobbyApiV2Stack extends cdk.Stack {
         authorizationType: apigw.AuthorizationType.COGNITO,
       }
     });
+
 
     // Create the data handler Lambda function
     const dataHandlerFn = new NodejsFunction(this, 'DataHandlerFunction', {
@@ -216,13 +228,6 @@ export class DobbyApiV2Stack extends cdk.Stack {
       timeout: cdk.Duration.seconds(30),
       environment: {
         PRODUCTION_LINE_TABLE: productionLineTable.tableName,
-      },
-      bundling: {
-        minify: true,
-        sourceMap: true,
-        target: 'node20',
-        externalModules: ['aws-sdk'],
-        nodeModules: ['@aws-sdk/client-dynamodb', '@aws-sdk/lib-dynamodb', '@aws-sdk/client-iot-wireless']
       }
     });
 
@@ -369,7 +374,7 @@ export class DobbyApiV2Stack extends cdk.Stack {
     }));
 
     // Export the API endpoint
-    this.apiEndpoint = api.url;
+    this.apiEndpoint = api.url as string;
 
     // Output the API endpoint
     new cdk.CfnOutput(this, 'ApiEndpoint', {
@@ -377,5 +382,31 @@ export class DobbyApiV2Stack extends cdk.Stack {
       description: 'API Gateway endpoint URL',
       exportName: `${environmentConfig.name}-ApiEndpoint`,
     });
+
+    // Output the API domain
+    if (apiDomainName) {
+      new cdk.CfnOutput(this, 'ApiDomainName', {
+        value: apiDomainName,
+        description: 'API Gateway custom domain',
+        exportName: `ApiGatewayDomainName-${environmentConfig.name}`,
+      });
+    }
+
+    // Output the API Gateway regional domain for DNS setup
+    if (customDomain) {
+      new cdk.CfnOutput(this, 'ApiGatewayRegionalDomain', {
+        value: customDomain.domainName,
+        description: 'API Gateway custom domain name',
+        exportName: `ApiGatewayRegionalDomain-${environmentConfig.name}`,
+      });
+    }
+
+    // Output the API Gateway hosted zone ID for DNS setup
+    new cdk.CfnOutput(this, 'ApiGatewayHostedZoneId', {
+      value: 'Z1UJRXOUMOOFQ8', // API Gateway regional hosted zone ID (static)
+      description: 'API Gateway hosted zone ID for DNS A record',
+      exportName: `ApiGatewayHostedZoneId-${environmentConfig.name}`,
+    });
+    
   }
 }

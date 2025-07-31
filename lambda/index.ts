@@ -19,9 +19,7 @@ app.use('*', cors({
         'http://localhost:3001',  // Additional localhost port
         'https://d1dz25mfg0xsp8.cloudfront.net', // Development CloudFront
         'https://d2996moha39e78.cloudfront.net', // Production CloudFront (actual)
-        'https://E3RXTTM5UE3ZQE.cloudfront.net', // Production CloudFront (alternate)
-        'https://gridcube.dev.vawkes.com',  // Development custom domain
-        'https://gridcube.vawkes.com',      // Production custom domain
+        'https://*.vawkes.com',  // Development custom domain
     ],
     allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
     allowHeaders: ['Content-Type', 'Authorization', 'X-API-Key', 'X-Origin-Verify', 'X-Requested-With'],
@@ -49,7 +47,7 @@ publicRoutes.get(
         documentation: {
             info: {
                 title: 'Vawkes GridCube API',
-                version: '1.0.0',
+                version: '2.0.0',
                 description: 'API for interacting with Vawkes GridCube devices.'
             },
             servers: [],
@@ -75,7 +73,7 @@ publicRoutes.get(
     })
 )
 
-// Add API documentation UI to public routes
+// Add API reference documentation
 publicRoutes.get(
     '/docs',
     apiReference({
