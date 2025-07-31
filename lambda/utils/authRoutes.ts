@@ -45,11 +45,6 @@ const refreshTokenSchema = z.object({
 // Register a new user
 app.post(
     '/register',
-    describeRoute({
-        tags: ['Authentication'],
-        summary: 'Register a new user',
-        description: 'Create a new user account with email, password, and name',
-    }),
     zValidator('json', registerSchema),
     async (c) => {
         const { email, password, name } = c.req.valid('json');
@@ -85,11 +80,6 @@ app.post(
 // Confirm user registration
 app.post(
     '/confirm-registration',
-    describeRoute({
-        tags: ['Authentication'],
-        summary: 'Confirm user registration',
-        description: 'Confirm a new user account with the code sent to email',
-    }),
     zValidator('json', confirmRegistrationSchema),
     async (c) => {
         const { email, confirmationCode } = c.req.valid('json');
@@ -151,11 +141,6 @@ app.post(
 // Forgot password
 app.post(
     '/forgot-password',
-    describeRoute({
-        tags: ['Authentication'],
-        summary: 'Forgot password',
-        description: 'Request a password reset code for a user',
-    }),
     zValidator('json', forgotPasswordSchema),
     async (c) => {
         const { email } = c.req.valid('json');
@@ -177,11 +162,6 @@ app.post(
 // Reset password
 app.post(
     '/reset-password',
-    describeRoute({
-        tags: ['Authentication'],
-        summary: 'Reset password',
-        description: 'Reset a user password with the confirmation code',
-    }),
     zValidator('json', resetPasswordSchema),
     async (c) => {
         const { email, confirmationCode, newPassword } = c.req.valid('json');

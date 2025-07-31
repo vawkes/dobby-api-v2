@@ -19,7 +19,9 @@ app.use('*', cors({
         'http://localhost:3001',  // Additional localhost port
         'https://d1dz25mfg0xsp8.cloudfront.net', // Development CloudFront
         'https://d2996moha39e78.cloudfront.net', // Production CloudFront (actual)
-        'https://*.vawkes.com',  // Development custom domain
+        'https://api.gridcube.dev.vawkes.com', // Development API domain
+        'https://api.gridcube.vawkes.com', // Production API domain
+        'https://*.vawkes.com',  // Fallback for other subdomains
     ],
     allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
     allowHeaders: ['Content-Type', 'Authorization', 'X-API-Key', 'X-Origin-Verify', 'X-Requested-With'],
@@ -78,7 +80,7 @@ publicRoutes.get(
     '/docs',
     apiReference({
         theme: 'saturn',
-        spec: { url: '/prod/public/openapi' },
+        spec: { url: '/public/openapi' },
     })
 )
 

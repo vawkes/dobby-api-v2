@@ -163,7 +163,7 @@ export class DobbyApiV2Stack extends cdk.Stack {
           'https://localhost:3000',
           'http://localhost:3001',  // Additional localhost port
           'https://d1dz25mfg0xsp8.cloudfront.net', // Development CloudFront
-          'https://d2996moha39e78.cloudfront.net',,
+          'https://d2996moha39e78.cloudfront.net',
           'https://d-dncsqj6zw0.execute-api.us-east-1.amazonaws.com', // Production CloudFront (actual)
           'https://api.gridcube.dev.vawkes.com', // Development API domain
           'https://api.gridcube.vawkes.com', // Production API domain
