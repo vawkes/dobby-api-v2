@@ -32,7 +32,7 @@ const apiStack = new DobbyApiV2Stack(app, 'DobbyApiV2Stack', {
     region: environmentConfig.region,
   },
   environmentConfig,
-  certificateArn: certificateStack.certificateArn,
+  certificateArn: certificateStack.backendCertificateArn,
 });
 
 // Create frontend stack
@@ -44,7 +44,7 @@ const frontendStack = new ReactFrontendStack(app, 'ReactFrontendStack', {
   environmentConfig,
   domainName: environmentConfig.frontend?.domain,
   subDomain: environmentConfig.frontend?.subdomain,
-  certificate: certificateStack.certificate,
+  certificate: certificateStack.frontendCertificate,
   dnsAccountId: environmentConfig.dns?.account,
   dnsProfile: environmentConfig.dns?.profile || 'default',
 });

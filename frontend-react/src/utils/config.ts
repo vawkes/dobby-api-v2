@@ -5,6 +5,8 @@
  * during deployment.
  */
 
+import { getEnvironmentConfig } from './deployment-config.js'
+
 interface EnvConfig {
     API_URL: string;
     ENVIRONMENT: string;
@@ -12,11 +14,13 @@ interface EnvConfig {
     [key: string]: string;
 }
 
+const environmentConfig = getEnvironmentConfig(process.env.REACT_APP_ENVIRONMENT || 'develop');
+
 // Default config for development
 let config: EnvConfig = {
-    API_URL: process.env.REACT_APP_API_URL || 'http://localhost:3001',
-    ENVIRONMENT: process.env.REACT_APP_ENVIRONMENT || 'development',
-    VERSION: process.env.REACT_APP_VERSION || '0.1.0',
+    API_URL: `https://${environmentConfig.api?.subdomain}.${environmentConfig.api?.domain}`,
+    ENVIRONMENT: environmentConfig.name === 'production' ? 'production' : 'development',
+    VERSION: '1.0.0',
 };
 
 // Async function to load the runtime configuration

@@ -43,7 +43,7 @@ export const environments: Record<string, EnvironmentConfig> = {
             roleArn: 'arn:aws:iam::322327555253:role/main_account_route_53' // Fixed: Use develop account role
         },
         apiStage: {
-            stageName: 'dev',
+            stageName: 'v1',
         },
         tags: {
             Environment: 'develop',
@@ -70,7 +70,7 @@ export const environments: Record<string, EnvironmentConfig> = {
             roleArn: 'arn:aws:iam::530256939393:role/main_account_route_53'
         },
         apiStage: {
-            stageName: 'prod',
+            stageName: 'v1',
         },
         tags: {
             Environment: 'production',

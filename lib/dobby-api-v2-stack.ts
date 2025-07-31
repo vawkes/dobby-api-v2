@@ -27,46 +27,52 @@ export class DobbyApiV2Stack extends cdk.Stack {
     const envSuffix = environmentConfig.name === 'production' ? '' : `-${environmentConfig.name}`;
     const iotSuffix = environmentConfig.name === 'production' ? '' : `_${environmentConfig.name}`;
 
+    // Get existing DynamoDB tables - Used when importing existing tables. 
+    const infoTable = dynamodb.Table.fromTableName(this, 'DobbyInfoTable', 'DobbyInfo');
+    const eventTable = dynamodb.Table.fromTableName(this, 'DobbyEventTable', 'DobbyEvent');
+    const dataTable = dynamodb.Table.fromTableName(this, 'DobbyDataTable', 'DobbyData');
+    const productionLineTable = dynamodb.Table.fromTableName(this, 'ProductionLineTable', 'ProductionLine');
+
     // Create DynamoDB tables
-    const infoTable = new dynamodb.Table(this, 'DobbyInfoTable', {
-      tableName: 'DobbyInfo',
-      partitionKey: { name: 'device_id', type: dynamodb.AttributeType.STRING },
-      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
-      removalPolicy: cdk.RemovalPolicy.RETAIN,
-    });
+    // const infoTable = new dynamodb.Table(this, 'DobbyInfoTable', {
+    //   tableName: 'DobbyInfo', 
+    //   partitionKey: { name: 'device_id', type: dynamodb.AttributeType.STRING },
+    //   billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+    //   removalPolicy: cdk.RemovalPolicy.RETAIN,
+    // });
+    
+    // const eventTable = new dynamodb.Table(this, 'DobbyEventTable', {
+    //   tableName: 'DobbyEvent',
+    //   partitionKey: { name: 'event_id', type: dynamodb.AttributeType.STRING },
+    //   sortKey: { name: 'timestamp', type: dynamodb.AttributeType.NUMBER },
+    //   billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+    //   removalPolicy: cdk.RemovalPolicy.RETAIN,
+    // });
 
-    const eventTable = new dynamodb.Table(this, 'DobbyEventTable', {
-      tableName: 'DobbyEvent',
-      partitionKey: { name: 'event_id', type: dynamodb.AttributeType.STRING },
-      sortKey: { name: 'timestamp', type: dynamodb.AttributeType.NUMBER },
-      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
-      removalPolicy: cdk.RemovalPolicy.RETAIN,
-    });
+    // // Add GSI for device_id queries
+    // eventTable.addGlobalSecondaryIndex({
+    //   indexName: 'device_id-index',
+    //   partitionKey: { name: 'device_id', type: dynamodb.AttributeType.STRING },
+    //   sortKey: { name: 'timestamp', type: dynamodb.AttributeType.NUMBER },
+    //   projectionType: dynamodb.ProjectionType.ALL,
+    // });
 
-    // Add GSI for device_id queries
-    eventTable.addGlobalSecondaryIndex({
-      indexName: 'device_id-index',
-      partitionKey: { name: 'device_id', type: dynamodb.AttributeType.STRING },
-      sortKey: { name: 'timestamp', type: dynamodb.AttributeType.NUMBER },
-      projectionType: dynamodb.ProjectionType.ALL,
-    });
-
-    const dataTable = new dynamodb.Table(this, 'DobbyDataTable', {
-      tableName: 'DobbyData',
-      partitionKey: { name: 'device_id', type: dynamodb.AttributeType.STRING },
-      sortKey: { name: 'timestamp', type: dynamodb.AttributeType.NUMBER },
-      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
-      removalPolicy: cdk.RemovalPolicy.RETAIN,
-    });
+    // const dataTable = new dynamodb.Table(this, 'DobbyDataTable', {
+    //   tableName: 'DobbyData',
+    //   partitionKey: { name: 'device_id', type: dynamodb.AttributeType.STRING },
+    //   sortKey: { name: 'timestamp', type: dynamodb.AttributeType.NUMBER },
+    //   billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+    //   removalPolicy: cdk.RemovalPolicy.RETAIN,
+    // });
 
     // Create the production line table
-    const productionLineTable = new dynamodb.Table(this, 'ProductionLineTable', {
-      tableName: 'ProductionLine',
-      partitionKey: { name: 'device_id', type: dynamodb.AttributeType.STRING },
-      sortKey: { name: 'timestamp', type: dynamodb.AttributeType.NUMBER },
-      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
-      removalPolicy: cdk.RemovalPolicy.RETAIN,
-    });
+    // const productionLineTable = new dynamodb.Table(this, 'ProductionLineTable', {
+    //   tableName: 'ProductionLine',
+    //   partitionKey: { name: 'device_id', type: dynamodb.AttributeType.STRING },
+    //   sortKey: { name: 'timestamp', type: dynamodb.AttributeType.NUMBER },
+    //   billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+    //   removalPolicy: cdk.RemovalPolicy.RETAIN,
+    // });
 
     // Create Cognito User Pool for authentication
     const userPool = new cognito.UserPool(this, 'DobbyUserPool', {
@@ -148,17 +154,20 @@ export class DobbyApiV2Stack extends cdk.Stack {
     const api = new apigw.LambdaRestApi(this, 'dobbyapi', {
       handler: fn,
       proxy: false,
-      // deployOptions: {
-      //   stageName: environmentConfig.apiStage.stageName,
-      // },
+      deployOptions: {
+        stageName: environmentConfig.apiStage.stageName,
+      },
       defaultCorsPreflightOptions: {
         allowOrigins: [
           'http://localhost:3000',
           'https://localhost:3000',
           'http://localhost:3001',  // Additional localhost port
           'https://d1dz25mfg0xsp8.cloudfront.net', // Development CloudFront
-          'https://d2996moha39e78.cloudfront.net', // Production CloudFront (actual)
-          'https://*.vawkes.com',      // Production custom domain
+          'https://d2996moha39e78.cloudfront.net',,
+          'https://d-dncsqj6zw0.execute-api.us-east-1.amazonaws.com', // Production CloudFront (actual)
+          'https://api.gridcube.dev.vawkes.com', // Development API domain
+          'https://api.gridcube.vawkes.com', // Production API domain
+          'https://*.vawkes.com',      // Fallback for other subdomains
         ],
         allowMethods: apigw.Cors.ALL_METHODS,
         allowHeaders: [...apigw.Cors.DEFAULT_HEADERS, 'Authorization', 'Content-Type'],
@@ -177,9 +186,7 @@ export class DobbyApiV2Stack extends cdk.Stack {
       // Create custom domain for API Gateway
       customDomain = new apigw.DomainName(this, 'ApiCustomDomain', {
         domainName: apiDomainName,
-        certificate: acm.Certificate.fromCertificateArn(this, 'ApiCertificate', props.certificateArn),
-        endpointType: apigw.EndpointType.REGIONAL,
-        securityPolicy: apigw.SecurityPolicy.TLS_1_2,
+        certificate: acm.Certificate.fromCertificateArn(this, 'ApiCertificate', props.certificateArn)
       });
 
       // Create base path mapping for the custom domain

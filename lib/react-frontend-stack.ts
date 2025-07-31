@@ -5,9 +5,10 @@ import * as cloudfront from 'aws-cdk-lib/aws-cloudfront';
 import * as origins from 'aws-cdk-lib/aws-cloudfront-origins';
 import * as s3deploy from 'aws-cdk-lib/aws-s3-deployment';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
-import * as path from 'path';
+import * as path from 'node:path';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import { EnvironmentConfig } from '../deployment/config';
+import { execSync } from 'node:child_process';
 
 export interface ReactFrontendStackProps extends cdk.StackProps {
     domainName?: string;
@@ -30,6 +31,32 @@ export class ReactFrontendStack extends cdk.Stack {
 
         const { environmentConfig } = props;
         const envSuffix = environmentConfig.name === 'production' ? '' : `-${environmentConfig.name}`;
+
+        // Build the React app before deployment
+        console.log('Building React frontend...');
+        try {
+            // Change to frontend directory
+            const frontendPath = path.join(__dirname, '../frontend-react');
+            
+            // Install dependencies if needed
+            console.log('Installing frontend dependencies...');
+            execSync('npm install --legacy-peer-deps', { 
+                cwd: frontendPath, 
+                stdio: 'inherit' 
+            });
+            
+            // Build the React app
+            console.log('Building React app...');
+            execSync('npm run build', { 
+                cwd: frontendPath, 
+                stdio: 'inherit' 
+            });
+            
+            console.log('Frontend build completed successfully');
+        } catch (error) {
+            console.error('Failed to build frontend:', error);
+            throw new Error('Frontend build failed');
+        }
 
         // Create an S3 bucket for the website content with environment-specific naming
         const siteBucket = new s3.Bucket(this, 'ReactSiteBucket', {

@@ -8,45 +8,61 @@ export interface CertificateStackProps extends cdk.StackProps {
 }
 
 export class CertificateStack extends cdk.Stack {
-    public readonly certificate: acm.ICertificate;
-    public readonly certificateArn: string;
+    public readonly frontendCertificate: acm.ICertificate;
+    public readonly backendCertificate: acm.ICertificate;
+    public readonly frontendCertificateArn: string;
+    public readonly backendCertificateArn: string;
 
     constructor(scope: Construct, id: string, props: CertificateStackProps) {
         super(scope, id, props);
 
         const { environmentConfig } = props;
 
-        // Create a single wildcard certificate for the entire domain
-        const domainName = "vawkes.com"
+        // Create frontend domain certificate
+        const frontendDomain = `${environmentConfig.frontend?.subdomain}.${environmentConfig.frontend?.domain}`;
+        console.log(`Creating frontend certificate for ${frontendDomain} with email validation`);
         
-        // For cross-account DNS, we'll use email validation instead of DNS validation
-        console.log(`Creating certificate for ${domainName} with email validation (cross-account DNS)`);
-        
-        // Create certificate with email validation
-        this.certificate = new acm.Certificate(this, 'DomainCertificate', {
-            domainName: `*.${domainName}`,
-            validation: acm.CertificateValidation.fromEmail(), // Use email validation instead
+        this.frontendCertificate = new acm.Certificate(this, 'FrontendCertificate', {
+            domainName: frontendDomain,
+            validation: acm.CertificateValidation.fromEmail(),
         });
 
-        this.certificateArn = this.certificate.certificateArn;
+        this.frontendCertificateArn = this.frontendCertificate.certificateArn;
+
+        // Create backend domain certificate
+        const backendDomain = `${environmentConfig.api?.subdomain}.${environmentConfig.api?.domain}`;
+        console.log(`Creating backend certificate for ${backendDomain} with email validation`);
+        
+        this.backendCertificate = new acm.Certificate(this, 'BackendCertificate', {
+            domainName: backendDomain,
+            validation: acm.CertificateValidation.fromEmail(),
+        });
+
+        this.backendCertificateArn = this.backendCertificate.certificateArn;
 
         // Outputs
-        new cdk.CfnOutput(this, 'DomainName', {
-            value: domainName,
-            description: 'Domain name',
-            exportName: `DomainName-${environmentConfig.name}`,
+        new cdk.CfnOutput(this, 'FrontendDomain', {
+            value: frontendDomain,
+            description: 'Frontend domain name',
+            exportName: `FrontendDomain-${environmentConfig.name}`,
         });
 
-        new cdk.CfnOutput(this, 'CertificateArn', {
-            value: this.certificateArn,
-            description: 'Certificate ARN for the entire domain',
-            exportName: `CertificateArn-${environmentConfig.name}`,
+        new cdk.CfnOutput(this, 'BackendDomain', {
+            value: backendDomain,
+            description: 'Backend domain name',
+            exportName: `BackendDomain-${environmentConfig.name}`,
         });
 
-        new cdk.CfnOutput(this, 'WildcardDomain', {
-            value: `*.${domainName}`,
-            description: 'Wildcard domain pattern',
-            exportName: `WildcardDomain-${environmentConfig.name}`,
+        new cdk.CfnOutput(this, 'FrontendCertificateArn', {
+            value: this.frontendCertificateArn,
+            description: 'Frontend certificate ARN',
+            exportName: `FrontendCertificateArn-${environmentConfig.name}`,
+        });
+
+        new cdk.CfnOutput(this, 'BackendCertificateArn', {
+            value: this.backendCertificateArn,
+            description: 'Backend certificate ARN',
+            exportName: `BackendCertificateArn-${environmentConfig.name}`,
         });
     }
 } 
