@@ -145,10 +145,10 @@ export async function getUserRoleInCompany(
 // Helper function to get user's highest role across all companies
 export async function getUserHighestRole(dynamodb: DynamoDB, userId: string): Promise<UserRole | null> {
     try {
-        const userCompaniesResult = await dynamodb.query({
+        // Use scan instead of query since we don't have a user_id-index
+        const userCompaniesResult = await dynamodb.scan({
             TableName: "CompanyUsers",
-            IndexName: "user_id-index",
-            KeyConditionExpression: "user_id = :userId",
+            FilterExpression: "user_id = :userId",
             ExpressionAttributeValues: {
                 ":userId": { S: userId }
             }
@@ -297,6 +297,7 @@ export function requirePermission(action: Action) {
             }
 
             await next();
+            return;
         } catch (error) {
             console.error('Error in permission middleware:', error);
             return c.json({ error: 'Permission check failed' }, 500);
@@ -326,6 +327,7 @@ export function requireDevicePermission(action: Action) {
             }
 
             await next();
+            return;
         } catch (error) {
             console.error('Error in device permission middleware:', error);
             return c.json({ error: 'Permission check failed' }, 500);
@@ -355,6 +357,7 @@ export function requireCompanyPermission(action: Action) {
             }
 
             await next();
+            return;
         } catch (error) {
             console.error('Error in company permission middleware:', error);
             return c.json({ error: 'Permission check failed' }, 500);

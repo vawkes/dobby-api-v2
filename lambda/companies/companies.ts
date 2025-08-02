@@ -17,7 +17,7 @@ const ROLE_HIERARCHY = {
 };
 
 // Helper function to check if user has required role
-async function checkUserRole(dynamodb: DynamoDB, companyId: string, userId: string, requiredRole: SchemaUserRole): Promise<boolean> {
+async function checkUserRole(dynamodb: DynamoDB, companyId: string, userId: string, requiredRole: typeof SchemaUserRole[keyof typeof SchemaUserRole]): Promise<boolean> {
     try {
         const result = await dynamodb.getItem({
             TableName: 'CompanyUsers',
@@ -380,8 +380,8 @@ app.delete('/:companyId/users/:userId',
                 return c.json({ error: 'Role information not found' }, 404);
             }
 
-            const currentUserLevel = ROLE_HIERARCHY[currentUserRole as SchemaUserRole] || 0;
-            const targetUserLevel = ROLE_HIERARCHY[targetUserRole as SchemaUserRole] || 0;
+            const currentUserLevel = ROLE_HIERARCHY[currentUserRole as typeof SchemaUserRole[keyof typeof SchemaUserRole]] || 0;
+            const targetUserLevel = ROLE_HIERARCHY[targetUserRole as typeof SchemaUserRole[keyof typeof SchemaUserRole]] || 0;
 
             // Users can only remove users at or below their own level
             if (currentUserLevel < targetUserLevel) {

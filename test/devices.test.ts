@@ -127,7 +127,7 @@ describe("Devices API", () => {
                 Item: undefined,
             });
 
-            const req = createRequest("/nonexistent");
+            const req = createRequest("/12345678-1234-1234-1234-123456789012");
             const res = await app.fetch(req);
             expect(res.status).toBe(404);
 
@@ -139,7 +139,7 @@ describe("Devices API", () => {
             // Mock DynamoDB error
             mockDynamoInstance.getItem.mockRejectedValueOnce(new Error("DynamoDB error"));
 
-            const req = createRequest("/device1");
+            const req = createRequest("/12345678-1234-1234-1234-123456789012");
             const res = await app.fetch(req);
             expect(res.status).toBe(500);
 

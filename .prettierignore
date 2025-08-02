@@ -1,0 +1,31 @@
+# Dependencies
+node_modules/
+package-lock.json
+yarn.lock
+
+# Build outputs
+dist/
+build/
+cdk.out/
+
+# Generated files
+*.min.js
+*.min.css
+
+# Configuration files
+*.config.js
+*.config.ts
+
+# Test coverage
+coverage/
+
+# Environment files
+.env
+.env.*
+
+# Logs
+*.log
+
+# OS generated files
+.DS_Store
+Thumbs.db 

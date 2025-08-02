@@ -32,6 +32,14 @@
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
+    "lint": "eslint . --ext .ts,.tsx",
+    "lint:fix": "eslint . --ext .ts,.tsx --fix",
+    "lint:check": "eslint . --ext .ts,.tsx --max-warnings 0",
+    "format": "prettier --write \"src/**/*.{ts,tsx,js,jsx,json,md}\"",
+    "format:check": "prettier --check \"src/**/*.{ts,tsx,js,jsx,json,md}\"",
+    "generate-config": "node scripts/generate-config.js",
+    "generate-config:develop": "node scripts/generate-config.js develop",
+    "generate-config:production": "node scripts/generate-config.js production",
     "deploy": "node deploy-to-aws.js",
     "deploy:develop": "ENVIRONMENT=develop node deploy-to-aws.js",
     "deploy:production": "ENVIRONMENT=production node deploy-to-aws.js"
@@ -55,10 +63,16 @@
     ]
   },
   "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
     "autoprefixer": "^10.4.19",
     "aws-sdk": "^2.1692.0",
+    "eslint": "^9.0.0",
+    "eslint-plugin-react": "^7.33.0",
+    "eslint-plugin-react-hooks": "^4.6.0",
     "mime-types": "^2.1.35",
     "postcss": "^8.4.38",
+    "prettier": "^3.0.0",
     "tailwindcss": "^3.4.1"
   }
 }
