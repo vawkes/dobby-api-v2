@@ -1,5 +1,5 @@
 // Global test setup for Jest
-import { jest } from '@jest/globals';
+import { jest, beforeAll, afterAll, beforeEach, afterEach } from '@jest/globals';
 
 // Global test setup
 beforeAll(() => {
@@ -13,7 +13,6 @@ afterAll(() => {
 });
 
 // Mock console methods to reduce noise in tests
-const originalConsole = { ...console };
 beforeEach(() => {
   jest.spyOn(console, 'log').mockImplementation(() => {});
   jest.spyOn(console, 'warn').mockImplementation(() => {});
