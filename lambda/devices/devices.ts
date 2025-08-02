@@ -213,7 +213,7 @@ app.get('/:deviceId',
 
 app.get('/:deviceId/data',
     describeRoute({
-        description: "Fetch device data from DobbyData table",
+        description: "Fetch device data",
         responses: {
             200: {
                 content: {
@@ -221,13 +221,55 @@ app.get('/:deviceId/data',
                         schema: resolver(deviceDataSchema),
                     },
                 },
-                description: 'Retrieve device time series data',
+                description: 'Successfully retrieved device time series data',
+            },
+            400: {
+                description: 'Invalid device ID format',
+                content: {
+                    'application/json': {
+                        schema: {
+                            type: 'object',
+                            properties: {
+                                error: {
+                                    type: 'string',
+                                    example: 'Invalid device ID format'
+                                }
+                            }
+                        }
+                    }
+                }
             },
             404: {
                 description: 'Device not found or no data available',
+                content: {
+                    'application/json': {
+                        schema: {
+                            type: 'object',
+                            properties: {
+                                error: {
+                                    type: 'string',
+                                    example: 'Device not found in production line'
+                                }
+                            }
+                        }
+                    }
+                }
             },
             500: {
                 description: 'Internal server error',
+                content: {
+                    'application/json': {
+                        schema: {
+                            type: 'object',
+                            properties: {
+                                error: {
+                                    type: 'string',
+                                    example: 'Internal server error'
+                                }
+                            }
+                        }
+                    }
+                }
             },
         },
     }),

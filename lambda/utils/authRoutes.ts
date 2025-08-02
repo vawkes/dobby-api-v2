@@ -141,6 +141,11 @@ app.post(
 // Forgot password
 app.post(
     '/forgot-password',
+    describeRoute({
+        tags: ['Authentication'],
+        summary: 'Forgot password',
+        description: 'Request a password reset code for a user',
+    }),
     zValidator('json', forgotPasswordSchema),
     async (c) => {
         const { email } = c.req.valid('json');
