@@ -5,6 +5,16 @@ import { devicesSchema, deviceSchema, deviceDataSchema, deviceIdSchema } from '.
 import { describeRoute } from 'hono-openapi';
 import { resolver } from 'hono-openapi/zod'
 import { QueryCommand } from "@aws-sdk/client-dynamodb";
+import { getUserFromContext, getUserAccessibleDevices, checkUserDeviceAccess, UserContext } from '../utils/deviceAccess';
+import { requirePermission, requireDevicePermission, Action } from '../utils/permissions';
+
+// Type for validation error issues
+interface ValidationIssue {
+    path: (string | number)[];
+    message: string;
+    received: unknown;
+    expected?: unknown;
+}
 
 const app = new Hono()
 
@@ -32,7 +42,7 @@ async function getWirelessDeviceId(dynamodb: DynamoDB, deviceId: string): Promis
 
 app.get('/',
     describeRoute({
-        description: "Fetch all devices",
+        description: "Fetch all devices accessible to the authenticated user",
         responses: {
             200: {
                 content: {
@@ -40,14 +50,28 @@ app.get('/',
                         schema: resolver(devicesSchema),
                     },
                 },
-                description: 'Retrieve List of Devices',
+                description: 'Retrieve List of Accessible Devices',
             },
         },
     }),
+    requirePermission(Action.READ_DEVICES),
     async (c) => {
         try {
             console.log('Starting device scan operation');
             const dynamodb = new DynamoDB({ region: "us-east-1" });
+
+            // Get user from context (set by auth middleware)
+            const user = getUserFromContext(c);
+            if (!user || !user.sub) {
+                return c.json({ error: 'User not authenticated' }, 401);
+            }
+
+            // Get user's accessible devices
+            const accessibleDeviceIds = await getUserAccessibleDevices(dynamodb, user.sub);
+            
+            if (accessibleDeviceIds.length === 0) {
+                return c.json([]);
+            }
 
             // Use a limit to prevent retrieving too many items at once
             // and set a reasonable page size
@@ -60,7 +84,7 @@ app.get('/',
             const results = await dynamodb.scan(scanParams);
 
             console.log(`Scan complete. Retrieved ${results.Items?.length || 0} devices`);
-            const devices = results.Items?.map(item => {
+            const allDevices = results.Items?.map(item => {
                 const device = unmarshall(item);
 
                 // Convert string values to numbers for fields expected to be numbers
@@ -75,14 +99,19 @@ app.get('/',
                 return device;
             }) || [];
 
+            // Filter devices to only include those accessible to the user
+            const accessibleDevices = allDevices.filter(device => 
+                accessibleDeviceIds.includes(device.device_id)
+            );
+
             // Use safeParse for more resilient validation
-            const parseResult = devicesSchema.safeParse(devices);
+            const parseResult = devicesSchema.safeParse(accessibleDevices);
 
             if (!parseResult.success) {
                 console.error('Schema validation failed:', parseResult.error);
 
                 // Log details about the validation errors
-                parseResult.error.issues.forEach((issue, index) => {
+                parseResult.error.issues.forEach((issue: ValidationIssue, index: number) => {
                     console.error(`Validation issue ${index + 1}:`, {
                         path: issue.path,
                         message: issue.message,
@@ -92,7 +121,7 @@ app.get('/',
                 });
 
                 // Return devices with partial validation - filter out invalid items
-                const validDevices = devices.filter((device, index) => {
+                const validDevices = accessibleDevices.filter((device, index) => {
                     const singleDeviceResult = deviceSchema.safeParse(device);
                     if (!singleDeviceResult.success) {
                         console.warn(`Device at index ${index} failed validation:`, device);
@@ -101,20 +130,21 @@ app.get('/',
                     return true;
                 });
 
-                console.log(`Returning ${validDevices.length} valid devices out of ${devices.length} total`);
+                console.log(`Returning ${validDevices.length} valid devices out of ${accessibleDevices.length} total`);
                 return c.json(validDevices);
             }
 
             return c.json(parseResult.data);
         } catch (error) {
             console.error('Error in device scan operation:', error);
-            return c.json({ error: 'Failed to retrieve devices', details: error.message }, 500);
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+            return c.json({ error: 'Failed to retrieve devices', details: errorMessage }, 500);
         }
     })
 
 app.get('/:deviceId',
     describeRoute({
-        description: "Fetch single device",
+        description: "Fetch single device if accessible to the authenticated user",
         responses: {
             200: {
                 content: {
@@ -124,6 +154,9 @@ app.get('/:deviceId',
                 },
                 description: 'Retrieve a single device',
             },
+            403: {
+                description: 'Access denied to this device',
+            },
             404: {
                 description: 'Device not found',
             },
@@ -132,6 +165,7 @@ app.get('/:deviceId',
             },
         },
     }),
+    requireDevicePermission(Action.READ_DEVICES),
     async (c) => {
         try {
             const deviceId = c.req.param('deviceId');
@@ -187,7 +221,7 @@ app.get('/:deviceId',
                 console.error('Device data that failed validation:', device);
 
                 // Log details about the validation errors
-                parseResult.error.issues.forEach((issue, index) => {
+                parseResult.error.issues.forEach((issue: ValidationIssue, index: number) => {
                     console.error(`Validation issue ${index + 1}:`, {
                         path: issue.path,
                         message: issue.message,
@@ -200,20 +234,21 @@ app.get('/:deviceId',
                 console.warn('Returning device data despite validation errors');
                 return c.json({
                     ...device,
-                    _validation_warnings: parseResult.error.issues.map(issue => issue.message)
+                    _validation_warnings: parseResult.error.issues.map((issue: ValidationIssue) => issue.message)
                 });
             }
 
             return c.json(parseResult.data);
         } catch (error) {
             console.error('Error fetching device:', error);
-            return c.json({ error: 'Internal server error', details: error.message }, 500);
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+            return c.json({ error: 'Internal server error', details: errorMessage }, 500);
         }
     })
 
 app.get('/:deviceId/data',
     describeRoute({
-        description: "Fetch device data",
+        description: "Fetch device data if accessible to the authenticated user",
         responses: {
             200: {
                 content: {
@@ -233,6 +268,22 @@ app.get('/:deviceId/data',
                                 error: {
                                     type: 'string',
                                     example: 'Invalid device ID format'
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            403: {
+                description: 'Access denied to this device',
+                content: {
+                    'application/json': {
+                        schema: {
+                            type: 'object',
+                            properties: {
+                                error: {
+                                    type: 'string',
+                                    example: 'Access denied to this device'
                                 }
                             }
                         }
@@ -273,6 +324,7 @@ app.get('/:deviceId/data',
             },
         },
     }),
+    requireDevicePermission(Action.READ_DEVICES),
     async (c) => {
         try {
             const deviceId = c.req.param('deviceId');
@@ -306,7 +358,7 @@ app.get('/:deviceId/data',
             const lookupId = wirelessDeviceId || deviceId;
 
             // Query the DobbyData table
-            const command = new QueryCommand({
+            const results = await dynamodb.query({
                 TableName: "DobbyData",
                 KeyConditionExpression: "device_id = :deviceId AND #ts >= :startTime",
                 ExpressionAttributeValues: {
@@ -319,13 +371,11 @@ app.get('/:deviceId/data',
                 ScanIndexForward: true // Return items in ascending order by sort key
             });
 
-            const results = await dynamodb.query(command);
-
             if (!results.Items || results.Items.length === 0) {
                 return c.json({ error: 'No data found for this device' }, 404);
             }
 
-            const deviceData = results.Items.map(item => {
+            const deviceData = results.Items.map((item: Record<string, unknown>) => {
                 const data = unmarshall(item);
 
                 // Ensure numeric fields are converted to numbers
@@ -342,7 +392,8 @@ app.get('/:deviceId/data',
             return c.json(deviceDataSchema.parse(deviceData));
         } catch (error) {
             console.error('Error fetching device data:', error);
-            return c.json({ error: 'Internal server error' }, 500);
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+            return c.json({ error: 'Internal server error', details: errorMessage }, 500);
         }
     })
 
