@@ -1,6 +1,8 @@
 {
-    "API_URL": "https://api.dobby-api-v2.com",
-    "ENVIRONMENT": "production",
+    "API_URL": "https://api.gridcube.dev.vawkes.com/",
+    "DIRECT_API_URL": "https://api.gridcube.dev.vawkes.com/",
+    "ENVIRONMENT": "develop",
     "VERSION": "1.0.0",
-    "ALLOW_MOCK_AUTH": "true"
+    "ALLOW_MOCK_AUTH": "true",
+    "USING_PROXY": "false"
 }

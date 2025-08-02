@@ -15,13 +15,13 @@ const deviceSchema = z.object({
     firmware_date: z.string().optional(), // Assuming this is a date string
     model_number: z.string().optional(),
     device_id: deviceIdSchema, // Now accepts both UUID and 6-digit ID
-    device_type: z.string().optional(), // Assuming this is a string, adjust if it's a number
+    device_type: z.coerce.string().optional(), // Coerce numbers to strings for resilience
     gridcube_firmware_version: z.string().optional(),
-    capability_bitmap: z.string().optional(), // Assuming this is a string, adjust if it's a number
-    device_revision: z.string().optional(), // Assuming this is a string, adjust if it's a number
+    capability_bitmap: z.coerce.string().optional(), // Coerce numbers to strings for resilience
+    device_revision: z.coerce.string().optional(), // Coerce numbers to strings for resilience
     firmware_version: z.string().optional(),
     serial_number: z.string().optional(),
-    vendor_id: z.string().optional(), // Assuming this is a string, adjust if it's a number
+    vendor_id: z.coerce.string().optional(), // Coerce numbers to strings for resilience
     last_rx_rssi: z.number().optional(), // Signal strength in dBm
     last_link_type: z.number().optional(), // 1 for BLE, 4 for LoRA
 });

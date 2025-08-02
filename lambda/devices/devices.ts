@@ -75,10 +75,40 @@ app.get('/',
                 return device;
             }) || [];
 
-            return c.json(devicesSchema.parse(devices));
+            // Use safeParse for more resilient validation
+            const parseResult = devicesSchema.safeParse(devices);
+
+            if (!parseResult.success) {
+                console.error('Schema validation failed:', parseResult.error);
+
+                // Log details about the validation errors
+                parseResult.error.issues.forEach((issue, index) => {
+                    console.error(`Validation issue ${index + 1}:`, {
+                        path: issue.path,
+                        message: issue.message,
+                        received: issue.received,
+                        expected: issue.expected
+                    });
+                });
+
+                // Return devices with partial validation - filter out invalid items
+                const validDevices = devices.filter((device, index) => {
+                    const singleDeviceResult = deviceSchema.safeParse(device);
+                    if (!singleDeviceResult.success) {
+                        console.warn(`Device at index ${index} failed validation:`, device);
+                        return false;
+                    }
+                    return true;
+                });
+
+                console.log(`Returning ${validDevices.length} valid devices out of ${devices.length} total`);
+                return c.json(validDevices);
+            }
+
+            return c.json(parseResult.data);
         } catch (error) {
             console.error('Error in device scan operation:', error);
-            return c.json({ error: 'Failed to retrieve devices' }, 500);
+            return c.json({ error: 'Failed to retrieve devices', details: error.message }, 500);
         }
     })
 
@@ -149,16 +179,41 @@ app.get('/:deviceId',
             // Always return the original device ID in the response
             device.device_id = deviceId;
 
-            return c.json(deviceSchema.parse(device));
+            // Use safeParse for more resilient validation
+            const parseResult = deviceSchema.safeParse(device);
+
+            if (!parseResult.success) {
+                console.error('Device schema validation failed:', parseResult.error);
+                console.error('Device data that failed validation:', device);
+
+                // Log details about the validation errors
+                parseResult.error.issues.forEach((issue, index) => {
+                    console.error(`Validation issue ${index + 1}:`, {
+                        path: issue.path,
+                        message: issue.message,
+                        received: issue.received,
+                        expected: issue.expected
+                    });
+                });
+
+                // Return the device data anyway but with a warning
+                console.warn('Returning device data despite validation errors');
+                return c.json({
+                    ...device,
+                    _validation_warnings: parseResult.error.issues.map(issue => issue.message)
+                });
+            }
+
+            return c.json(parseResult.data);
         } catch (error) {
             console.error('Error fetching device:', error);
-            return c.json({ error: 'Internal server error' }, 500);
+            return c.json({ error: 'Internal server error', details: error.message }, 500);
         }
     })
 
 app.get('/:deviceId/data',
     describeRoute({
-        description: "Fetch device data from DobbyData table",
+        description: "Fetch device data",
         responses: {
             200: {
                 content: {
@@ -166,13 +221,55 @@ app.get('/:deviceId/data',
                         schema: resolver(deviceDataSchema),
                     },
                 },
-                description: 'Retrieve device time series data',
+                description: 'Successfully retrieved device time series data',
+            },
+            400: {
+                description: 'Invalid device ID format',
+                content: {
+                    'application/json': {
+                        schema: {
+                            type: 'object',
+                            properties: {
+                                error: {
+                                    type: 'string',
+                                    example: 'Invalid device ID format'
+                                }
+                            }
+                        }
+                    }
+                }
             },
             404: {
                 description: 'Device not found or no data available',
+                content: {
+                    'application/json': {
+                        schema: {
+                            type: 'object',
+                            properties: {
+                                error: {
+                                    type: 'string',
+                                    example: 'Device not found in production line'
+                                }
+                            }
+                        }
+                    }
+                }
             },
             500: {
                 description: 'Internal server error',
+                content: {
+                    'application/json': {
+                        schema: {
+                            type: 'object',
+                            properties: {
+                                error: {
+                                    type: 'string',
+                                    example: 'Internal server error'
+                                }
+                            }
+                        }
+                    }
+                }
             },
         },
     }),

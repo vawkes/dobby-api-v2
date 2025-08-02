@@ -13,7 +13,16 @@ const app = new Hono()
 
 // Add CORS middleware to handle cross-origin requests
 app.use('*', cors({
-    origin: ['http://localhost:3000', 'https://localhost:3000', 'https://d1dz25mfg0xsp8.cloudfront.net', '*'],
+    origin: [
+        'http://localhost:3000',
+        'https://localhost:3000',
+        'http://localhost:3001',  // Additional localhost port
+        'https://d1dz25mfg0xsp8.cloudfront.net', // Development CloudFront
+        'https://d2996moha39e78.cloudfront.net', // Production CloudFront (actual)
+        'https://api.gridcube.dev.vawkes.com', // Development API domain
+        'https://api.gridcube.vawkes.com', // Production API domain
+        'https://*.vawkes.com',  // Fallback for other subdomains
+    ],
     allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
     allowHeaders: ['Content-Type', 'Authorization', 'X-API-Key', 'X-Origin-Verify', 'X-Requested-With'],
     credentials: true,
@@ -40,7 +49,7 @@ publicRoutes.get(
         documentation: {
             info: {
                 title: 'Vawkes GridCube API',
-                version: '1.0.0',
+                version: '2.0.0',
                 description: 'API for interacting with Vawkes GridCube devices.'
             },
             servers: [],
@@ -66,12 +75,12 @@ publicRoutes.get(
     })
 )
 
-// Add API documentation UI to public routes
+// Add API reference documentation
 publicRoutes.get(
     '/docs',
     apiReference({
         theme: 'saturn',
-        spec: { url: '/prod/public/openapi' },
+        spec: { url: '/public/openapi' },
     })
 )
 

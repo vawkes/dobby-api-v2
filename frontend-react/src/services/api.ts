@@ -7,12 +7,17 @@ import { v4 as uuidv4 } from 'uuid';
 // In development, leave empty to use the proxy in package.json
 // In production, use the API URL from runtime config
 const getBaseUrl = () => {
+    let baseUrl;
     if (process.env.NODE_ENV === 'production') {
         // In production, try to get from runtime config
-        return getConfig('API_URL');
+        baseUrl = getConfig('API_URL');
+    } else {
+        // In development, use empty string to leverage the proxy
+        baseUrl = process.env.REACT_APP_API_URL || '';
     }
-    // In development, use empty string to leverage the proxy
-    return process.env.REACT_APP_API_URL || '';
+
+    // Remove trailing slash to prevent double slashes
+    return baseUrl ? baseUrl.replace(/\/$/, '') : baseUrl;
 };
 
 // Create an axios instance with default config
@@ -27,8 +32,10 @@ const api = axios.create({
 
 // Update the base URL when the config is loaded
 const updateBaseUrl = () => {
-    const baseUrl = getBaseUrl();
+    let baseUrl = getBaseUrl();
     if (baseUrl) {
+        // Remove trailing slash to prevent double slashes
+        baseUrl = baseUrl.replace(/\/$/, '');
         api.defaults.baseURL = baseUrl;
         console.log(`API base URL set to: ${baseUrl}`);
     }

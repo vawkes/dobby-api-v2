@@ -1,57 +1,74 @@
 #!/usr/bin/env node
+import 'source-map-support/register';
 import * as cdk from 'aws-cdk-lib';
 import { DobbyApiV2Stack } from '../lib/dobby-api-v2-stack';
 import { ReactFrontendStack } from '../lib/react-frontend-stack';
+import { CertificateStack } from '../lib/certificate-stack';
+import { DnsStack } from '../lib/dns-stack';
+import { getEnvironmentConfig } from '../deployment/config';
 
 const app = new cdk.App();
 
-// Environment values
-const env = {
-  account: '530256939393',  // Production AWS account ID
-  region: 'us-east-1'       // Explicitly set the region
-};
+// Get environment from context or default to develop
+const environment = app.node.tryGetContext('environment') || 'develop';
+const environmentConfig = getEnvironmentConfig(environment);
 
-// Deploy the API stack
+console.log(`Deploying to environment: ${environment}`);
+console.log(`Using AWS profile: ${environmentConfig.awsProfile}`);
+
+// Create certificate stack first
+const certificateStack = new CertificateStack(app, 'CertificateStack', {
+  env: {
+    account: environmentConfig.account,
+    region: environmentConfig.region,
+  },
+  environmentConfig,
+});
+
+// Create API stack
 const apiStack = new DobbyApiV2Stack(app, 'DobbyApiV2Stack', {
-  /* If you don't specify 'env', this stack will be environment-agnostic.
-   * Account/Region-dependent features and context lookups will not work,
-   * but a single synthesized template can be deployed anywhere. */
-
-  /* Uncomment the next line to specialize this stack for the AWS Account
-   * and Region that are implied by the current CLI configuration. */
-  env,
-
-  /* Uncomment the next line if you know exactly what Account and Region you
-   * want to deploy the stack to. */
-  // env: { account: '123456789012', region: 'us-east-1' },
-
-  /* For more information, see https://docs.aws.amazon.com/cdk/latest/guide/environments.html */
-  description: 'Dobby API V2 Stack for Production',
-  tags: {
-    Environment: 'production',
-    Project: 'dobby-api-v2'
-  }
+  env: {
+    account: environmentConfig.account,
+    region: environmentConfig.region,
+  },
+  environmentConfig,
+  certificateArn: certificateStack.backendCertificateArn,
 });
 
-// Deploy the new React frontend stack
-const reactFrontendStack = new ReactFrontendStack(app, 'ReactFrontendStack', {
-  // Domain configuration
-  domainName: process.env.DOMAIN_NAME,
-  subDomain: process.env.SUB_DOMAIN || 'app',
-  certificateArn: process.env.CERTIFICATE_ARN,
-
-  // API URL - use the output from the API stack if available
-  // This can be accessed later in the frontend code
-  // apiUrl: apiStack.apiEndpoint, // Uncomment if apiEndpoint is exported from the API stack
-
-  env,
-  description: 'Static React frontend deployment stack with S3 and CloudFront',
+// Create frontend stack
+const frontendStack = new ReactFrontendStack(app, 'ReactFrontendStack', {
+  env: {
+    account: environmentConfig.account,
+    region: environmentConfig.region,
+  },
+  environmentConfig,
+  domainName: environmentConfig.frontend?.domain,
+  subDomain: environmentConfig.frontend?.subdomain,
+  certificate: certificateStack.frontendCertificate,
+  dnsAccountId: environmentConfig.dns?.account,
+  dnsProfile: environmentConfig.dns?.profile || 'default',
 });
 
-// Add tags to all stacks
-for (const stack of [apiStack, reactFrontendStack]) {
-  cdk.Tags.of(stack).add('Project', 'dobby-api-v2');
-  cdk.Tags.of(stack).add('Environment', process.env.ENVIRONMENT || 'development');
+// const dnsStack = new DnsStack(app, 'DnsStack', {
+//   env: {
+//     account: environmentConfig.dns?.account
+//   },
+//   environmentConfig,
+//   frontendDistributionDomainName: frontendStack.url,
+//   apiGatewayDomainName: apiStack.apiEndpoint,
+// });
+
+// Add dependencies
+apiStack.addDependency(certificateStack);
+frontendStack.addDependency(certificateStack);
+
+// Add environment-specific tags to all stacks
+const stacks = [certificateStack, apiStack, frontendStack];
+
+for (const stack of stacks) {
+  Object.entries(environmentConfig.tags).forEach(([key, value]) => {
+    cdk.Tags.of(stack).add(key, value);
+  });
 }
 
 app.synth();
