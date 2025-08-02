@@ -69,7 +69,7 @@ export const handleAdvancedLoadUp = async (
         view.setUint16(3, value, true);
         
         // Units
-        view.setUint8(5, units, true);
+        view.setUint8(5, units);
         
         // Suggested Load Up Efficiency
         view.setUint8(6, suggestedLoadUpEfficiency);

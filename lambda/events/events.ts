@@ -10,20 +10,22 @@ import { handleStartShed } from "./eventHandlers/startShed.ts";
 import { handleEndShed } from "./eventHandlers/endShed.ts";
 import { handleGridEmergency } from "./eventHandlers/gridEmergency.ts";
 import { handleCriticalPeak } from "./eventHandlers/criticalPeak.ts";
-import { handleInfoRequest } from "./eventHandlers/infoRequest.ts";
-import { handleAdvancedLoadUp } from "./eventHandlers/advancedLoadUp.ts";
 import { handleCustomerOverride } from "./eventHandlers/customerOverride.ts";
+import { handleAdvancedLoadUp } from "./eventHandlers/advancedLoadUp.ts";
+import { handleInfoRequest } from "./eventHandlers/infoRequest.ts";
+import { handleRequestConnectionInfo } from "./eventHandlers/requestConnectionInfo.ts";
+import { handleSetBitmap } from "./eventHandlers/setBitmap.ts";
 import { handleSetUtcTime } from "./eventHandlers/setUtcTime.ts";
 import { handleGetUtcTime } from "./eventHandlers/getUtcTime.ts";
-import { handleSetBitmap } from './eventHandlers/setBitmap.ts';
-import { handleRequestConnectionInfo } from './eventHandlers/requestConnectionInfo.ts';
 import { v4 as uuidv4 } from 'uuid';
+import { getUserFromContext, getUserAccessibleDevices, checkUserDeviceAccess, UserContext } from '../utils/deviceAccess';
+import { requirePermission, requireDevicePermission, Action } from '../utils/permissions';
 
-const app = new Hono()
+const app = new Hono();
 
 app.get("/",
     describeRoute({
-        description: "Fetch all events",
+        description: "Fetch all events for devices accessible to the authenticated user",
         responses: {
             200: {
                 description: "Retrieve List of Events",
@@ -38,13 +40,28 @@ app.get("/",
             },
         },
     }),
+    requirePermission(Action.READ_EVENTS),
     async (c) => {
         try {
             const dynamodb = new DynamoDB({ "region": "us-east-1" });
+
+            // Get user from context (set by auth middleware)
+            const user = getUserFromContext(c);
+            if (!user || !user.sub) {
+                return c.json({ error: 'User not authenticated' }, 401);
+            }
+
+            // Get user's accessible devices
+            const accessibleDeviceIds = await getUserAccessibleDevices(dynamodb, user.sub);
+            
+            if (accessibleDeviceIds.length === 0) {
+                return c.json([]);
+            }
+
             const results = await dynamodb.scan({ TableName: "DobbyEvent" });
 
             // Transform the data to ensure it matches the schema
-            const events = results.Items?.map(item => {
+            const allEvents = results.Items?.map(item => {
                 const event = unmarshall(item);
 
                 // Make sure event_data exists and has the necessary structure
@@ -76,7 +93,12 @@ app.get("/",
                 return event;
             }) || [];
 
-            return c.json(eventsSchema.parse(events));
+            // Filter events to only include those for devices accessible to the user
+            const accessibleEvents = allEvents.filter(event => 
+                accessibleDeviceIds.includes(event.device_id)
+            );
+
+            return c.json(eventsSchema.parse(accessibleEvents));
         } catch (error) {
             console.error("Error fetching events:", error);
             return c.json({ error: "Failed to fetch events" }, 500);
@@ -85,7 +107,7 @@ app.get("/",
 
 app.get("/device/:deviceId",
     describeRoute({
-        description: "Fetch events for a specific device",
+        description: "Fetch events for a specific device if accessible to the authenticated user",
         responses: {
             200: {
                 description: "Retrieve events for a device",
@@ -95,6 +117,9 @@ app.get("/device/:deviceId",
                     },
                 },
             },
+            403: {
+                description: "Access denied to this device",
+            },
             404: {
                 description: "No events found for this device",
             },
@@ -103,6 +128,7 @@ app.get("/device/:deviceId",
             },
         },
     }),
+    requireDevicePermission(Action.READ_EVENTS),
     async (c) => {
         try {
             const deviceId = c.req.param("deviceId");
@@ -185,6 +211,7 @@ app.get("/:eventId",
             },
         },
     }),
+    requirePermission(Action.READ_EVENTS),
     async (c) => {
         try {
             const dynamodb = new DynamoDB({ "region": "us-east-1" });
@@ -248,6 +275,7 @@ app.post("/",
             },
         },
     }),
+    requirePermission(Action.CREATE_EVENTS),
     zValidator('json', eventRequestSchema),
     async (c) => {
         try {

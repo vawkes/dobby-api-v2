@@ -1,6 +1,7 @@
 import { handle } from 'hono/aws-lambda'
 import devices from './devices/devices'
 import events from './events/events'
+import companies from './companies/companies.ts'
 import authRoutes from './utils/authRoutes'
 import { Hono } from 'hono'
 import { openAPISpecs } from 'hono-openapi'
@@ -40,6 +41,7 @@ publicRoutes.route('/auth', authRoutes)
 const fullApp = new Hono()
 fullApp.route('/devices', devices)
 fullApp.route('/events', events)
+fullApp.route('/companies', companies)
 fullApp.route('/public/auth', authRoutes)
 
 // Add OpenAPI documentation to public routes
@@ -56,6 +58,7 @@ publicRoutes.get(
             tags: [
                 { name: 'Devices', description: 'Device management endpoints' },
                 { name: 'Events', description: 'Event data endpoints' },
+                { name: 'Companies', description: 'Company management endpoints' },
                 { name: 'Authentication', description: 'User authentication endpoints' }
             ],
             components: {
@@ -101,6 +104,7 @@ const protectedRoutes = new Hono();
 protectedRoutes.use('/*', auth);
 protectedRoutes.route('/devices', devices);
 protectedRoutes.route('/events', events);
+protectedRoutes.route('/companies', companies);
 
 // Mount the protected routes at the root level
 app.route('/', protectedRoutes);

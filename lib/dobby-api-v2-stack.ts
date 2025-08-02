@@ -33,6 +33,46 @@ export class DobbyApiV2Stack extends cdk.Stack {
     const dataTable = dynamodb.Table.fromTableName(this, 'DobbyDataTable', 'DobbyData');
     const productionLineTable = dynamodb.Table.fromTableName(this, 'ProductionLineTable', 'ProductionLine');
 
+    // Create company-related DynamoDB tables
+    const companiesTable = new dynamodb.Table(this, 'CompaniesTable', {
+      tableName: 'Companies',
+      partitionKey: { name: 'id', type: dynamodb.AttributeType.STRING },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
+    });
+
+    const companyUsersTable = new dynamodb.Table(this, 'CompanyUsersTable', {
+      tableName: 'CompanyUsers',
+      partitionKey: { name: 'company_id', type: dynamodb.AttributeType.STRING },
+      sortKey: { name: 'user_id', type: dynamodb.AttributeType.STRING },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
+    });
+
+    // Add GSI for user_id queries on CompanyUsers table
+    companyUsersTable.addGlobalSecondaryIndex({
+      indexName: 'user_id-index',
+      partitionKey: { name: 'user_id', type: dynamodb.AttributeType.STRING },
+      sortKey: { name: 'company_id', type: dynamodb.AttributeType.STRING },
+      projectionType: dynamodb.ProjectionType.ALL,
+    });
+
+    const companyDevicesTable = new dynamodb.Table(this, 'CompanyDevicesTable', {
+      tableName: 'CompanyDevices',
+      partitionKey: { name: 'company_id', type: dynamodb.AttributeType.STRING },
+      sortKey: { name: 'device_id', type: dynamodb.AttributeType.STRING },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
+    });
+
+    // Add GSI for device_id queries on CompanyDevices table
+    companyDevicesTable.addGlobalSecondaryIndex({
+      indexName: 'device_id-index',
+      partitionKey: { name: 'device_id', type: dynamodb.AttributeType.STRING },
+      sortKey: { name: 'company_id', type: dynamodb.AttributeType.STRING },
+      projectionType: dynamodb.ProjectionType.ALL,
+    });
+
     // Create DynamoDB tables
     // const infoTable = new dynamodb.Table(this, 'DobbyInfoTable', {
     //   tableName: 'DobbyInfo', 
@@ -121,6 +161,9 @@ export class DobbyApiV2Stack extends cdk.Stack {
     eventTable.grantFullAccess(fn)
     dataTable.grantFullAccess(fn)
     productionLineTable.grantFullAccess(fn)
+    companiesTable.grantFullAccess(fn)
+    companyUsersTable.grantFullAccess(fn)
+    companyDevicesTable.grantFullAccess(fn)
 
     fn.addFunctionUrl({
       authType: lambda.FunctionUrlAuthType.NONE,
