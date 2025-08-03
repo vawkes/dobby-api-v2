@@ -148,7 +148,7 @@ app.get('/:companyId',
         try {
             const companyId = c.req.param('companyId');
             const dynamodb = new DynamoDB({ region: 'us-east-1' });
-            
+
             const result = await dynamodb.getItem({
                 TableName: 'Companies',
                 Key: { id: { S: companyId } }

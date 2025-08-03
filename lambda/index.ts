@@ -108,17 +108,17 @@ For technical support or questions about this API, please contact our developmen
                 }
             ],
             tags: [
-                { 
-                    name: 'Devices', 
-                    description: 'Device management and monitoring endpoints. Get device status, data, and control device operations.' 
+                {
+                    name: 'Devices',
+                    description: 'Device management and monitoring endpoints. Get device status, data, and control device operations.'
                 },
-                { 
-                    name: 'Events', 
-                    description: 'Event management endpoints. Send commands and events to control device behavior and track device activities.' 
+                {
+                    name: 'Events',
+                    description: 'Event management endpoints. Send commands and events to control device behavior and track device activities.'
                 },
-                { 
-                    name: 'Authentication', 
-                    description: 'User authentication and authorization endpoints. Register, login, and manage user sessions.' 
+                {
+                    name: 'Authentication',
+                    description: 'User authentication and authorization endpoints. Register, login, and manage user sessions.'
                 }
             ],
             components: {

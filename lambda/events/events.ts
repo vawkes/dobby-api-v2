@@ -18,8 +18,9 @@ import { handleSetBitmap } from "./eventHandlers/setBitmap.ts";
 import { handleSetUtcTime } from "./eventHandlers/setUtcTime.ts";
 import { handleGetUtcTime } from "./eventHandlers/getUtcTime.ts";
 import { v4 as uuidv4 } from 'uuid';
-import { getUserFromContext, getUserAccessibleDevices, checkUserDeviceAccess, UserContext } from '../utils/deviceAccess';
-import { requirePermission, requireDevicePermission, Action } from '../utils/permissions';
+import { getUserFromContext, getUserAccessibleDevices, checkUserDeviceAccess, UserContext } from '../utils/deviceAccess.ts';
+import { requirePermission, requireDevicePermission, Action } from '../utils/permissions.ts';
+import { resolveDeviceIdForCommunication } from '../utils/deviceIdMapping.ts';
 
 const app = new Hono();
 
@@ -53,7 +54,7 @@ app.get("/",
 
             // Get user's accessible devices
             const accessibleDeviceIds = await getUserAccessibleDevices(dynamodb, user.sub);
-            
+
             if (accessibleDeviceIds.length === 0) {
                 return c.json([]);
             }
@@ -94,7 +95,7 @@ app.get("/",
             }) || [];
 
             // Filter events to only include those for devices accessible to the user
-            const accessibleEvents = allEvents.filter(event => 
+            const accessibleEvents = allEvents.filter(event =>
                 accessibleDeviceIds.includes(event.device_id)
             );
 
@@ -294,43 +295,47 @@ app.post("/",
             // If only one device, handle as single operation
             if (deviceIds.length === 1) {
                 const deviceId = deviceIds[0];
+                const dynamodb = new DynamoDB({ "region": "us-east-1" });
+
+                // Resolve the device ID for communication (get wireless device ID if needed)
+                const resolvedDeviceId = await resolveDeviceIdForCommunication(dynamodb, deviceId);
 
                 // Create event with appropriate handler based on event type
                 if (eventType === EventType.LOAD_UP) {
                     result = await handleLoadUp(
-                        deviceId,
+                        resolvedDeviceId,
                         'start_time' in eventData && eventData.start_time ? new Date(eventData.start_time) : undefined,
                         'duration' in eventData ? eventData.duration : undefined
                     );
                 }
                 else if (eventType === EventType.GRID_EMERGENCY) {
                     result = await handleGridEmergency(
-                        deviceId,
+                        resolvedDeviceId,
                         'start_time' in eventData && eventData.start_time ? new Date(eventData.start_time) : undefined
                     );
                 }
                 else if (eventType === EventType.CRITICAL_PEAK) {
                     result = await handleCriticalPeak(
-                        deviceId,
+                        resolvedDeviceId,
                         'start_time' in eventData && eventData.start_time ? new Date(eventData.start_time) : undefined
                     );
                 }
                 else if (eventType === EventType.START_SHED) {
                     result = await handleStartShed(
-                        deviceId,
+                        resolvedDeviceId,
                         'start_time' in eventData && eventData.start_time ? new Date(eventData.start_time) : undefined,
                         'duration' in eventData ? eventData.duration || 0 : 0
                     );
                 }
                 else if (eventType === EventType.END_SHED) {
                     result = await handleEndShed(
-                        deviceId,
+                        resolvedDeviceId,
                         'start_time' in eventData && eventData.start_time ? new Date(eventData.start_time) : undefined
                     );
                 }
                 else if (eventType === EventType.INFO_REQUEST) {
                     result = await handleInfoRequest(
-                        deviceId,
+                        resolvedDeviceId,
                         'timestamp' in eventData && eventData.timestamp ? new Date(eventData.timestamp) : undefined
                     );
                 }
@@ -345,7 +350,7 @@ app.post("/",
                     const startRandomization = 'start_randomization' in eventData ? eventData.start_randomization || 0 : 0;
                     const endRandomization = 'end_randomization' in eventData ? eventData.end_randomization || 0 : 0;
                     result = await handleAdvancedLoadUp(
-                        deviceId,
+                        resolvedDeviceId,
                         startTime,
                         duration,
                         value,
@@ -358,7 +363,7 @@ app.post("/",
                 }
                 else if (eventType === EventType.CUSTOMER_OVERRIDE) {
                     result = await handleCustomerOverride(
-                        deviceId,
+                        resolvedDeviceId,
                         'override' in eventData ? eventData.override : false
                     );
                 }
@@ -373,7 +378,7 @@ app.post("/",
                 }
                 else if (eventType === EventType.REQUEST_CONNECTION_INFO) {
                     result = await handleRequestConnectionInfo({
-                        device_id: deviceId,
+                        device_id: resolvedDeviceId,
                         event_sent: false
                     });
                 }
@@ -402,6 +407,7 @@ app.post("/",
             }
             // Otherwise, handle as bulk operation
             else {
+                const dynamodb = new DynamoDB({ "region": "us-east-1" });
                 const successfulEvents: EventSchemaType[] = [];
                 const failedEvents: { device_id: string, error: string }[] = [];
 
@@ -410,42 +416,45 @@ app.post("/",
                     try {
                         let result: EventSchemaType | null = null;
 
+                        // Resolve the device ID for communication (get wireless device ID if needed)
+                        const resolvedDeviceId = await resolveDeviceIdForCommunication(dynamodb, deviceId);
+
                         // Create event with appropriate handler based on event type
                         if (eventType === EventType.LOAD_UP) {
                             result = await handleLoadUp(
-                                deviceId,
+                                resolvedDeviceId,
                                 'start_time' in eventData && eventData.start_time ? new Date(eventData.start_time) : undefined,
                                 'duration' in eventData ? eventData.duration : undefined
                             );
                         }
                         else if (eventType === EventType.GRID_EMERGENCY) {
                             result = await handleGridEmergency(
-                                deviceId,
+                                resolvedDeviceId,
                                 'start_time' in eventData && eventData.start_time ? new Date(eventData.start_time) : undefined
                             );
                         }
                         else if (eventType === EventType.CRITICAL_PEAK) {
                             result = await handleCriticalPeak(
-                                deviceId,
+                                resolvedDeviceId,
                                 'start_time' in eventData && eventData.start_time ? new Date(eventData.start_time) : undefined
                             );
                         }
                         else if (eventType === EventType.START_SHED) {
                             result = await handleStartShed(
-                                deviceId,
+                                resolvedDeviceId,
                                 'start_time' in eventData && eventData.start_time ? new Date(eventData.start_time) : undefined,
                                 'duration' in eventData ? eventData.duration || 0 : 0
                             );
                         }
                         else if (eventType === EventType.END_SHED) {
                             result = await handleEndShed(
-                                deviceId,
+                                resolvedDeviceId,
                                 'start_time' in eventData && eventData.start_time ? new Date(eventData.start_time) : undefined
                             );
                         }
                         else if (eventType === EventType.INFO_REQUEST) {
                             result = await handleInfoRequest(
-                                deviceId,
+                                resolvedDeviceId,
                                 'timestamp' in eventData && eventData.timestamp ? new Date(eventData.timestamp) : undefined
                             );
                         }
@@ -460,7 +469,7 @@ app.post("/",
                             const startRandomization = 'start_randomization' in eventData ? eventData.start_randomization || 0 : 0;
                             const endRandomization = 'end_randomization' in eventData ? eventData.end_randomization || 0 : 0;
                             result = await handleAdvancedLoadUp(
-                                deviceId,
+                                resolvedDeviceId,
                                 startTime,
                                 duration,
                                 value,
@@ -473,7 +482,7 @@ app.post("/",
                         }
                         else if (eventType === EventType.CUSTOMER_OVERRIDE) {
                             result = await handleCustomerOverride(
-                                deviceId,
+                                resolvedDeviceId,
                                 'override' in eventData ? eventData.override : false
                             );
                         }
@@ -488,7 +497,7 @@ app.post("/",
                         }
                         else if (eventType === EventType.REQUEST_CONNECTION_INFO) {
                             result = await handleRequestConnectionInfo({
-                                device_id: deviceId,
+                                device_id: resolvedDeviceId,
                                 event_sent: false
                             });
                         }

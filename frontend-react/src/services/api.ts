@@ -1,23 +1,13 @@
 import axios from 'axios';
 import { toast } from 'react-toastify';
-import { getConfig } from '../utils/config';
+import { getApiUrl } from '../utils/config';
 import { v4 as uuidv4 } from 'uuid';
 
 // Define the base URL for the API 
-// In development, leave empty to use the proxy in package.json
-// In production, use the API URL from runtime config
 const getBaseUrl = () => {
-    let baseUrl;
-    if (process.env.NODE_ENV === 'production') {
-        // In production, try to get from runtime config
-        baseUrl = getConfig('API_URL');
-    } else {
-        // In development, use the API URL directly
-        baseUrl = process.env.REACT_APP_API_URL || 'https://api.gridcube.dev.vawkes.com';
-    }
-
-    // Remove trailing slash to prevent double slashes
-    return baseUrl ? baseUrl.replace(/\/$/, '') : baseUrl;
+    const baseUrl = getApiUrl();
+    console.log('📡 API base URL:', baseUrl);
+    return baseUrl;
 };
 
 // Create an axios instance with default config
@@ -30,15 +20,17 @@ const api = axios.create({
     timeout: 15000,
 });
 
+// Log the initial configuration
+console.log('🔧 API Configuration:');
+console.log('  - NODE_ENV:', process.env.NODE_ENV);
+console.log('  - REACT_APP_API_URL:', process.env.REACT_APP_API_URL);
+console.log('  - Base URL:', api.defaults.baseURL);
+
 // Update the base URL when the config is loaded
 const updateBaseUrl = () => {
-    let baseUrl = getBaseUrl();
-    if (baseUrl) {
-        // Remove trailing slash to prevent double slashes
-        baseUrl = baseUrl.replace(/\/$/, '');
-        api.defaults.baseURL = baseUrl;
-        console.log(`API base URL set to: ${baseUrl}`);
-    }
+    const baseUrl = getApiUrl();
+    api.defaults.baseURL = baseUrl;
+    console.log('🔧 API base URL updated to:', baseUrl);
 };
 
 // Store a flag to avoid multiple concurrent refresh attempts
