@@ -208,9 +208,12 @@ export class DobbyApiV2Stack extends cdk.Stack {
           'https://d1dz25mfg0xsp8.cloudfront.net', // Development CloudFront
           'https://d2996moha39e78.cloudfront.net',
           'https://d-dncsqj6zw0.execute-api.us-east-1.amazonaws.com', // Production CloudFront (actual)
+          'https://EY54VXLNWUWUC.cloudfront.net', // Current development CloudFront
           'https://api.gridcube.dev.vawkes.com', // Development API domain
           'https://api.gridcube.vawkes.com', // Production API domain
-          'https://*.vawkes.com',      // Fallback for other subdomains
+          'https://gridcube.dev.vawkes.com', // Specific development frontend domain
+          'https://gridcube.vawkes.com', // Production frontend domain
+          'http://localhost:3000', // Ensure localhost is included for development
         ],
         allowMethods: apigw.Cors.ALL_METHODS,
         allowHeaders: [...apigw.Cors.DEFAULT_HEADERS, 'Authorization', 'Content-Type'],

@@ -20,9 +20,11 @@ app.use('*', cors({
         'http://localhost:3001',  // Additional localhost port
         'https://d1dz25mfg0xsp8.cloudfront.net', // Development CloudFront
         'https://d2996moha39e78.cloudfront.net', // Production CloudFront (actual)
+        'https://EY54VXLNWUWUC.cloudfront.net', // Current development CloudFront
         'https://api.gridcube.dev.vawkes.com', // Development API domain
         'https://api.gridcube.vawkes.com', // Production API domain
-        'https://*.vawkes.com',  // Fallback for other subdomains
+        'https://gridcube.dev.vawkes.com', // Specific development frontend domain
+        'https://gridcube.vawkes.com', // Production frontend domain
     ],
     allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
     allowHeaders: ['Content-Type', 'Authorization', 'X-API-Key', 'X-Origin-Verify', 'X-Requested-With'],

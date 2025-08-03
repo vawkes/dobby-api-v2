@@ -53,7 +53,6 @@ const DeviceDetail: React.FC = () => {
     const [isLoadingData, setIsLoadingData] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [dataError, setDataError] = useState<string | null>(null);
-    const [selectedMetric, setSelectedMetric] = useState<string>('overlay');
     const [timeRange, setTimeRange] = useState<number>(1); // Default to 1 day
     const [eventsKey, setEventsKey] = useState<number>(0); // Used to force refresh of events component
 
@@ -165,6 +164,47 @@ const DeviceDetail: React.FC = () => {
         setEventsKey(prevKey => prevKey + 1);
     };
 
+    // Custom tooltip component that shows all metrics
+    const CustomTooltip = ({ active, payload, label }: any) => {
+        if (active && payload && payload.length) {
+            const dataIndex = payload[0].payload.timeMs === currentTime &&
+                payload[0].payload.timeMs !== formattedChartData[formattedChartData.length - 1]?.timeMs;
+            if (dataIndex) {
+                return null;
+            }
+
+            return (
+                <div className="custom-tooltip bg-white p-3 border border-gray-300 rounded shadow-lg z-50">
+                    <p className="font-semibold text-gray-900 mb-2">{new Date(label).toLocaleString()}</p>
+                    <div className="space-y-1">
+                        {payload.map((entry: any, index: number) => {
+                            let formattedValue = entry.value;
+                            let unit = '';
+
+                            // Format based on metric type
+                            if (entry.name === 'Instant Power') {
+                                unit = 'W';
+                            } else if (entry.name === 'Cumulative Energy') {
+                                // Convert Wh to kWh
+                                formattedValue = (Number(entry.value) / 1000).toFixed(3);
+                                unit = 'kWh';
+                            } else if (entry.name === 'Operational State') {
+                                unit = '';
+                            }
+
+                            return (
+                                <p key={`item-${index}`} style={{ color: entry.color }} className="text-sm">
+                                    {entry.name}: {formattedValue} {unit}
+                                </p>
+                            );
+                        })}
+                    </div>
+                </div>
+            );
+        }
+        return null;
+    };
+
     return (
         <div className="min-h-screen bg-gray-100">
             <main>
@@ -192,7 +232,7 @@ const DeviceDetail: React.FC = () => {
                                     Back to Devices
                                 </Link>
                             </div>
-                            {/* Device Data Chart Section */}
+                            {/* Device Data Charts Section */}
                             <div className="bg-white shadow overflow-hidden sm:rounded-lg mb-8">
                                 <div className="px-4 py-5 sm:px-6 flex justify-between items-center">
                                     <div>
@@ -200,16 +240,6 @@ const DeviceDetail: React.FC = () => {
                                         <p className="mt-1 max-w-2xl text-sm text-gray-500">Time series data from DobbyData table.</p>
                                     </div>
                                     <div className="flex items-center space-x-4">
-                                        <select
-                                            value={selectedMetric}
-                                            onChange={(e) => setSelectedMetric(e.target.value)}
-                                            className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
-                                        >
-                                            <option value="overlay">All Metrics (Overlay)</option>
-                                            <option value="instant_power">Instant Power (W)</option>
-                                            <option value="cumulative_energy">Cumulative Energy (Wh)</option>
-                                            <option value="operational_state">Operational State</option>
-                                        </select>
                                         <select
                                             value={timeRange}
                                             onChange={(e) => setTimeRange(Number(e.target.value))}
@@ -243,151 +273,114 @@ const DeviceDetail: React.FC = () => {
                                             <p className="mt-2">No data available for this device.</p>
                                         </div>
                                     ) : (
-                                        <div className="p-4 h-96">
-                                            <ResponsiveContainer width="100%" height="100%">
-                                                <LineChart
-                                                    data={renderData}
-                                                    margin={{ top: 5, right: 100, left: 20, bottom: 5 }}
-                                                >
-                                                    <CartesianGrid strokeDasharray="3 3" />
-                                                    <XAxis
-                                                        dataKey="timeMs"
-                                                        scale="time"
-                                                        domain={[startTime, currentTime]}
-                                                        type="number"
-                                                        tickFormatter={formatXAxis}
-                                                        label={{ value: 'Time', position: 'center' }}
-                                                    />
-
-                                                    {/* Primary Y-axis - for instant power or selected single metric */}
-                                                    <YAxis
-                                                        yAxisId="left"
-                                                        domain={selectedMetric === 'cumulative_energy' ? ['auto', 'auto'] : [0, 'auto']}
-                                                        tickFormatter={(value) => {
-                                                            // Convert Wh to kWh for cumulative energy
-                                                            if (selectedMetric === 'cumulative_energy') {
-                                                                return (value / 1000).toFixed(0);
-                                                            }
-                                                            return value;
-                                                        }}
-                                                    >
-                                                        <Label value={selectedMetric === 'overlay' ? 'Instant Power (W)' : getAxisLabel(selectedMetric)} position="left" angle={270} style={{ textAnchor: 'middle' }} />
-                                                    </YAxis>
-
-                                                    {/* Tertiary Y-axis for operational state (only shown in overlay mode) */}
-                                                    {selectedMetric === 'overlay' && (
-                                                        <YAxis
-                                                            yAxisId="right2"
-                                                            orientation="right"
+                                        <div className="p-4">
+                                            <div className="grid grid-cols-1 gap-6">
+                                                {/* Instant Power Chart */}
+                                                <div className="h-80">
+                                                    <h4 className="text-sm font-medium text-gray-900 mb-2">Instant Power</h4>
+                                                    <ResponsiveContainer width="100%" height="100%">
+                                                        <LineChart
+                                                            data={renderData}
+                                                            margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
                                                         >
-                                                            <Label value="Operational State" position="right" angle={270} style={{ textAnchor: 'middle' }} />
-                                                        </YAxis>
-                                                    )}
+                                                            <CartesianGrid strokeDasharray="3 3" />
+                                                            <XAxis
+                                                                dataKey="timeMs"
+                                                                scale="time"
+                                                                domain={[startTime, currentTime]}
+                                                                type="number"
+                                                                tickFormatter={formatXAxis}
+                                                                label={{ value: 'Time', position: 'center' }}
+                                                            />
+                                                            <YAxis
+                                                                domain={[0, 'auto']}
+                                                                label={{ value: 'Power (W)', position: 'left', angle: 270, style: { textAnchor: 'middle' } }}
+                                                            />
+                                                            <Tooltip content={<CustomTooltip />} />
+                                                            <Line
+                                                                type="stepAfter"
+                                                                dataKey="instant_power"
+                                                                stroke="#3b82f6"
+                                                                dot={false}
+                                                                activeDot={true}
+                                                                name="Instant Power"
+                                                            />
+                                                        </LineChart>
+                                                    </ResponsiveContainer>
+                                                </div>
 
-                                                    {/* Secondary Y-axis - for cumulative energy (only shown in overlay mode) */}
-                                                    {selectedMetric === 'overlay' && (
-                                                        <YAxis
-                                                            yAxisId="right"
-                                                            orientation="right"
-                                                            domain={['auto', 'auto']}
-                                                            tickFormatter={(value) => {
-                                                                // Convert Wh to kWh
-                                                                return (value / 1000).toFixed(0);
-                                                            }}
+                                                {/* Cumulative Energy Chart */}
+                                                <div className="h-80">
+                                                    <h4 className="text-sm font-medium text-gray-900 mb-2">Cumulative Energy</h4>
+                                                    <ResponsiveContainer width="100%" height="100%">
+                                                        <LineChart
+                                                            data={renderData}
+                                                            margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
                                                         >
-                                                            <Label value="Cumulative Energy (kWh)" position="right" angle={270} style={{ textAnchor: 'middle' }} />
-                                                        </YAxis>
-                                                    )}
+                                                            <CartesianGrid strokeDasharray="3 3" />
+                                                            <XAxis
+                                                                dataKey="timeMs"
+                                                                scale="time"
+                                                                domain={[startTime, currentTime]}
+                                                                type="number"
+                                                                tickFormatter={formatXAxis}
+                                                                label={{ value: 'Time', position: 'center' }}
+                                                            />
+                                                            <YAxis
+                                                                domain={['auto', 'auto']}
+                                                                tickFormatter={(value) => {
+                                                                    // Convert Wh to kWh
+                                                                    return (value / 1000).toFixed(0);
+                                                                }}
+                                                                label={{ value: 'Energy (kWh)', position: 'left', angle: 270, style: { textAnchor: 'middle' } }}
+                                                            />
+                                                            <Tooltip content={<CustomTooltip />} />
+                                                            <Line
+                                                                type="stepAfter"
+                                                                dataKey="cumulative_energy"
+                                                                stroke="#10b981"
+                                                                dot={false}
+                                                                activeDot={true}
+                                                                name="Cumulative Energy"
+                                                            />
+                                                        </LineChart>
+                                                    </ResponsiveContainer>
+                                                </div>
 
-                                                    <Tooltip
-                                                        // Only show tooltip for real data points
-                                                        content={(props) => {
-                                                            // If it's the virtual point (last one) don't show the tooltip
-                                                            if (props.active && props.payload && props.payload.length) {
-                                                                const dataIndex = props.payload[0].payload.timeMs === currentTime &&
-                                                                    props.payload[0].payload.timeMs !== formattedChartData[formattedChartData.length - 1]?.timeMs;
-                                                                if (dataIndex) {
-                                                                    return null;
-                                                                }
-
-                                                                // Otherwise show the default tooltip
-                                                                return (
-                                                                    <div className="custom-tooltip bg-white p-2 border border-gray-300 rounded shadow">
-                                                                        <p className="font-semibold">{new Date(props.payload[0].payload.timeMs).toLocaleString()}</p>
-                                                                        {props.payload.map((entry, index) => {
-                                                                            let formattedValue = entry.value;
-                                                                            let unit = '';
-
-                                                                            // Format based on metric type
-                                                                            if (entry.name === 'Instant Power') {
-                                                                                unit = 'W';
-                                                                            } else if (entry.name === 'Cumulative Energy') {
-                                                                                // Convert Wh to kWh
-                                                                                formattedValue = (Number(entry.value) / 1000).toFixed(3);
-                                                                                unit = 'kWh';
-                                                                            } else if (entry.name === 'Operational State') {
-                                                                                unit = '';
-                                                                            } else if (selectedMetric === 'cumulative_energy') {
-                                                                                // Convert Wh to kWh for single metric mode
-                                                                                formattedValue = (Number(entry.value) / 1000).toFixed(3);
-                                                                                unit = 'kWh';
-                                                                            } else {
-                                                                                unit = getUnitForMetric(selectedMetric);
-                                                                            }
-
-                                                                            return (
-                                                                                <p key={`item-${index}`} style={{ color: entry.color }}>
-                                                                                    {entry.name}: {formattedValue} {unit}
-                                                                                </p>
-                                                                            );
-                                                                        })}
-                                                                    </div>
-                                                                );
-                                                            }
-                                                            return null;
-                                                        }}
-                                                    />
-
-                                                    <Legend />
-
-                                                    {/* Conditional rendering of lines based on selected view */}
-                                                    {(selectedMetric === 'instant_power' || selectedMetric === 'overlay') && (
-                                                        <Line
-                                                            yAxisId="left"
-                                                            type="stepAfter"
-                                                            dataKey="instant_power"
-                                                            stroke="#3b82f6" // Blue
-                                                            dot={false} // Hide all dots, simpler approach
-                                                            activeDot={true} // But show active dots on hover
-                                                            name="Instant Power"
-                                                        />
-                                                    )}
-
-                                                    {(selectedMetric === 'cumulative_energy' || selectedMetric === 'overlay') && (
-                                                        <Line
-                                                            yAxisId={selectedMetric === 'overlay' ? "right" : "left"}
-                                                            type="stepAfter"
-                                                            dataKey="cumulative_energy"
-                                                            stroke="#10b981" // Green
-                                                            dot={false} // Hide all dots, simpler approach
-                                                            activeDot={true} // But show active dots on hover
-                                                            name="Cumulative Energy"
-                                                        />
-                                                    )}
-
-                                                    {(selectedMetric === 'operational_state' || selectedMetric === 'overlay') && (
-                                                        <Line
-                                                            yAxisId={selectedMetric === 'overlay' ? "right2" : "left"}
-                                                            type="stepAfter"
-                                                            dataKey="operational_state"
-                                                            stroke="#ef4444" // Red
-                                                            dot={false} // Hide all dots, simpler approach
-                                                            activeDot={true} // But show active dots on hover
-                                                            name="Operational State"
-                                                        />
-                                                    )}
-                                                </LineChart>
-                                            </ResponsiveContainer>
+                                                {/* Operational State Chart */}
+                                                <div className="h-80">
+                                                    <h4 className="text-sm font-medium text-gray-900 mb-2">Operational State</h4>
+                                                    <ResponsiveContainer width="100%" height="100%">
+                                                        <LineChart
+                                                            data={renderData}
+                                                            margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                                                        >
+                                                            <CartesianGrid strokeDasharray="3 3" />
+                                                            <XAxis
+                                                                dataKey="timeMs"
+                                                                scale="time"
+                                                                domain={[startTime, currentTime]}
+                                                                type="number"
+                                                                tickFormatter={formatXAxis}
+                                                                label={{ value: 'Time', position: 'center' }}
+                                                            />
+                                                            <YAxis
+                                                                domain={['auto', 'auto']}
+                                                                label={{ value: 'State', position: 'left', angle: 270, style: { textAnchor: 'middle' } }}
+                                                            />
+                                                            <Tooltip content={<CustomTooltip />} />
+                                                            <Line
+                                                                type="stepAfter"
+                                                                dataKey="operational_state"
+                                                                stroke="#ef4444"
+                                                                dot={false}
+                                                                activeDot={true}
+                                                                name="Operational State"
+                                                            />
+                                                        </LineChart>
+                                                    </ResponsiveContainer>
+                                                </div>
+                                            </div>
                                         </div>
                                     )}
                                 </div>
