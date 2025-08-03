@@ -24,8 +24,8 @@ platform.
 All data in the GridCube system is encrypted using industry-standard encryption:
 
 - **Data in Transit**: All communications are encrypted using TLS 1.2+ protocols
-- **Data at Rest**: All stored data is encrypted using AES-256 encryption
-- **API Communications**: All API calls use HTTPS with certificate pinning
+- **Data at Rest**: All stored data is encrypted using AWS-managed encryption
+- **API Communications**: All API calls use HTTPS with modern TLS protocols
 - **Database Security**: DynamoDB tables are encrypted by default with
   AWS-managed keys
 
@@ -52,13 +52,15 @@ All data in the GridCube system is encrypted using industry-standard encryption:
 ### Amazon Sidewalk Network Security
 
 GridCube devices communicate over Amazon Sidewalk, which provides
-enterprise-grade security:
+enterprise-grade security. The security features described below are provided by
+Amazon's Sidewalk network infrastructure:
 
 #### **Network-Level Security**
 
 - **Encrypted Communications**: All device communications are encrypted
-  end-to-end
+  end-to-end through Amazon Sidewalk
 - **Authentication**: Devices are authenticated using cryptographic certificates
+  provided by AWS IoT Wireless
 - **Message Integrity**: All messages include integrity checks to prevent
   tampering
 - **Frequency Hopping**: Communications use frequency hopping to prevent
@@ -212,8 +214,8 @@ GridCube devices operate on Amazon Sidewalk, which provides:
 ### General Security
 
 **Q: How is my data protected?** A: All data is encrypted both in transit and at
-rest using industry-standard encryption (AES-256). Data is also segregated by
-company, ensuring complete isolation between organizations.
+rest using industry-standard encryption. Data is also segregated by company,
+ensuring complete isolation between organizations.
 
 **Q: Who can access my data?** A: Only authorized users within your organization
 can access your data. All access is logged and audited regularly.

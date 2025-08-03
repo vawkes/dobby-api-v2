@@ -42,14 +42,15 @@ communications at every level:
 ## Amazon Sidewalk Integration
 
 GridCube devices communicate over Amazon Sidewalk, a secure, low-bandwidth
-network designed for IoT applications. This integration provides several key
-security benefits:
+network designed for IoT applications. The security features described below are
+provided by Amazon's Sidewalk network infrastructure and AWS IoT Wireless
+services. This integration provides several key security benefits:
 
 ### Network Security Features
 
 #### **End-to-End Encryption**
 
-- All device communications are encrypted using AES-256 encryption
+- All device communications are encrypted using industry-standard encryption
 - Messages are encrypted at the device level before transmission
 - Decryption only occurs at authorized endpoints within the GridCube
   infrastructure
@@ -57,7 +58,7 @@ security benefits:
 #### **Device Authentication**
 
 - Each GridCube device has unique cryptographic certificates installed during
-  manufacturing
+  manufacturing through AWS IoT Wireless
 - Certificates are used to authenticate all device communications
 - Certificate validation prevents unauthorized device impersonation
 
@@ -128,7 +129,7 @@ Message   Transmission       Authenticated
 #### **Secure Message Flow**
 
 1. Device creates message with device-specific signature
-2. Message is encrypted using AES-256
+2. Message is encrypted using industry-standard encryption
 3. Message is transmitted over Amazon Sidewalk
 4. GridCube infrastructure receives and validates message
 5. Message is decrypted and processed securely
@@ -255,7 +256,7 @@ const eventRequestSchema = z.discriminatedUnion("event_type", [
 #### **Encryption in Transit**
 
 - All API communications use TLS 1.2+
-- Device communications are encrypted over Amazon Sidewalk
+- Device communications are encrypted over Amazon Sidewalk network
 - Database connections use encrypted connections
 
 ### Data Privacy
@@ -308,7 +309,8 @@ GridCube follows industry-standard security practices:
 
 1. **A01:2021 - Broken Access Control**: RBAC implementation with company
    scoping
-2. **A02:2021 - Cryptographic Failures**: TLS 1.2+ and AES-256 encryption
+2. **A02:2021 - Cryptographic Failures**: TLS 1.2+ and industry-standard
+   encryption
 3. **A03:2021 - Injection**: Zod schema validation and type-safe handling
 4. **A04:2021 - Insecure Design**: Security-first architecture
 5. **A05:2021 - Security Misconfiguration**: Infrastructure as Code with secure

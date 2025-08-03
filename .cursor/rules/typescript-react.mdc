@@ -113,6 +113,12 @@ Key Conventions
   - Use only for Web API access in small components.
   - Avoid for data fetching or state management.
 
+Testing
+
+- Write unit tests to cover business logic.
+- Run unit tests on methods that were adjusted to validate the change.
+- Update and refactor unit tests where needed.
+
 Security: Prioritize security to prevent vulnerabilities (e.g., XSS, CSRF). For
 high-risk areas (e.g., user input, authentication), conduct a mandatory
 <SECURITY_REVIEW> with:
