@@ -378,14 +378,20 @@ app.get('/:deviceId/data',
             const deviceData = results.Items.map((item: Record<string, unknown>) => {
                 const data = unmarshall(item);
 
-                // Ensure numeric fields are converted to numbers
+                // Helper function to safely convert to number, defaulting to 0 for NaN
+                const safeNumber = (value: unknown): number => {
+                    const num = Number(value);
+                    return isNaN(num) ? 0 : num;
+                };
+
+                // Ensure numeric fields are converted to numbers, handling NaN values
                 return {
                     device_id: deviceId, // Always return the original device ID
-                    timestamp: Number(data.timestamp),
-                    cumulative_energy: Number(data.cumulative_energy),
-                    instant_power: Number(data.instant_power),
-                    msg_number: Number(data.msg_number),
-                    operational_state: Number(data.operational_state)
+                    timestamp: safeNumber(data.timestamp),
+                    cumulative_energy: safeNumber(data.cumulative_energy),
+                    instant_power: safeNumber(data.instant_power),
+                    msg_number: safeNumber(data.msg_number),
+                    operational_state: safeNumber(data.operational_state)
                 };
             });
 

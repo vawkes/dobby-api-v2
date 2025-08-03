@@ -12,8 +12,8 @@ const getBaseUrl = () => {
         // In production, try to get from runtime config
         baseUrl = getConfig('API_URL');
     } else {
-        // In development, use empty string to leverage the proxy
-        baseUrl = process.env.REACT_APP_API_URL || '';
+        // In development, use the API URL directly
+        baseUrl = process.env.REACT_APP_API_URL || 'https://api.gridcube.dev.vawkes.com';
     }
 
     // Remove trailing slash to prevent double slashes

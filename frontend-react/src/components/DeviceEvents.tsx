@@ -22,11 +22,21 @@ const DeviceEvents: React.FC<DeviceEventsProps> = ({ deviceId }) => {
 
             try {
                 setIsLoading(true);
+                setError(null);
                 const data = await eventsAPI.getEventsByDeviceId(deviceId);
                 setEvents(data);
             } catch (err: any) {
                 console.error('Error fetching device events:', err);
-                setError('Failed to fetch device events: ' + (err.message || 'Unknown error'));
+                
+                // Check if it's a 404 error (no events found)
+                if (err.response?.status === 404) {
+                    // No events is a normal state, not an error
+                    setEvents([]);
+                    setError(null);
+                } else {
+                    // Only show error for actual errors, not for "no events"
+                    setError('Failed to fetch device events: ' + (err.message || 'Unknown error'));
+                }
             } finally {
                 setIsLoading(false);
             }
