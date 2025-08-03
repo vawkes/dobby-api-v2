@@ -4,7 +4,6 @@ import * as cdk from 'aws-cdk-lib';
 import { DobbyApiV2Stack } from '../lib/dobby-api-v2-stack';
 import { ReactFrontendStack } from '../lib/react-frontend-stack';
 import { CertificateStack } from '../lib/certificate-stack';
-import { DnsStack } from '../lib/dns-stack';
 import { getEnvironmentConfig } from '../deployment/config';
 
 const app = new cdk.App();

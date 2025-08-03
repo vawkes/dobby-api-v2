@@ -19,3 +19,18 @@ production_line/device_files/*
 production_line/.DS_Store
 production_line/.env
 
+coverage/base.css
+coverage/convertGpsTime.ts.html
+coverage/favicon.png
+coverage/index.html
+coverage/lcov.info
+coverage/permissions.ts.html
+coverage/prettify.css
+coverage/sort-arrow-sprite.png
+coverage/lcov-report/base.css
+coverage/lcov-report/convertGpsTime.ts.html
+coverage/lcov-report/favicon.png
+coverage/lcov-report/index.html
+coverage/lcov-report/permissions.ts.html
+coverage/lcov-report/prettify.css
+coverage/lcov-report/sort-arrow-sprite.png

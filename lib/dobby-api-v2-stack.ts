@@ -343,37 +343,6 @@ export class DobbyApiV2Stack extends cdk.Stack {
       sourceArn: sidewalkRule.attrArn
     });
 
-    // Create Sidewalk destination configuration with environment-specific names
-    const sidewalkDestinationConfig = new iotwireless.CfnDestination(this, 'SidewalkDestinationConfig', {
-      name: `SidewalkDestinationConfig${envSuffix}`,
-      description: `Configuration destination for Sidewalk device data - ${environmentConfig.name}`,
-      expression: `sidewalk_data_rule${iotSuffix}`,
-      expressionType: 'RuleName',
-      roleArn: new iam.Role(this, 'SidewalkDestinationConfigRole', {
-        assumedBy: new iam.ServicePrincipal('iotwireless.amazonaws.com'),
-        inlinePolicies: {
-          'AllowLambdaInvoke': new iam.PolicyDocument({
-            statements: [
-              new iam.PolicyStatement({
-                actions: ['lambda:InvokeFunction'],
-                resources: [dataHandlerFn.functionArn],
-              }),
-            ],
-          }),
-        },
-      }).roleArn,
-      tags: [
-        {
-          key: 'Environment',
-          value: environmentConfig.name
-        },
-        {
-          key: 'Service',
-          value: 'Sidewalk'
-        }
-      ]
-    });
-
     // Create the main Sidewalk destination with environment-specific names
     const sidewalkDestination = new iotwireless.CfnDestination(this, 'SidewalkDestination', {
       name: `SidewalkDataDestination${envSuffix}`,
