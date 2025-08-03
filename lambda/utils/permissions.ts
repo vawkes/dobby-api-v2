@@ -145,16 +145,18 @@ export async function getUserRoleInCompany(
 // Helper function to get user's highest role across all companies
 export async function getUserHighestRole(dynamodb: DynamoDB, userId: string): Promise<UserRole | null> {
     try {
-        // Use scan instead of query since we don't have a user_id-index
-        const userCompaniesResult = await dynamodb.scan({
+        // Use the user_id-index GSI instead of scan for better performance
+        const userCompaniesResult = await dynamodb.query({
             TableName: "CompanyUsers",
-            FilterExpression: "user_id = :userId",
+            IndexName: "user_id-index",
+            KeyConditionExpression: "user_id = :userId",
             ExpressionAttributeValues: {
                 ":userId": { S: userId }
             }
         });
 
         if (!userCompaniesResult.Items || userCompaniesResult.Items.length === 0) {
+            console.log(`No companies found for user ${userId}`);
             return null;
         }
 
@@ -166,12 +168,15 @@ export async function getUserHighestRole(dynamodb: DynamoDB, userId: string): Pr
             const role = userCompany.role as UserRole;
             const level = ROLE_HIERARCHY[role] || 0;
 
+            console.log(`User ${userId} has role ${role} in company ${userCompany.company_id} with level ${level}`);
+
             if (level > highestLevel) {
                 highestLevel = level;
                 highestRole = role;
             }
         }
 
+        console.log(`User ${userId} highest role: ${highestRole} with level ${highestLevel}`);
         return highestRole;
     } catch (error) {
         console.error('Error getting user highest role:', error);
@@ -186,13 +191,23 @@ export async function hasPermission(
     action: Action
 ): Promise<boolean> {
     try {
+        console.log(`hasPermission called for user ${userId} and action ${action}`);
+        
         const highestRole = await getUserHighestRole(dynamodb, userId);
+        console.log(`User ${userId} highest role: ${highestRole}`);
         
         if (!highestRole) {
+            console.log(`User ${userId} has no role found`);
             return false;
         }
 
-        return ROLE_PERMISSION_MATRIX[highestRole]?.includes(action) || false;
+        const permissions = ROLE_PERMISSION_MATRIX[highestRole];
+        console.log(`Role ${highestRole} permissions:`, permissions);
+        
+        const hasPermission = permissions?.includes(action) || false;
+        console.log(`User ${userId} has permission ${action}: ${hasPermission}`);
+        
+        return hasPermission;
     } catch (error) {
         console.error('Error checking permission:', error);
         return false;
@@ -286,16 +301,27 @@ export function requirePermission(action: Action) {
         try {
             const user = c.get('user');
             if (!user || !user.sub) {
+                console.log('Permission check failed: User not authenticated');
                 return c.json({ error: 'User not authenticated' }, 401);
             }
 
+            console.log(`Permission check for user ${user.sub} and action ${action}`);
+            
             const dynamodb = new DynamoDB({ region: "us-east-1" });
+            
+            // Get user's highest role for debugging
+            const highestRole = await getUserHighestRole(dynamodb, user.sub);
+            console.log(`User ${user.sub} highest role: ${highestRole}`);
+            
             const hasAccess = await hasPermission(dynamodb, user.sub, action);
+            console.log(`User ${user.sub} has permission ${action}: ${hasAccess}`);
             
             if (!hasAccess) {
+                console.log(`Permission denied for user ${user.sub} on action ${action}`);
                 return c.json({ error: 'Insufficient permissions' }, 403);
             }
 
+            console.log(`Permission granted for user ${user.sub} on action ${action}`);
             await next();
             return;
         } catch (error) {

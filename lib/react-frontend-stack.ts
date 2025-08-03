@@ -132,12 +132,6 @@ export class ReactFrontendStack extends cdk.Stack {
         // API Gateway origin for proxy requests
         // Note: Using default API Gateway domain since API URL is configured at runtime
         // const stageName = environmentConfig.api.stageName;
-        const apiGatewayDomain = 'tzdokra5yf.execute-api.us-east-1.amazonaws.com';
-
-        // Create API Gateway origin
-        const apiGatewayOrigin = new origins.HttpOrigin(apiGatewayDomain, {
-            protocolPolicy: cloudfront.OriginProtocolPolicy.HTTPS_ONLY,
-        });
 
         // Create CloudFront distribution
         const distribution = new cloudfront.Distribution(this, 'ReactSiteDistribution', {
