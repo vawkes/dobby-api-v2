@@ -5,6 +5,7 @@ import { Context, Next } from "hono";
 
 // User roles from the schema
 export enum UserRole {
+    SUPER_ADMIN = 'SUPER_ADMIN',
     COMPANY_ADMIN = 'COMPANY_ADMIN',
     DEVICE_MANAGER = 'DEVICE_MANAGER',
     DEVICE_VIEWER = 'DEVICE_VIEWER'
@@ -49,6 +50,7 @@ interface ExtendedContext extends Context {
 
 // Role hierarchy for permission checking
 const ROLE_HIERARCHY = {
+    [UserRole.SUPER_ADMIN]: 4,
     [UserRole.COMPANY_ADMIN]: 3,
     [UserRole.DEVICE_MANAGER]: 2,
     [UserRole.DEVICE_VIEWER]: 1,
@@ -56,6 +58,22 @@ const ROLE_HIERARCHY = {
 
 // Permission matrix - defines what each role can do
 const ROLE_PERMISSION_MATRIX = {
+    [UserRole.SUPER_ADMIN]: [
+        // Super admins can do everything across all companies
+        Action.READ_DEVICES,
+        Action.WRITE_DEVICES,
+        Action.DELETE_DEVICES,
+        Action.READ_EVENTS,
+        Action.CREATE_EVENTS,
+        Action.DELETE_EVENTS,
+        Action.WRITE_COMPANIES,
+        Action.DELETE_COMPANIES,
+        Action.READ_USERS,
+        Action.WRITE_USERS,
+        Action.DELETE_USERS,
+        Action.ASSIGN_DEVICES,
+        Action.UNASSIGN_DEVICES
+    ],
     [UserRole.COMPANY_ADMIN]: [
         // Company admins can do everything within their company
         Action.READ_DEVICES,
@@ -201,6 +219,12 @@ export async function hasPermission(
             return false;
         }
 
+        // Super admins have access to everything
+        if (highestRole === UserRole.SUPER_ADMIN) {
+            console.log(`User ${userId} is a super admin - granting all permissions`);
+            return true;
+        }
+
         const permissions = ROLE_PERMISSION_MATRIX[highestRole];
         console.log(`Role ${highestRole} permissions:`, permissions);
         
@@ -210,6 +234,17 @@ export async function hasPermission(
         return hasPermission;
     } catch (error) {
         console.error('Error checking permission:', error);
+        return false;
+    }
+}
+
+// Helper function to check if user is a super admin
+export async function isSuperAdmin(dynamodb: DynamoDB, userId: string): Promise<boolean> {
+    try {
+        const highestRole = await getUserHighestRole(dynamodb, userId);
+        return highestRole === UserRole.SUPER_ADMIN;
+    } catch (error) {
+        console.error('Error checking if user is super admin:', error);
         return false;
     }
 }
@@ -232,6 +267,12 @@ export async function hasDevicePermission(
         const highestRole = await getUserHighestRole(dynamodb, userId);
         if (!highestRole) {
             return false;
+        }
+
+        // Super admins have access to all devices
+        if (highestRole === UserRole.SUPER_ADMIN) {
+            console.log(`User ${userId} is a super admin - granting access to device ${deviceId}`);
+            return true;
         }
 
         // Check if user has access to this specific device
@@ -257,6 +298,18 @@ export async function hasCompanyPermission(
             return false;
         }
 
+        // Get user's highest role
+        const highestRole = await getUserHighestRole(dynamodb, userId);
+        if (!highestRole) {
+            return false;
+        }
+
+        // Super admins have access to all companies
+        if (highestRole === UserRole.SUPER_ADMIN) {
+            console.log(`User ${userId} is a super admin - granting access to company ${companyId}`);
+            return true;
+        }
+
         // Get user's role in this specific company
         const userRole = await getUserRoleInCompany(dynamodb, userId, companyId);
         if (!userRole) {
@@ -279,6 +332,13 @@ export async function canAssignRole(
     targetRole: UserRole
 ): Promise<boolean> {
     try {
+        // Check if assigner is a super admin
+        const isAssignerSuperAdmin = await isSuperAdmin(dynamodb, assignerUserId);
+        if (isAssignerSuperAdmin) {
+            console.log(`User ${assignerUserId} is a super admin - can assign any role`);
+            return true;
+        }
+
         const assignerRole = await getUserRoleInCompany(dynamodb, assignerUserId, targetCompanyId);
         if (!assignerRole) {
             return false;
