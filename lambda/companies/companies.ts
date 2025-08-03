@@ -4,20 +4,21 @@ import { marshall, unmarshall } from '@aws-sdk/util-dynamodb';
 import { v4 as uuidv4 } from 'uuid';
 import { describeRoute } from 'hono-openapi';
 import { resolver, validator } from 'hono-openapi/zod';
-import { requirePermission, requireCompanyPermission, Action, canAssignRole, UserRole, getUserRoleInCompany } from '../utils/permissions.ts';
-import { companySchema, companiesSchema, createCompanySchema, addUserToCompanySchema, addDeviceToCompanySchema, updateUserRoleSchema, UserRole as SchemaUserRole } from './companiesSchema.js';
+import { requirePermission, requireCompanyPermission, Action, canAssignRole, UserRole, getUserRoleInCompany, isSuperAdmin } from '../utils/permissions.ts';
+import { companySchema, companiesSchema, createCompanySchema, addUserToCompanySchema, addDeviceToCompanySchema, updateUserRoleSchema, UserRole as SchemaUserRole } from './companiesSchema.ts';
 
 const app = new Hono();
 
 // Role hierarchy for permission checking
-const ROLE_HIERARCHY = {
+const ROLE_HIERARCHY: Record<SchemaUserRole, number> = {
+    [SchemaUserRole.SUPER_ADMIN]: 4,
     [SchemaUserRole.COMPANY_ADMIN]: 3,
     [SchemaUserRole.DEVICE_MANAGER]: 2,
     [SchemaUserRole.DEVICE_VIEWER]: 1,
 };
 
 // Helper function to check if user has required role
-async function checkUserRole(dynamodb: DynamoDB, companyId: string, userId: string, requiredRole: typeof SchemaUserRole[keyof typeof SchemaUserRole]): Promise<boolean> {
+async function checkUserRole(dynamodb: DynamoDB, companyId: string, userId: string, requiredRole: SchemaUserRole): Promise<boolean> {
     try {
         const result = await dynamodb.getItem({
             TableName: 'CompanyUsers',
@@ -32,7 +33,8 @@ async function checkUserRole(dynamodb: DynamoDB, companyId: string, userId: stri
         }
 
         const user = unmarshall(result.Item);
-        return ROLE_HIERARCHY[user.role] >= ROLE_HIERARCHY[requiredRole];
+        const userRole = user.role as SchemaUserRole;
+        return ROLE_HIERARCHY[userRole] >= ROLE_HIERARCHY[requiredRole];
     } catch (error) {
         console.error('Error checking user role:', error);
         return false;
@@ -211,6 +213,14 @@ app.post('/:companyId/users',
                 return c.json({ error: 'User not authenticated' }, 401);
             }
 
+            // Special check for SUPER_ADMIN role assignment
+            if (body.role === SchemaUserRole.SUPER_ADMIN) {
+                const isUserSuperAdmin = await isSuperAdmin(dynamodb, user.sub);
+                if (!isUserSuperAdmin) {
+                    return c.json({ error: 'Only super admins can assign SUPER_ADMIN role' }, 403);
+                }
+            }
+
             const canAssign = await canAssignRole(dynamodb, user.sub, companyId, body.role as UserRole);
             if (!canAssign) {
                 return c.json({ error: 'Insufficient permissions to assign this role' }, 403);
@@ -297,6 +307,14 @@ app.put('/:companyId/users/:userId',
                 return c.json({ error: 'User not authenticated' }, 401);
             }
 
+            // Special check for SUPER_ADMIN role assignment
+            if (body.role === SchemaUserRole.SUPER_ADMIN) {
+                const isUserSuperAdmin = await isSuperAdmin(dynamodb, user.sub);
+                if (!isUserSuperAdmin) {
+                    return c.json({ error: 'Only super admins can assign SUPER_ADMIN role' }, 403);
+                }
+            }
+
             const canAssign = await canAssignRole(dynamodb, user.sub, companyId, body.role as UserRole);
             if (!canAssign) {
                 return c.json({ error: 'Insufficient permissions to assign this role' }, 403);
@@ -373,19 +391,25 @@ app.delete('/:companyId/users/:userId',
                 return c.json({ error: 'User not authenticated' }, 401);
             }
 
-            const currentUserRole = await getUserRoleInCompany(dynamodb, user.sub, companyId);
-            const targetUserRole = await getUserRoleInCompany(dynamodb, userId, companyId);
+            // Check if user is a super admin
+            const isUserSuperAdmin = await isSuperAdmin(dynamodb, user.sub);
+            if (isUserSuperAdmin) {
+                console.log(`User ${user.sub} is a super admin - can remove any user`);
+            } else {
+                const currentUserRole = await getUserRoleInCompany(dynamodb, user.sub, companyId);
+                const targetUserRole = await getUserRoleInCompany(dynamodb, userId, companyId);
 
-            if (!currentUserRole || !targetUserRole) {
-                return c.json({ error: 'Role information not found' }, 404);
-            }
+                if (!currentUserRole || !targetUserRole) {
+                    return c.json({ error: 'Role information not found' }, 404);
+                }
 
-            const currentUserLevel = ROLE_HIERARCHY[currentUserRole as typeof SchemaUserRole[keyof typeof SchemaUserRole]] || 0;
-            const targetUserLevel = ROLE_HIERARCHY[targetUserRole as typeof SchemaUserRole[keyof typeof SchemaUserRole]] || 0;
+                const currentUserLevel = ROLE_HIERARCHY[currentUserRole as SchemaUserRole] || 0;
+                const targetUserLevel = ROLE_HIERARCHY[targetUserRole as SchemaUserRole] || 0;
 
-            // Users can only remove users at or below their own level
-            if (currentUserLevel < targetUserLevel) {
-                return c.json({ error: 'Insufficient permissions to remove this user' }, 403);
+                // Users can only remove users at or below their own level
+                if (currentUserLevel < targetUserLevel) {
+                    return c.json({ error: 'Insufficient permissions to remove this user' }, 403);
+                }
             }
 
             // Remove the user from company

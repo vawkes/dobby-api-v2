@@ -4,11 +4,13 @@ describe('Role Management Logic', () => {
   describe('Role Hierarchy', () => {
     it('should have correct role hierarchy levels', () => {
       const roleHierarchy = {
+        'SUPER_ADMIN': 4,
         'COMPANY_ADMIN': 3,
         'DEVICE_MANAGER': 2,
         'DEVICE_VIEWER': 1
       };
 
+      expect(roleHierarchy['SUPER_ADMIN']).toBeGreaterThan(roleHierarchy['COMPANY_ADMIN']);
       expect(roleHierarchy['COMPANY_ADMIN']).toBeGreaterThan(roleHierarchy['DEVICE_MANAGER']);
       expect(roleHierarchy['DEVICE_MANAGER']).toBeGreaterThan(roleHierarchy['DEVICE_VIEWER']);
     });
@@ -16,6 +18,7 @@ describe('Role Management Logic', () => {
     it('should validate role assignment permissions', () => {
       const canAssignRole = (assignerRole: string, targetRole: string): boolean => {
         const roleLevels = {
+          'SUPER_ADMIN': 4,
           'COMPANY_ADMIN': 3,
           'DEVICE_MANAGER': 2,
           'DEVICE_VIEWER': 1
@@ -28,14 +31,20 @@ describe('Role Management Logic', () => {
       };
 
       // Valid assignments
+      expect(canAssignRole('SUPER_ADMIN', 'COMPANY_ADMIN')).toBe(true);
+      expect(canAssignRole('SUPER_ADMIN', 'DEVICE_MANAGER')).toBe(true);
+      expect(canAssignRole('SUPER_ADMIN', 'DEVICE_VIEWER')).toBe(true);
       expect(canAssignRole('COMPANY_ADMIN', 'DEVICE_MANAGER')).toBe(true);
       expect(canAssignRole('COMPANY_ADMIN', 'DEVICE_VIEWER')).toBe(true);
       expect(canAssignRole('DEVICE_MANAGER', 'DEVICE_VIEWER')).toBe(true);
 
       // Invalid assignments
+      expect(canAssignRole('COMPANY_ADMIN', 'SUPER_ADMIN')).toBe(false);
       expect(canAssignRole('DEVICE_MANAGER', 'COMPANY_ADMIN')).toBe(false);
+      expect(canAssignRole('DEVICE_MANAGER', 'SUPER_ADMIN')).toBe(false);
       expect(canAssignRole('DEVICE_VIEWER', 'DEVICE_MANAGER')).toBe(false);
       expect(canAssignRole('DEVICE_VIEWER', 'COMPANY_ADMIN')).toBe(false);
+      expect(canAssignRole('DEVICE_VIEWER', 'SUPER_ADMIN')).toBe(false);
     });
   });
 
@@ -43,6 +52,12 @@ describe('Role Management Logic', () => {
   describe('Permission Matrix', () => {
     it('should have correct permissions for each role', () => {
       const permissionMatrix = {
+        'SUPER_ADMIN': [
+          'read_devices', 'write_devices', 'delete_devices',
+          'read_events', 'create_events', 'delete_events',
+          'write_companies', 'delete_companies', 'read_users', 'write_users',
+          'delete_users', 'assign_devices', 'unassign_devices'
+        ],
         'COMPANY_ADMIN': [
           'read_devices', 'write_devices', 'delete_devices',
           'read_events', 'create_events', 'delete_events',
@@ -59,10 +74,17 @@ describe('Role Management Logic', () => {
         ]
       };
 
-      // COMPANY_ADMIN should have all permissions
+      // SUPER_ADMIN should have all permissions including company deletion
+      expect(permissionMatrix['SUPER_ADMIN']).toContain('delete_devices');
+      expect(permissionMatrix['SUPER_ADMIN']).toContain('delete_users');
+      expect(permissionMatrix['SUPER_ADMIN']).toContain('write_companies');
+      expect(permissionMatrix['SUPER_ADMIN']).toContain('delete_companies');
+
+      // COMPANY_ADMIN should have all permissions except company deletion
       expect(permissionMatrix['COMPANY_ADMIN']).toContain('delete_devices');
       expect(permissionMatrix['COMPANY_ADMIN']).toContain('delete_users');
       expect(permissionMatrix['COMPANY_ADMIN']).toContain('write_companies');
+      expect(permissionMatrix['COMPANY_ADMIN']).not.toContain('delete_companies');
 
       // DEVICE_MANAGER should have device and event permissions but not user/company management
       expect(permissionMatrix['DEVICE_MANAGER']).toContain('delete_events');
@@ -82,6 +104,7 @@ describe('Role Management Logic', () => {
     it('should validate user removal permissions', () => {
       const validateUserRemoval = (removerRole: string, targetRole: string): boolean => {
         const roleLevels = {
+          'SUPER_ADMIN': 4,
           'COMPANY_ADMIN': 3,
           'DEVICE_MANAGER': 2,
           'DEVICE_VIEWER': 1
@@ -94,19 +117,48 @@ describe('Role Management Logic', () => {
       };
 
       // Valid removals
+      expect(validateUserRemoval('SUPER_ADMIN', 'COMPANY_ADMIN')).toBe(true);
+      expect(validateUserRemoval('SUPER_ADMIN', 'DEVICE_MANAGER')).toBe(true);
+      expect(validateUserRemoval('SUPER_ADMIN', 'DEVICE_VIEWER')).toBe(true);
       expect(validateUserRemoval('COMPANY_ADMIN', 'DEVICE_MANAGER')).toBe(true);
       expect(validateUserRemoval('COMPANY_ADMIN', 'DEVICE_VIEWER')).toBe(true);
       expect(validateUserRemoval('DEVICE_MANAGER', 'DEVICE_VIEWER')).toBe(true);
 
       // Invalid removals
+      expect(validateUserRemoval('COMPANY_ADMIN', 'SUPER_ADMIN')).toBe(false);
       expect(validateUserRemoval('DEVICE_MANAGER', 'COMPANY_ADMIN')).toBe(false);
+      expect(validateUserRemoval('DEVICE_MANAGER', 'SUPER_ADMIN')).toBe(false);
       expect(validateUserRemoval('DEVICE_VIEWER', 'DEVICE_MANAGER')).toBe(false);
       expect(validateUserRemoval('DEVICE_VIEWER', 'COMPANY_ADMIN')).toBe(false);
+      expect(validateUserRemoval('DEVICE_VIEWER', 'SUPER_ADMIN')).toBe(false);
+    });
+
+    it('should validate super admin special permissions', () => {
+      const isSuperAdmin = (userRole: string): boolean => {
+        return userRole === 'SUPER_ADMIN';
+      };
+
+      const hasFullAccess = (userRole: string): boolean => {
+        return isSuperAdmin(userRole);
+      };
+
+      // Super admin should have full access
+      expect(isSuperAdmin('SUPER_ADMIN')).toBe(true);
+      expect(hasFullAccess('SUPER_ADMIN')).toBe(true);
+
+      // Other roles should not have super admin privileges
+      expect(isSuperAdmin('COMPANY_ADMIN')).toBe(false);
+      expect(isSuperAdmin('DEVICE_MANAGER')).toBe(false);
+      expect(isSuperAdmin('DEVICE_VIEWER')).toBe(false);
+      expect(hasFullAccess('COMPANY_ADMIN')).toBe(false);
+      expect(hasFullAccess('DEVICE_MANAGER')).toBe(false);
+      expect(hasFullAccess('DEVICE_VIEWER')).toBe(false);
     });
 
     it('should validate device access permissions', () => {
       const hasDeviceAccess = (userRole: string, action: string): boolean => {
         const permissions = {
+          'SUPER_ADMIN': ['read', 'write', 'delete'],
           'COMPANY_ADMIN': ['read', 'write', 'delete'],
           'DEVICE_MANAGER': ['read', 'write'],
           'DEVICE_VIEWER': ['read']
@@ -114,6 +166,11 @@ describe('Role Management Logic', () => {
 
         return permissions[userRole as keyof typeof permissions]?.includes(action) || false;
       };
+
+      // SUPER_ADMIN should have all device access
+      expect(hasDeviceAccess('SUPER_ADMIN', 'read')).toBe(true);
+      expect(hasDeviceAccess('SUPER_ADMIN', 'write')).toBe(true);
+      expect(hasDeviceAccess('SUPER_ADMIN', 'delete')).toBe(true);
 
       // COMPANY_ADMIN should have all device access
       expect(hasDeviceAccess('COMPANY_ADMIN', 'read')).toBe(true);
@@ -154,7 +211,7 @@ describe('Role Management Logic', () => {
     });
 
     it('should validate role data structure', () => {
-      const validRoles = ['COMPANY_ADMIN', 'DEVICE_MANAGER', 'DEVICE_VIEWER'];
+      const validRoles = ['SUPER_ADMIN', 'COMPANY_ADMIN', 'DEVICE_MANAGER', 'DEVICE_VIEWER'];
       
       validRoles.forEach(role => {
         expect(typeof role).toBe('string');
@@ -171,13 +228,14 @@ describe('Role Management Logic', () => {
   describe('Error Handling', () => {
     it('should handle invalid role assignments gracefully', () => {
       const validateRoleAssignment = (assignerRole: string, targetRole: string): boolean => {
-        const validRoles = ['COMPANY_ADMIN', 'DEVICE_MANAGER', 'DEVICE_VIEWER'];
+        const validRoles = ['SUPER_ADMIN', 'COMPANY_ADMIN', 'DEVICE_MANAGER', 'DEVICE_VIEWER'];
         
         if (!validRoles.includes(assignerRole) || !validRoles.includes(targetRole)) {
           return false;
         }
 
         const roleLevels = {
+          'SUPER_ADMIN': 4,
           'COMPANY_ADMIN': 3,
           'DEVICE_MANAGER': 2,
           'DEVICE_VIEWER': 1
@@ -190,10 +248,14 @@ describe('Role Management Logic', () => {
       };
 
       // Valid assignments
+      expect(validateRoleAssignment('SUPER_ADMIN', 'COMPANY_ADMIN')).toBe(true);
+      expect(validateRoleAssignment('SUPER_ADMIN', 'DEVICE_MANAGER')).toBe(true);
+      expect(validateRoleAssignment('SUPER_ADMIN', 'DEVICE_VIEWER')).toBe(true);
       expect(validateRoleAssignment('COMPANY_ADMIN', 'DEVICE_MANAGER')).toBe(true);
       expect(validateRoleAssignment('DEVICE_MANAGER', 'DEVICE_VIEWER')).toBe(true);
 
       // Invalid assignments
+      expect(validateRoleAssignment('COMPANY_ADMIN', 'SUPER_ADMIN')).toBe(false);
       expect(validateRoleAssignment('DEVICE_MANAGER', 'COMPANY_ADMIN')).toBe(false);
       expect(validateRoleAssignment('DEVICE_VIEWER', 'DEVICE_MANAGER')).toBe(false);
 
