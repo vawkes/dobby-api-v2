@@ -37,21 +37,24 @@ export class ReactFrontendStack extends cdk.Stack {
         try {
             // Change to frontend directory
             const frontendPath = path.join(__dirname, '../frontend-react');
-            
+
             // Install dependencies if needed
             console.log('Installing frontend dependencies...');
-            execSync('npm install --legacy-peer-deps', { 
-                cwd: frontendPath, 
-                stdio: 'inherit' 
+            execSync('npm install --legacy-peer-deps', {
+                cwd: frontendPath,
+                stdio: 'inherit'
             });
-            
-            // Build the React app
-            console.log('Building React app...');
-            execSync('npm run build', { 
-                cwd: frontendPath, 
-                stdio: 'inherit' 
+
+            // Build the React app for the current environment
+            console.log(`Building React app for ${environmentConfig.name} environment...`);
+            const buildCommand = environmentConfig.name === 'production'
+                ? 'npm run build:production'
+                : 'npm run build:develop';
+            execSync(buildCommand, {
+                cwd: frontendPath,
+                stdio: 'inherit'
             });
-            
+
             console.log('Frontend build completed successfully');
         } catch (error) {
             console.error('Failed to build frontend:', error);
@@ -129,10 +132,6 @@ export class ReactFrontendStack extends cdk.Stack {
             },
         });
 
-        // API Gateway origin for proxy requests
-        // Note: Using default API Gateway domain since API URL is configured at runtime
-        // const stageName = environmentConfig.api.stageName;
-
         // Create CloudFront distribution
         const distribution = new cloudfront.Distribution(this, 'ReactSiteDistribution', {
             defaultBehavior: {
@@ -200,7 +199,7 @@ export class ReactFrontendStack extends cdk.Stack {
                 value: `In AWS account ${props.dnsAccountId}, create CNAME: ${domainName} pointing to ${distribution.distributionDomainName}`,
                 description: 'Route53 setup instructions for DNS account',
             });
-            
+
             // Output DNS setup information for manual configuration
             new cdk.CfnOutput(this, 'CustomDomainName', {
                 value: domainName,

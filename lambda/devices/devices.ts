@@ -1,12 +1,13 @@
 import { Hono } from "hono";
 import { DynamoDB } from "@aws-sdk/client-dynamodb";
 import { unmarshall } from "@aws-sdk/util-dynamodb";
-import { devicesSchema, deviceSchema, deviceDataSchema, deviceIdSchema } from './devicesSchema';
+import { devicesSchema, deviceSchema, deviceDataSchema, deviceIdSchema } from './devicesSchema.ts';
 import { describeRoute } from 'hono-openapi';
 import { resolver } from 'hono-openapi/zod'
 import { QueryCommand } from "@aws-sdk/client-dynamodb";
-import { getUserFromContext, getUserAccessibleDevices, checkUserDeviceAccess, UserContext } from '../utils/deviceAccess';
-import { requirePermission, requireDevicePermission, Action } from '../utils/permissions';
+import { getUserFromContext, getUserAccessibleDevices, checkUserDeviceAccess, UserContext } from '../utils/deviceAccess.ts';
+import { requirePermission, requireDevicePermission, Action } from '../utils/permissions.ts';
+import { resolveDeviceIdForCommunication, resolveDeviceIdForResponse } from '../utils/deviceIdMapping.ts';
 
 // Type for validation error issues
 interface ValidationIssue {
@@ -18,27 +19,7 @@ interface ValidationIssue {
 
 const app = new Hono()
 
-// Helper function to get wireless device ID from production line table
-async function getWirelessDeviceId(dynamodb: DynamoDB, deviceId: string): Promise<string | null> {
-    try {
-        const result = await dynamodb.getItem({
-            TableName: "ProductionLine",
-            Key: {
-                'device_id': { S: deviceId }
-            }
-        });
 
-        if (!result.Item) {
-            return null;
-        }
-
-        const item = unmarshall(result.Item);
-        return item.wireless_device_id || null;
-    } catch (error) {
-        console.error('Error getting wireless device ID:', error);
-        return null;
-    }
-}
 
 app.get('/',
     describeRoute({
@@ -66,10 +47,23 @@ app.get('/',
                 return c.json({ error: 'User not authenticated' }, 401);
             }
 
-            // Get user's accessible devices
+            // Get user's accessible devices (6-digit device IDs)
             const accessibleDeviceIds = await getUserAccessibleDevices(dynamodb, user.sub);
-            
+
             if (accessibleDeviceIds.length === 0) {
+                return c.json([]);
+            }
+
+            // Resolve 6-digit device IDs to wireless device IDs for database lookup
+            const accessibleWirelessDeviceIds: string[] = [];
+            for (const deviceId of accessibleDeviceIds) {
+                const wirelessDeviceId = await resolveDeviceIdForCommunication(dynamodb, deviceId);
+                if (wirelessDeviceId) {
+                    accessibleWirelessDeviceIds.push(wirelessDeviceId);
+                }
+            }
+
+            if (accessibleWirelessDeviceIds.length === 0) {
                 return c.json([]);
             }
 
@@ -100,12 +94,21 @@ app.get('/',
             }) || [];
 
             // Filter devices to only include those accessible to the user
-            const accessibleDevices = allDevices.filter(device => 
-                accessibleDeviceIds.includes(device.device_id)
+            const accessibleDevices = allDevices.filter(device =>
+                accessibleWirelessDeviceIds.includes(device.device_id)
             );
 
+            // Resolve device IDs back to 6-digit format for response
+            const resolvedDevices = await Promise.all(accessibleDevices.map(async (device) => {
+                const originalDeviceId = await resolveDeviceIdForResponse(dynamodb, device.device_id);
+                return {
+                    ...device,
+                    device_id: originalDeviceId
+                };
+            }));
+
             // Use safeParse for more resilient validation
-            const parseResult = devicesSchema.safeParse(accessibleDevices);
+            const parseResult = devicesSchema.safeParse(resolvedDevices);
 
             if (!parseResult.success) {
                 console.error('Schema validation failed:', parseResult.error);
@@ -121,7 +124,7 @@ app.get('/',
                 });
 
                 // Return devices with partial validation - filter out invalid items
-                const validDevices = accessibleDevices.filter((device, index) => {
+                const validDevices = resolvedDevices.filter((device, index) => {
                     const singleDeviceResult = deviceSchema.safeParse(device);
                     if (!singleDeviceResult.success) {
                         console.warn(`Device at index ${index} failed validation:`, device);
@@ -130,7 +133,7 @@ app.get('/',
                     return true;
                 });
 
-                console.log(`Returning ${validDevices.length} valid devices out of ${accessibleDevices.length} total`);
+                console.log(`Returning ${validDevices.length} valid devices out of ${resolvedDevices.length} total`);
                 return c.json(validDevices);
             }
 
@@ -177,17 +180,8 @@ app.get('/:deviceId',
                 return c.json({ error: 'Invalid device ID format' }, 400);
             }
 
-            // If it's a 6-digit ID, look up the wireless device ID
-            let wirelessDeviceId = null;
-            if (/^\d{6}$/.test(deviceId)) {
-                wirelessDeviceId = await getWirelessDeviceId(dynamodb, deviceId);
-                if (!wirelessDeviceId) {
-                    return c.json({ error: 'Device not found in production line' }, 404);
-                }
-            }
-
-            // Use the wireless device ID if available, otherwise use the original device ID
-            const lookupId = wirelessDeviceId || deviceId;
+            // Resolve the device ID for communication (get wireless device ID if needed)
+            const lookupId = await resolveDeviceIdForCommunication(dynamodb, deviceId);
             const result = await dynamodb.getItem({
                 TableName: "DobbyInfo",
                 Key: {
@@ -336,14 +330,8 @@ app.get('/:deviceId/data',
                 return c.json({ error: 'Invalid device ID format' }, 400);
             }
 
-            // If it's a 6-digit ID, look up the wireless device ID
-            let wirelessDeviceId = null;
-            if (/^\d{6}$/.test(deviceId)) {
-                wirelessDeviceId = await getWirelessDeviceId(dynamodb, deviceId);
-                if (!wirelessDeviceId) {
-                    return c.json({ error: 'Device not found in production line' }, 404);
-                }
-            }
+            // Resolve the device ID for communication (get wireless device ID if needed)
+            const lookupId = await resolveDeviceIdForCommunication(dynamodb, deviceId);
 
             // Get the timeframe from query parameters (default to last 24 hours)
             const days = parseInt(c.req.query('days') || '1');
@@ -353,9 +341,6 @@ app.get('/:deviceId/data',
 
             // Convert to seconds since epoch for comparison with timestamp
             const startTimeSeconds = Math.floor(startTime.getTime() / 1000);
-
-            // Use the wireless device ID if available, otherwise use the original device ID
-            const lookupId = wirelessDeviceId || deviceId;
 
             // Query the DobbyData table
             const results = await dynamodb.query({

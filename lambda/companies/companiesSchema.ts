@@ -30,7 +30,7 @@ export const companyUserSchema = z.object({
 // Company device schema
 export const companyDeviceSchema = z.object({
     company_id: z.string().uuid(),
-    device_id: z.string().uuid(),
+    device_id: z.string().regex(/^\d{6}$/, "Device ID must be a 6-digit number"),
     status: z.enum(['ACTIVE', 'INACTIVE', 'MAINTENANCE', 'OFFLINE']),
     location: z.string().optional(),
     installedAt: z.string().datetime().optional(),
@@ -58,7 +58,7 @@ export const updateUserRoleSchema = z.object({
 });
 
 export const addDeviceToCompanySchema = z.object({
-    device_id: z.string().uuid(),
+    device_id: z.string().regex(/^\d{6}$/, "Device ID must be a 6-digit number"),
     location: z.string().optional(),
 });
 

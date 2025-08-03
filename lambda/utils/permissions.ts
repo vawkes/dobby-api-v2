@@ -23,21 +23,21 @@ export enum Action {
     READ_DEVICES = 'read_devices',
     WRITE_DEVICES = 'write_devices',
     DELETE_DEVICES = 'delete_devices',
-    
+
     // Event actions
     READ_EVENTS = 'read_events',
     CREATE_EVENTS = 'create_events',
     DELETE_EVENTS = 'delete_events',
-    
+
     // Company management
     WRITE_COMPANIES = 'write_companies',
     DELETE_COMPANIES = 'delete_companies',
-    
+
     // User management
     READ_USERS = 'read_users',
     WRITE_USERS = 'write_users',
     DELETE_USERS = 'delete_users',
-    
+
     // Device assignment
     ASSIGN_DEVICES = 'assign_devices',
     UNASSIGN_DEVICES = 'unassign_devices'
@@ -135,8 +135,8 @@ const PERMISSION_MATRIX = {
 
 // Helper function to get user's role in a specific company
 export async function getUserRoleInCompany(
-    dynamodb: DynamoDB, 
-    userId: string, 
+    dynamodb: DynamoDB,
+    userId: string,
     companyId: string
 ): Promise<UserRole | null> {
     try {
@@ -204,16 +204,16 @@ export async function getUserHighestRole(dynamodb: DynamoDB, userId: string): Pr
 
 // Helper function to check if user has permission for a specific action
 export async function hasPermission(
-    dynamodb: DynamoDB, 
-    userId: string, 
+    dynamodb: DynamoDB,
+    userId: string,
     action: Action
 ): Promise<boolean> {
     try {
         console.log(`hasPermission called for user ${userId} and action ${action}`);
-        
+
         const highestRole = await getUserHighestRole(dynamodb, userId);
         console.log(`User ${userId} highest role: ${highestRole}`);
-        
+
         if (!highestRole) {
             console.log(`User ${userId} has no role found`);
             return false;
@@ -227,10 +227,10 @@ export async function hasPermission(
 
         const permissions = ROLE_PERMISSION_MATRIX[highestRole];
         console.log(`Role ${highestRole} permissions:`, permissions);
-        
+
         const hasPermission = permissions?.includes(action) || false;
         console.log(`User ${userId} has permission ${action}: ${hasPermission}`);
-        
+
         return hasPermission;
     } catch (error) {
         console.error('Error checking permission:', error);
@@ -366,16 +366,16 @@ export function requirePermission(action: Action) {
             }
 
             console.log(`Permission check for user ${user.sub} and action ${action}`);
-            
+
             const dynamodb = new DynamoDB({ region: "us-east-1" });
-            
+
             // Get user's highest role for debugging
             const highestRole = await getUserHighestRole(dynamodb, user.sub);
             console.log(`User ${user.sub} highest role: ${highestRole}`);
-            
+
             const hasAccess = await hasPermission(dynamodb, user.sub, action);
             console.log(`User ${user.sub} has permission ${action}: ${hasAccess}`);
-            
+
             if (!hasAccess) {
                 console.log(`Permission denied for user ${user.sub} on action ${action}`);
                 return c.json({ error: 'Insufficient permissions' }, 403);
@@ -407,7 +407,7 @@ export function requireDevicePermission(action: Action) {
 
             const dynamodb = new DynamoDB({ region: "us-east-1" });
             const hasAccess = await hasDevicePermission(dynamodb, user.sub, action, deviceId);
-            
+
             if (!hasAccess) {
                 return c.json({ error: 'Access denied to this device' }, 403);
             }
@@ -437,7 +437,7 @@ export function requireCompanyPermission(action: Action) {
 
             const dynamodb = new DynamoDB({ region: "us-east-1" });
             const hasAccess = await hasCompanyPermission(dynamodb, user.sub, action, companyId);
-            
+
             if (!hasAccess) {
                 return c.json({ error: 'Access denied to this company' }, 403);
             }

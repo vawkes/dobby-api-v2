@@ -1,69 +1,72 @@
 /**
  * Environment configuration utility for the React app
- * This allows the app to access environment variables at runtime
- * by fetching them from the env-config.json file that is generated
- * during deployment.
+ * This provides environment-specific configuration based on the current environment
  */
-
-import { getEnvironmentConfig } from './deployment-config.js'
 
 interface EnvConfig {
     API_URL: string;
     ENVIRONMENT: string;
     VERSION: string;
-    [key: string]: string;
+    ALLOW_MOCK_AUTH: boolean;
 }
 
-const environmentConfig = getEnvironmentConfig(process.env.REACT_APP_ENVIRONMENT || 'develop');
-
-// Default config for development
-let config: EnvConfig = {
-    API_URL: `https://${environmentConfig.api?.subdomain}.${environmentConfig.api?.domain}`,
-    ENVIRONMENT: environmentConfig.name === 'production' ? 'production' : 'development',
-    VERSION: '1.0.0',
+// Environment-specific configurations
+const environmentConfigs: Record<string, EnvConfig> = {
+    development: {
+        API_URL: 'https://api.gridcube.dev.vawkes.com',
+        ENVIRONMENT: 'development',
+        VERSION: '1.0.0',
+        ALLOW_MOCK_AUTH: true,
+    },
+    production: {
+        API_URL: 'https://api.gridcube.vawkes.com',
+        ENVIRONMENT: 'production',
+        VERSION: '1.0.0',
+        ALLOW_MOCK_AUTH: false,
+    },
 };
 
-// Async function to load the runtime configuration
-export const loadConfig = async (): Promise<EnvConfig> => {
-    try {
-        // In production, fetch the config from the JSON file
-        if (process.env.NODE_ENV === 'production') {
-            const response = await fetch('/env-config.json');
-
-            if (!response.ok) {
-                console.warn('Failed to load runtime configuration, using defaults');
-                return config;
-            }
-
-            const runtimeConfig = await response.json();
-
-            // Merge the runtime config with the default config
-            config = {
-                ...config,
-                ...runtimeConfig
-            };
-
-            console.log('Loaded runtime configuration:', config);
-        } else {
-            // In development, log the config being used
-            console.log('Using development configuration:', config);
-        }
-
-        return config;
-    } catch (error) {
-        console.error('Error loading runtime configuration:', error);
-        return config;
+// Determine current environment
+const getCurrentEnvironment = (): string => {
+    // In development (npm start), use development config
+    if (process.env.NODE_ENV === 'development') {
+        return 'development';
     }
+
+    // In production build, check for environment override
+    const envOverride = process.env.REACT_APP_ENVIRONMENT;
+    if (envOverride) {
+        return envOverride;
+    }
+
+    // Default to production for built apps
+    return 'production';
 };
+
+// Get the current configuration
+const currentEnv = getCurrentEnvironment();
+const config: EnvConfig = environmentConfigs[currentEnv] || environmentConfigs.production;
+
+console.log(`Using ${currentEnv} configuration:`, config);
 
 // Get a configuration value
-export const getConfig = (key: keyof EnvConfig): string => {
-    return config[key] || '';
+export const getConfig = (key: keyof EnvConfig): string | boolean => {
+    return config[key];
 };
 
-// Set a configuration value (useful for testing)
-export const setConfig = (key: keyof EnvConfig, value: string): void => {
-    config[key] = value;
+// Get the API URL
+export const getApiUrl = (): string => {
+    return config.API_URL;
+};
+
+// Get the environment
+export const getEnvironment = (): string => {
+    return config.ENVIRONMENT;
+};
+
+// Check if mock auth is allowed
+export const isMockAuthAllowed = (): boolean => {
+    return config.ALLOW_MOCK_AUTH;
 };
 
 // Export the default config

@@ -30,19 +30,15 @@
   "scripts": {
     "start": "react-scripts start",
     "build": "DISABLE_ESLINT_PLUGIN=true react-scripts build",
+    "build:develop": "REACT_APP_ENVIRONMENT=development DISABLE_ESLINT_PLUGIN=true react-scripts build",
+    "build:production": "REACT_APP_ENVIRONMENT=production DISABLE_ESLINT_PLUGIN=true react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
     "lint": "eslint . --ext .ts,.tsx",
     "lint:fix": "eslint . --ext .ts,.tsx --fix",
     "lint:check": "eslint . --ext .ts,.tsx --max-warnings 0",
     "format": "prettier --write \"src/**/*.{ts,tsx,js,jsx,json,md}\"",
-    "format:check": "prettier --check \"src/**/*.{ts,tsx,js,jsx,json,md}\"",
-    "generate-config": "node scripts/generate-config.js",
-    "generate-config:develop": "node scripts/generate-config.js develop",
-    "generate-config:production": "node scripts/generate-config.js production",
-    "deploy": "node deploy-to-aws.js",
-    "deploy:develop": "ENVIRONMENT=develop node deploy-to-aws.js",
-    "deploy:production": "ENVIRONMENT=production node deploy-to-aws.js"
+    "format:check": "prettier --check \"src/**/*.{ts,tsx,js,jsx,json,md}\""
   },
   "eslintConfig": {
     "extends": [

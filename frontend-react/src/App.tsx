@@ -21,17 +21,24 @@ import ProtectedRoute from './components/ProtectedRoute';
 import { AuthProvider } from './context/AuthContext';
 
 // Utils
-import { loadConfig } from './utils/config';
+import { getApiUrl } from './utils/config';
 import { updateBaseUrl } from './services/api';
+import { testApiConfiguration } from './utils/api-test';
 
 function App() {
-  // Load configuration on app start
+  // Initialize configuration on app start
   useEffect(() => {
     const initApp = async () => {
       try {
-        await loadConfig();
-        // Update API base URL with the loaded configuration
+        // Test API configuration first
+        testApiConfiguration();
+
+        // Update API base URL with the current configuration
         updateBaseUrl();
+
+        // Test again after configuration is loaded
+        console.log('🔧 Final API configuration test:');
+        testApiConfiguration();
       } catch (error) {
         console.error('Failed to load app configuration:', error);
       }
