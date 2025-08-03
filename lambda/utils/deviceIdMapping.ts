@@ -4,18 +4,19 @@ import { unmarshall } from "@aws-sdk/util-dynamodb";
 // Helper function to get wireless device ID from production line table
 export async function getWirelessDeviceId(dynamodb: DynamoDB, deviceId: string): Promise<string | null> {
     try {
-        const result = await dynamodb.getItem({
+        const result = await dynamodb.query({
             TableName: "ProductionLine",
-            Key: {
-                'device_id': { S: deviceId }
+            KeyConditionExpression: "device_id = :deviceId",
+            ExpressionAttributeValues: {
+                ":deviceId": { S: deviceId }
             }
         });
 
-        if (!result.Item) {
+        if (!result.Items || result.Items.length === 0) {
             return null;
         }
 
-        const item = unmarshall(result.Item);
+        const item = unmarshall(result.Items[0]);
         return item.wireless_device_id || null;
     } catch (error) {
         console.error('Error getting wireless device ID:', error);
@@ -26,9 +27,10 @@ export async function getWirelessDeviceId(dynamodb: DynamoDB, deviceId: string):
 // Helper function to get device ID from wireless device ID
 export async function getDeviceId(dynamodb: DynamoDB, wirelessDeviceId: string): Promise<string | null> {
     try {
+        // Use the GSI to efficiently query by wireless_device_id
         const result = await dynamodb.query({
             TableName: "ProductionLine",
-            IndexName: "wireless_device_id-index", // Assuming this GSI exists
+            IndexName: "wireless_device_id-index",
             KeyConditionExpression: "wireless_device_id = :wirelessDeviceId",
             ExpressionAttributeValues: {
                 ":wirelessDeviceId": { S: wirelessDeviceId }

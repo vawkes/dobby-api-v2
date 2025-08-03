@@ -80,7 +80,7 @@ export class DobbyApiV2Stack extends cdk.Stack {
     //   billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
     //   removalPolicy: cdk.RemovalPolicy.RETAIN,
     // });
-    
+
     // const eventTable = new dynamodb.Table(this, 'DobbyEventTable', {
     //   tableName: 'DobbyEvent',
     //   partitionKey: { name: 'event_id', type: dynamodb.AttributeType.STRING },
@@ -188,6 +188,16 @@ export class DobbyApiV2Stack extends cdk.Stack {
       ],
     }));
 
+    // Add explicit permission for querying the GSI on ProductionLine table
+    fn.addToRolePolicy(new iam.PolicyStatement({
+      actions: [
+        "dynamodb:Query",
+      ],
+      resources: [
+        `${productionLineTable.tableArn}/index/wireless_device_id-index`
+      ],
+    }));
+
     // Create the Cognito User Pool Authorizer
     const authorizer = new apigw.CognitoUserPoolsAuthorizer(this, 'DobbyAuthorizer', {
       cognitoUserPools: [userPool]
@@ -225,7 +235,7 @@ export class DobbyApiV2Stack extends cdk.Stack {
     // Add custom domain for API if configured
     let apiDomainName: string | undefined;
     let customDomain: apigw.DomainName | undefined;
-    
+
     if (environmentConfig.api && props.certificateArn) {
       apiDomainName = `${environmentConfig.api.subdomain}.${environmentConfig.api.domain}`;
 
@@ -242,7 +252,7 @@ export class DobbyApiV2Stack extends cdk.Stack {
         stage: api.deploymentStage,
       });
     }
-    
+
     // Create public routes (NO AUTH)
     const publicResource = api.root.addResource('public');
     publicResource.addProxy({
@@ -429,6 +439,6 @@ export class DobbyApiV2Stack extends cdk.Stack {
       description: 'API Gateway hosted zone ID for DNS A record',
       exportName: `ApiGatewayHostedZoneId-${environmentConfig.name}`,
     });
-    
+
   }
 }
