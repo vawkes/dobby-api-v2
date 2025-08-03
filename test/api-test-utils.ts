@@ -41,13 +41,13 @@ export class ApiTestClient {
 
   async request<T = any>(testRequest: TestRequest): Promise<ApiResponse<T>> {
     const { method, path, headers = {}, body, query } = testRequest;
-    
+
     // Build query string
-    const queryString = query ? 
+    const queryString = query ?
       '?' + new URLSearchParams(query).toString() : '';
-    
+
     const fullPath = path + queryString;
-    
+
     const response = await this.app.request(fullPath, {
       method,
       headers: { ...this.baseHeaders, ...headers },
@@ -55,7 +55,7 @@ export class ApiTestClient {
     });
 
     const responseBody = await response.json().catch(() => ({}));
-    
+
     return {
       status: response.status,
       body: responseBody,
@@ -246,11 +246,11 @@ export const runPermissionTests = (
 // Performance testing helpers
 export const measureResponseTime = async <T>(
   requestFn: () => Promise<ApiResponse<T>>
-): Promise<{ response: ApiResponse<T>; duration: number }> {
+): Promise<{ response: ApiResponse<T>; duration: number }> => {
   const start = Date.now();
   const response = await requestFn();
   const duration = Date.now() - start;
-  
+
   return { response, duration };
 };
 
