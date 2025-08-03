@@ -15,10 +15,14 @@ enum EventType {
     REQUEST_CONNECTION_INFO = 'REQUEST_CONNECTION_INFO',
 }
 
-// Define device ID schema that accepts either a single UUID or an array of UUIDs
+// Custom validator for 6-digit device ID
+const sixDigitDeviceId = z.string().regex(/^\d{6}$/, 'Device ID must be exactly 6 digits');
+
+// Define device ID schema that accepts either a single UUID/6-digit ID or an array of UUIDs/6-digit IDs
 const deviceIdSchema = z.union([
     z.string().uuid(),
-    z.array(z.string().uuid())
+    sixDigitDeviceId,
+    z.array(z.union([z.string().uuid(), sixDigitDeviceId]))
 ]);
 
 const startShedSchema = z.object({
@@ -92,7 +96,7 @@ const getUtcTimeSchema = z.object({
 });
 
 const setBitmapSchema = z.object({
-    device_id: z.string(),
+    device_id: deviceIdSchema,
     bit_number: z.number().min(0).max(255),
     set_value: z.boolean(),
     event_sent: z.boolean().optional()
@@ -134,7 +138,7 @@ const eventsSchema = z.array(eventSchema);
 const bulkResponseSchema = z.object({
     successful_events: z.array(eventSchema),
     failed_events: z.array(z.object({
-        device_id: z.string().uuid(),
+        device_id: deviceIdSchema,
         error: z.string()
     })).optional()
 });
