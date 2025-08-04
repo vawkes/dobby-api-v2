@@ -274,7 +274,7 @@ jobs:
             - uses: actions/checkout@v2
             - uses: actions/setup-node@v2
               with:
-                  node-version: "18"
+                  node-version: "20"
             - run: npm ci
             - run: npm run test:coverage
             - run: npm run lint

@@ -13,7 +13,7 @@ import { resolveDeviceIdForCommunication, resolveDeviceIdForResponse } from '../
 interface ValidationIssue {
     path: (string | number)[];
     message: string;
-    received: unknown;
+    received?: unknown;
     expected?: unknown;
 }
 
@@ -38,7 +38,7 @@ app.get('/',
     requirePermission(Action.READ_DEVICES),
     async (c) => {
         try {
-            console.log('Starting device scan operation');
+            console.log('Starting device fetch operation');
             const dynamodb = new DynamoDB({ region: "us-east-1" });
 
             // Get user from context (set by auth middleware)
@@ -54,6 +54,8 @@ app.get('/',
                 return c.json([]);
             }
 
+            console.log(`User has access to ${accessibleDeviceIds.length} devices:`, accessibleDeviceIds);
+
             // Resolve 6-digit device IDs to wireless device IDs for database lookup
             const accessibleWirelessDeviceIds: string[] = [];
             for (const deviceId of accessibleDeviceIds) {
@@ -67,45 +69,64 @@ app.get('/',
                 return c.json([]);
             }
 
-            // Use a limit to prevent retrieving too many items at once
-            // and set a reasonable page size
-            const scanParams = {
-                TableName: "DobbyInfo",
-                Limit: 100 // Only retrieve up to 100 devices at a time
-            };
+            console.log(`Resolved to ${accessibleWirelessDeviceIds.length} wireless device IDs:`, accessibleWirelessDeviceIds);
 
-            console.log('Executing scan with params:', JSON.stringify(scanParams));
-            const results = await dynamodb.scan(scanParams);
+            // Use batchGetItem to fetch only the devices the user has access to
+            // DynamoDB batchGetItem can handle up to 100 items per request
+            const batchSize = 100;
+            const allDevices: any[] = [];
 
-            console.log(`Scan complete. Retrieved ${results.Items?.length || 0} devices`);
-            const allDevices = results.Items?.map(item => {
-                const device = unmarshall(item);
+            for (let i = 0; i < accessibleWirelessDeviceIds.length; i += batchSize) {
+                const batch = accessibleWirelessDeviceIds.slice(i, i + batchSize);
+                
+                const batchParams = {
+                    RequestItems: {
+                        "DobbyInfo": {
+                            Keys: batch.map(deviceId => ({ device_id: { S: deviceId } }))
+                        }
+                    }
+                };
 
-                // Convert string values to numbers for fields expected to be numbers
-                if (device.last_rx_rssi !== undefined && typeof device.last_rx_rssi === 'string') {
-                    device.last_rx_rssi = Number(device.last_rx_rssi);
+                console.log(`Fetching batch ${Math.floor(i / batchSize) + 1} with ${batch.length} devices`);
+                const batchResults = await dynamodb.batchGetItem(batchParams);
+
+                if (batchResults.Responses?.DobbyInfo) {
+                    const batchDevices = batchResults.Responses.DobbyInfo.map(item => {
+                        const device = unmarshall(item);
+
+                        // Convert string values to numbers for fields expected to be numbers
+                        if (device.last_rx_rssi !== undefined && typeof device.last_rx_rssi === 'string') {
+                            device.last_rx_rssi = Number(device.last_rx_rssi);
+                        }
+
+                        if (device.last_link_type !== undefined && typeof device.last_link_type === 'string') {
+                            device.last_link_type = Number(device.last_link_type);
+                        }
+
+                        return device;
+                    });
+
+                    allDevices.push(...batchDevices);
                 }
 
-                if (device.last_link_type !== undefined && typeof device.last_link_type === 'string') {
-                    device.last_link_type = Number(device.last_link_type);
+                // Handle unprocessed keys if any (shouldn't happen with our batch size)
+                if (batchResults.UnprocessedKeys && Object.keys(batchResults.UnprocessedKeys).length > 0) {
+                    console.warn('Some items were not processed:', batchResults.UnprocessedKeys);
                 }
+            }
 
-                return device;
-            }) || [];
-
-            // Filter devices to only include those accessible to the user
-            const accessibleDevices = allDevices.filter(device =>
-                accessibleWirelessDeviceIds.includes(device.device_id)
-            );
+            console.log(`Retrieved ${allDevices.length} devices from database`);
 
             // Resolve device IDs back to 6-digit format for response
-            const resolvedDevices = await Promise.all(accessibleDevices.map(async (device) => {
+            const resolvedDevices = await Promise.all(allDevices.map(async (device) => {
                 const originalDeviceId = await resolveDeviceIdForResponse(dynamodb, device.device_id);
                 return {
                     ...device,
                     device_id: originalDeviceId
                 };
             }));
+
+            console.log(`Resolved to ${resolvedDevices.length} devices with original device IDs`);
 
             // Use safeParse for more resilient validation
             const parseResult = devicesSchema.safeParse(resolvedDevices);
@@ -139,7 +160,7 @@ app.get('/',
 
             return c.json(parseResult.data);
         } catch (error) {
-            console.error('Error in device scan operation:', error);
+            console.error('Error in device fetch operation:', error);
             const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
             return c.json({ error: 'Failed to retrieve devices', details: errorMessage }, 500);
         }
@@ -360,7 +381,7 @@ app.get('/:deviceId/data',
                 return c.json({ error: 'No data found for this device' }, 404);
             }
 
-            const deviceData = results.Items.map((item: Record<string, unknown>) => {
+            const deviceData = results.Items.map((item: any) => {
                 const data = unmarshall(item);
 
                 // Helper function to safely convert to number, defaulting to 0 for NaN
