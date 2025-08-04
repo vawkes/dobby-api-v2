@@ -1,5 +1,5 @@
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { DynamoDBDocumentClient, PutCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
+import { DynamoDBDocumentClient, UpdateCommand } from '@aws-sdk/lib-dynamodb';
 
 const client = new DynamoDBClient({});
 const docClient = DynamoDBDocumentClient.from(client);
@@ -13,11 +13,7 @@ interface DobbyData {
   operational_state?: number;
 }
 
-interface DeviceInfo {
-  device_id: string;
-  info_type: string;
-  value: string | number;
-}
+
 
 export const writeDobbyDataToDynamo = async (
   deviceId: string,
