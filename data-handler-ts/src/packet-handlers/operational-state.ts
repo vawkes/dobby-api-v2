@@ -1,6 +1,6 @@
 import { convertFromGpsEpoch } from '../utils/gps-epoch';
 import { writeDobbyDataToDynamo } from '../utils/dynamo';
-import { sendToShifted } from '../utils/shifted';
+import { sendToShiftedIfComplete } from '../utils/shifted-validator';
 import { sendAck } from '../utils/ack';
 
 export const handleOperationalState = async (payload: Buffer, deviceId: string): Promise<void> => {
@@ -22,5 +22,7 @@ export const handleOperationalState = async (payload: Buffer, deviceId: string):
     'operational_state',
     state
   );
-  await sendToShifted(rowEntry);
+  
+  // Check if we have a complete payload for the new validator
+  await sendToShiftedIfComplete(rowEntry);
 }; 

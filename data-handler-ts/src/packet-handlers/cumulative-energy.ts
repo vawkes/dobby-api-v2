@@ -1,9 +1,7 @@
 import { convertFromGpsEpoch } from '../utils/gps-epoch';
 import { writeDobbyDataToDynamo } from '../utils/dynamo';
-import { sendToShifted } from '../utils/shifted';
+import { sendToShiftedIfComplete } from '../utils/shifted-validator';
 import { sendAck } from '../utils/ack';
-import { writeDeviceInfoToDynamo } from '../utils/dynamo';
-// import { send_to_shifted } from '../utils/send_to_shifted';
 
 export const handleCumulativeEnergy = async (payload: Buffer, deviceId: string): Promise<void> => {
   const msgNumber = payload[1];
@@ -25,14 +23,7 @@ export const handleCumulativeEnergy = async (payload: Buffer, deviceId: string):
     'cumulative_energy',
     value
   );
-  await sendToShifted(rowEntry);
-
-  const row_entry = {
-    device_id: deviceId,
-    timestamp: gpsTimestamp,
-    value: value,
-    message_number: msgNumber,
-  };
-
-  // send_to_shifted(row_entry);
+  
+  // Check if we have a complete payload for the new validator
+  await sendToShiftedIfComplete(rowEntry);
 }; 

@@ -1,4 +1,4 @@
-import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
+import { APIGatewayProxyResult } from 'aws-lambda';
 import { handleInstantPower } from './packet-handlers/instant-power';
 import { handleCumulativeEnergy } from './packet-handlers/cumulative-energy';
 import { handleInfoRequest } from './packet-handlers/info-request';
