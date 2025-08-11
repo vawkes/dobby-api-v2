@@ -299,6 +299,14 @@ export class DobbyApiV2Stack extends cdk.Stack {
     infoTable.grantReadWriteData(dataHandlerFn);
     eventTable.grantReadWriteData(dataHandlerFn);
     dataTable.grantReadWriteData(dataHandlerFn);
+    
+    // Grant permissions for company-related tables
+    companiesTable.grantReadData(dataHandlerFn);
+    companyUsersTable.grantReadData(dataHandlerFn);
+    companyDevicesTable.grantReadData(dataHandlerFn);
+    
+    // Grant permissions for ProductionLine table (needed for device ID mapping)
+    productionLineTable.grantReadData(dataHandlerFn);
 
     // Add IoT Wireless permissions
     dataHandlerFn.addToRolePolicy(new iam.PolicyStatement({
@@ -329,6 +337,17 @@ export class DobbyApiV2Stack extends cdk.Stack {
         `${infoTable.tableArn}/index/*`,
         `${eventTable.tableArn}/index/*`,
         `${dataTable.tableArn}/index/*`
+      ]
+    }));
+
+    // Add SSM permissions for Shifted token access
+    dataHandlerFn.addToRolePolicy(new iam.PolicyStatement({
+      actions: [
+        'ssm:GetParameter',
+        'ssm:PutParameter'
+      ],
+      resources: [
+        `arn:aws:ssm:${this.region}:${this.account}:parameter/SHIFTED_TOKEN`
       ]
     }));
 

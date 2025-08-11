@@ -1,5 +1,5 @@
 import { SSMClient, GetParameterCommand, PutParameterCommand } from '@aws-sdk/client-ssm';
-import { DynamoDBClient, GetItemCommand } from '@aws-sdk/client-dynamodb';
+import { DynamoDBClient, GetItemCommand, QueryCommand } from '@aws-sdk/client-dynamodb';
 import axios from 'axios';
 
 const SHIFTED_DATA_URL = "https://cloud.shiftedenergy.com/gridcube/telemetry";
@@ -59,8 +59,45 @@ async function authShifted(): Promise<void> {
   }
 }
 
-async function checkDeviceCompanyAccess(deviceId: string): Promise<boolean> {
+async function getDeviceIdFromWireless(wirelessDeviceId: string): Promise<string | null> {
   try {
+    // Use the GSI to efficiently query by wireless_device_id
+    const command = new QueryCommand({
+      TableName: "ProductionLine",
+      IndexName: "wireless_device_id-index",
+      KeyConditionExpression: "wireless_device_id = :wirelessDeviceId",
+      ExpressionAttributeValues: {
+        ":wirelessDeviceId": { S: wirelessDeviceId }
+      }
+    });
+
+    const response = await dynamoClient.send(command);
+    
+    if (response.Items && response.Items.length > 0) {
+      const item = response.Items[0] as any;
+      return item.device_id?.S || null;
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('Error getting device ID from wireless device ID:', error);
+    return null;
+  }
+}
+
+async function checkDeviceCompanyAccess(wirelessDeviceId: string): Promise<boolean> {
+  try {
+    // First, get the 6-digit device ID from the wireless device ID
+    const deviceId = await getDeviceIdFromWireless(wirelessDeviceId);
+    
+    if (!deviceId) {
+      console.log(`No device ID found for wireless device ID: ${wirelessDeviceId}`);
+      return false;
+    }
+
+    console.log(`Resolved wireless device ID ${wirelessDeviceId} to device ID ${deviceId}`);
+
+    // Check if the 6-digit device ID belongs to the target company
     const command = new GetItemCommand({
       TableName: "CompanyDevices",
       Key: {
@@ -70,7 +107,10 @@ async function checkDeviceCompanyAccess(deviceId: string): Promise<boolean> {
     });
 
     const response = await dynamoClient.send(command);
-    return !!response.Item;
+    const hasAccess = !!response.Item;
+    
+    console.log(`Device ${deviceId} (wireless: ${wirelessDeviceId}) company access: ${hasAccess}`);
+    return hasAccess;
   } catch (error) {
     console.error('Error checking device company access:', error);
     return false;
@@ -172,6 +212,14 @@ export async function sendToShiftedIfComplete(dynamoEntry: DynamoEntry): Promise
     cumulative_energy !== undefined &&
     message_number !== undefined
   ) {
+    // Get the six-digit device ID from the wireless device ID
+    const sixDigitDeviceId = await getDeviceIdFromWireless(device_id);
+    
+    if (!sixDigitDeviceId) {
+      console.log(`No six-digit device ID found for wireless device ID: ${device_id}`);
+      return;
+    }
+
     // Check if device belongs to the target company
     const hasCompanyAccess = await checkDeviceCompanyAccess(device_id);
     
@@ -180,10 +228,10 @@ export async function sendToShiftedIfComplete(dynamoEntry: DynamoEntry): Promise
       return;
     }
 
-    console.log(`Device ${device_id} belongs to company ${TARGET_COMPANY_ID}, sending to Shifted`);
+    console.log(`Device ${device_id} (six-digit: ${sixDigitDeviceId}) belongs to company ${TARGET_COMPANY_ID}, sending to Shifted`);
 
     const payload: ShiftedPayload = {
-      device_id,
+      device_id: sixDigitDeviceId, // Use the six-digit device ID instead of the wireless device ID
       timestamp,
       operational_state,
       instant_power: Number(instant_power),

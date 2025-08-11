@@ -35,17 +35,24 @@ export const writeDobbyDataToDynamo = async (
     ExpressionAttributeValues: {
       ':msgNum': messageNumber,
       ':value': value
-    }
+    },
+    ReturnValues: 'ALL_NEW'
   });
 
   try {
-    await docClient.send(command);
-    return {
-      device_id: deviceId,
-      timestamp,
-      message_number: messageNumber,
-      [dataType]: value
-    };
+    const response = await docClient.send(command);
+    
+    if (response.Attributes) {
+      return response.Attributes as DobbyData;
+    } else {
+      // Fallback to partial data if no attributes returned
+      return {
+        device_id: deviceId,
+        timestamp,
+        message_number: messageNumber,
+        [dataType]: value
+      };
+    }
   } catch (error) {
     console.error('Error writing to DynamoDB:', error);
     throw error;
