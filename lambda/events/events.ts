@@ -135,17 +135,30 @@ app.get("/device/:deviceId",
             const deviceId = c.req.param("deviceId");
             const dynamodb = new DynamoDB({ "region": "us-east-1" });
 
-            // Query the GSI (device_id)
+            // Resolve the device ID for communication (get wireless device ID if needed)
+            let resolvedDeviceId = deviceId;
+            try {
+                resolvedDeviceId = await resolveDeviceIdForCommunication(dynamodb, deviceId);
+                console.log(`Successfully resolved device ID ${deviceId} to wireless device ID: ${resolvedDeviceId}`);
+            } catch (error) {
+                console.error(`Failed to resolve device ID ${deviceId} to wireless device ID:`, error);
+                // If resolution fails, we can't query events since they're stored with wireless device IDs
+                return c.json({ error: `Device ID ${deviceId} could not be resolved. Please check if the device exists.` }, 400);
+            }
+
+            // Query the GSI (device_id) using the resolved wireless device ID
             const queryParams = {
                 TableName: "DobbyEvent",
                 IndexName: "device_id-index",
                 KeyConditionExpression: "device_id = :deviceId",
                 ExpressionAttributeValues: {
-                    ":deviceId": { S: deviceId }
+                    ":deviceId": { S: resolvedDeviceId }
                 }
             };
 
+            console.log(`Querying events for device ID: ${deviceId}, resolved to wireless device ID: ${resolvedDeviceId}`);
             const results = await dynamodb.query(queryParams);
+            console.log(`Query results: ${results.Items?.length || 0} items found`);
 
             if (!results.Items || results.Items.length === 0) {
                 return c.json({ error: "No events found for this device" }, 404);
@@ -158,7 +171,7 @@ app.get("/device/:deviceId",
                 // Make sure event_data exists and has the necessary structure
                 if (!event.event_data) {
                     event.event_data = {
-                        device_id: event.device_id || deviceId
+                        device_id: deviceId // Use the original 6-digit device ID for the response
                     };
 
                     // Add appropriate fields based on event type
