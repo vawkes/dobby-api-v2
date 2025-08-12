@@ -1,17 +1,13 @@
-import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { DynamoDBDocumentClient, UpdateCommand } from '@aws-sdk/lib-dynamodb';
+import { DeviceRepository } from '../../../shared/database/repositories/device-repository';
+import { DeviceData } from '../../../shared/schemas/device-data';
+import { UpdateCommand } from '@aws-sdk/lib-dynamodb';
+import { docClient, TABLES } from '../../../shared/database/client';
 
-const client = new DynamoDBClient({});
-const docClient = DynamoDBDocumentClient.from(client);
+// Create repository instance
+const deviceRepository = new DeviceRepository();
 
-interface DobbyData {
-  device_id: string;
-  timestamp: number;
-  message_number: number;
-  instant_power?: bigint;
-  cumulative_energy?: bigint;
-  operational_state?: number;
-}
+// Export repository for use by other modules
+export { deviceRepository };
 
 
 
@@ -21,42 +17,14 @@ export const writeDobbyDataToDynamo = async (
   messageNumber: number,
   dataType: string,
   value: bigint | number
-): Promise<DobbyData> => {
-  const command = new UpdateCommand({
-    TableName: 'DobbyData',
-    Key: {
-      device_id: deviceId,
-      timestamp: timestamp
-    },
-    UpdateExpression: 'SET message_number = :msgNum, #dataType = :value',
-    ExpressionAttributeNames: {
-      '#dataType': dataType
-    },
-    ExpressionAttributeValues: {
-      ':msgNum': messageNumber,
-      ':value': value
-    },
-    ReturnValues: 'ALL_NEW'
-  });
-
-  try {
-    const response = await docClient.send(command);
-    
-    if (response.Attributes) {
-      return response.Attributes as DobbyData;
-    } else {
-      // Fallback to partial data if no attributes returned
-      return {
-        device_id: deviceId,
-        timestamp,
-        message_number: messageNumber,
-        [dataType]: value
-      };
-    }
-  } catch (error) {
-    console.error('Error writing to DynamoDB:', error);
-    throw error;
-  }
+): Promise<DeviceData> => {
+  return deviceRepository.saveDeviceData(
+    deviceId,
+    timestamp,
+    messageNumber,
+    dataType,
+    value
+  );
 };
 
 export const writeDeviceInfoToDynamo = async (
@@ -65,7 +33,7 @@ export const writeDeviceInfoToDynamo = async (
   value: string | number
 ): Promise<void> => {
   const command = new UpdateCommand({
-    TableName: 'DobbyInfo',
+    TableName: TABLES.DEVICE_INFO,
     Key: {
       device_id: deviceId
     },

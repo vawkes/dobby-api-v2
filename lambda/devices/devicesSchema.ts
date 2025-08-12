@@ -1,12 +1,10 @@
 import { z } from '@hono/zod-openapi'
-
-// Custom validator for 6-digit device ID
-const sixDigitDeviceId = z.string().regex(/^\d{6}$/, 'Device ID must be exactly 6 digits');
+import { deviceIdSchema as sharedDeviceIdSchema, wirelessDeviceIdSchema, gpsTimestampSchema, messageNumberSchema } from '../../shared/schemas/primitives'
 
 // Custom validator for device ID that can be either UUID or 6-digit
 const deviceIdSchema = z.union([
-    z.string().uuid(),
-    sixDigitDeviceId
+    wirelessDeviceIdSchema,
+    sharedDeviceIdSchema
 ]);
 
 const deviceSchema = z.object({
@@ -31,10 +29,10 @@ const devicesSchema = z.array(deviceSchema);
 // Schema for DobbyData table
 const deviceDataPoint = z.object({
     device_id: deviceIdSchema, // Now accepts both UUID and 6-digit ID
-    timestamp: z.number(), // Timestamp as a number (seconds since epoch)
+    timestamp: gpsTimestampSchema, // GPS timestamp as a number (seconds since epoch)
     cumulative_energy: z.number(),
     instant_power: z.number(),
-    msg_number: z.number(),
+    msg_number: messageNumberSchema,
     operational_state: z.number()
 });
 
