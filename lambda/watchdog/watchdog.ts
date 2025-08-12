@@ -1,5 +1,6 @@
-import { DynamoDB } from "@aws-sdk/client-dynamodb"
-import { unmarshall } from "@aws-sdk/util-dynamodb"
+import { ScanCommand } from "@aws-sdk/lib-dynamodb"
+import { docClient, TABLES } from "../../shared/database/client"
+import { WirelessDeviceId, wirelessDeviceIdSchema } from "../../shared/schemas/primitives"
 import { sendInfoRequestToDevice } from "../utils/sendInfoRequest"
 
 interface WatchdogResult {
@@ -21,12 +22,11 @@ interface WatchdogResult {
 export async function handler(event: any): Promise<WatchdogResult> {
     console.log('Starting watchdog timer feed for all devices')
     
-    const dynamodb = new DynamoDB({ region: "us-east-1" })
     const startTime = Date.now()
     
     try {
         // Scan ProductionLine table to get all wireless device IDs
-        const allDevices = await getAllWirelessDeviceIds(dynamodb)
+        const allDevices = await getAllWirelessDeviceIds()
         console.log(`Found ${allDevices.length} devices to ping`)
         
         if (allDevices.length === 0) {
@@ -101,33 +101,39 @@ export async function handler(event: any): Promise<WatchdogResult> {
 /**
  * Scans the ProductionLine table to get all wireless device IDs
  * Uses pagination to handle large tables efficiently
+ * Now uses unified database client and proper type validation
  */
-async function getAllWirelessDeviceIds(dynamodb: DynamoDB): Promise<string[]> {
-    const devices: string[] = []
+async function getAllWirelessDeviceIds(): Promise<WirelessDeviceId[]> {
+    const devices: WirelessDeviceId[] = []
     let lastEvaluatedKey: any = undefined
     let scannedCount = 0
     
     console.log('Starting ProductionLine table scan for wireless device IDs')
     
     do {
-        const params: any = {
-            TableName: "ProductionLine",
+        const command = new ScanCommand({
+            TableName: TABLES.PRODUCTION_LINE,
             ProjectionExpression: "wireless_device_id",
             FilterExpression: "attribute_exists(wireless_device_id)", // Only get items with wireless_device_id
-        }
+            ExclusiveStartKey: lastEvaluatedKey
+        })
         
-        if (lastEvaluatedKey) {
-            params.ExclusiveStartKey = lastEvaluatedKey
-        }
-        
-        const result = await dynamodb.scan(params)
+        const result = await docClient.send(command)
         scannedCount += result.ScannedCount || 0
         
         if (result.Items) {
             const batchDevices = result.Items
-                .map(item => unmarshall(item))
                 .map(item => item.wireless_device_id)
-                .filter(id => id && typeof id === 'string') // Filter out any null/undefined/invalid values
+                .filter(id => {
+                    // Validate each ID using the schema
+                    const validationResult = wirelessDeviceIdSchema.safeParse(id)
+                    if (!validationResult.success) {
+                        console.warn(`Invalid wireless device ID found: ${id}`)
+                        return false
+                    }
+                    return true
+                })
+                .map(id => id as WirelessDeviceId) // Type assertion after validation
                 
             devices.push(...batchDevices)
             console.log(`Scan iteration: found ${batchDevices.length} valid devices (total so far: ${devices.length})`)

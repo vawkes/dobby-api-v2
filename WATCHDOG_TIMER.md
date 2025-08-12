@@ -68,11 +68,11 @@ Monitor the watchdog function using:
 ## Implementation Details
 
 ### Device Discovery
-The function scans the ProductionLine table to discover all devices:
+The function scans the ProductionLine table using the unified database client:
 
 ```typescript
-// Scans with pagination for large device fleets
-const devices = await getAllWirelessDeviceIds(dynamodb);
+// Scans with pagination for large device fleets using unified client
+const devices = await getAllWirelessDeviceIds();
 ```
 
 ### Batch Processing

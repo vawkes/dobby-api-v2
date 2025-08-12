@@ -1,6 +1,7 @@
 import { convertToGpsTimeEpoch } from "./convertGpsTime"
 import { EventMap } from "../events/models/eventType"
 import { sendToDobby } from "./sendToDobby"
+import { WirelessDeviceId } from "../../shared/schemas/primitives"
 
 /**
  * Sends an info request to a device without logging to event table
@@ -10,7 +11,7 @@ import { sendToDobby } from "./sendToDobby"
  * @param timestamp - Optional timestamp for the request (defaults to current time)
  * @returns Promise<boolean> - true if message was sent successfully, false otherwise
  */
-export async function sendInfoRequestToDevice(deviceId: string, timestamp?: Date): Promise<boolean> {
+export async function sendInfoRequestToDevice(deviceId: WirelessDeviceId, timestamp?: Date): Promise<boolean> {
     const gpsTimeEpoch = timestamp ? convertToGpsTimeEpoch(timestamp) : 0
 
     // Create the info request payload
