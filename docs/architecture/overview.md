@@ -42,11 +42,14 @@ flowchart LR
   - Entry: `lambda/index.ts` mounts routes: `devices`, `events`, `companies`, and public `auth` routes.
   - Middleware: CORS, `auth` (Cognito JWT verification), permission checks.
   - OpenAPI: `hono-openapi` with Scalar UI for interactive docs.
+  - Public vs Protected: Only routes under `/public/*` are public. All other routes require a valid JWT.
 
 - Authentication and Authorization:
   - Cognito User Pool and App Client created by CDK (`lib/dobby-api-v2-stack.ts`).
   - Middleware validates JWT and enriches context with user claims (`lambda/utils/auth.ts`).
   - Fine-grained permissions and device-level checks in `lambda/utils/permissions.ts` and `lambda/utils/deviceAccess.ts`.
+  - Current posture: No MFA enabled (may add later). No rate limiting yet (under consideration).
+  - Frontend stores the Cognito ID token and uses the refresh-token flow to renew sessions.
 
 - Events and Device Commands:
   - Routes in `lambda/events/events.ts` validate requests (Zod) and dispatch to event handlers.
@@ -57,6 +60,7 @@ flowchart LR
 - Data Ingestion (Uplink):
   - `data-handler-ts` Lambda processes uplinks from devices, decodes payloads by type, writes device data (`DobbyData`), and acknowledges events.
   - Uses a shared DynamoDB DocumentClient (`shared/database/client.ts`) and schemas in `shared/schemas/`.
+  - Payload sizes: standard; no special handling required. Detailed message content docs can be linked here when available.
 
 - Watchdog Timer:
   - `lambda/watchdog/watchdog.ts` periodically pings devices (info-request) to prevent watchdog timeouts.
@@ -74,9 +78,17 @@ flowchart LR
 
 - Existing tables imported: `DobbyInfo`, `DobbyEvent`, `DobbyData`, `ProductionLine`.
 - New org tables: `Companies`, `CompanyUsers` (GSI on `user_id`), `CompanyDevices`.
-- Repositories provide access patterns:
-  - `shared/database/repositories/device-repository.ts`
-  - `shared/database/repositories/event-repository.ts`
+- All tables are on-demand billing mode.
+
+Primary keys and GSIs:
+
+- `DobbyData`: PK `device_id`, SK `timestamp`.
+- `DobbyEvent`: PK `event_id`, SK `timestamp`; GSI `device_id-index` with PK `device_id`, SK `timestamp` for device/timeline queries.
+- `ProductionLine`: PK `device_id`, SK `timestamp`; GSI `wireless_device_id-index` with PK `wireless_device_id` for reverse lookup.
+
+Repositories provide access patterns:
+- `shared/database/repositories/device-repository.ts`
+- `shared/database/repositories/event-repository.ts`
 
 ## Request Flow (Example)
 
@@ -85,6 +97,11 @@ flowchart LR
 3. Route handler validates body (Zod), enforces permissions, and performs action.
 4. For events, a binary payload is sent via IoT Wireless; an event record is saved to DynamoDB.
 5. Device uplink is processed by `data-handler-ts`, acknowledging events and persisting data.
+
+## API Documentation Endpoints
+
+- OpenAPI JSON: `/public/openapi`
+- Interactive docs (Scalar): `/public/docs`
 
 ## Open Questions (to finalize this doc)
 
@@ -95,7 +112,6 @@ flowchart LR
 - Error handling policy: retry strategies and dead-letter queues in use?
 - Observability: logs, metrics, dashboards, alarms (CloudWatch, X-Ray, etc.)?
 - Secrets management strategy (SSM, Secrets Manager) and rotation?
-- Frontend auth model: which token(s) stored, expiration/refresh, and logout behavior?
 - Multi-tenant boundaries: how are companies isolated and audited?
 - Deployment environments and promotion strategy (develop → production)?
 
