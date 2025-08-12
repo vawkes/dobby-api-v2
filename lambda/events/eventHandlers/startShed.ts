@@ -28,7 +28,7 @@ const handleStartShed = async (device_id: string, startTime?: Date, duration: nu
         event_type: EventType.START_SHED,
         event_data: {
             device_id: device_id,
-            start_time: startTime ? startTime.toISOString() : "0",
+            start_time: gpsTimeEpoch,
             duration: duration,
             event_sent: sentToDobby
         }

@@ -11,9 +11,8 @@ interface FlattenedEvent {
     device_id: string;
     event_sent: boolean;
     event_ack: boolean;
-    start_time?: string;
-    timestamp?: string;
-    duration?: number;
+    timestamp: number; // Always required as sort key
+    [key: string]: any; // Allow any additional fields from event_data
 }
 
 /**
@@ -23,33 +22,26 @@ interface FlattenedEvent {
  */
 export async function saveEventToDynamoDB(event: EventSchemaType): Promise<boolean> {
     try {
-        // Flatten the event structure for DynamoDB
+        // Start with the base flattened event structure
         const flattenedEvent: FlattenedEvent = {
             event_id: event.event_id,
             event_type: event.event_type,
-            device_id: event.event_data.device_id,
-            event_sent: event.event_data.event_sent || false,
-            event_ack: false // Default to false
+            device_id: event.event_data.device_id as string, // This is the wireless device ID (UUID)
+            event_sent: (event.event_data.event_sent as boolean) || false,
+            event_ack: false, // Default to false
+            timestamp: event.event_data.start_time, // Use GPS epoch timestamp (seconds)
+            created_at: Date.now()
         };
 
-        // Add appropriate fields based on event type
-        if (event.event_type === EventType.INFO_REQUEST && 'timestamp' in event.event_data) {
-            // For INFO_REQUEST, use timestamp field
-            flattenedEvent.timestamp = event.event_data.timestamp;
-        } else {
-            // For all other event types, use start_time field
-            if ('start_time' in event.event_data) {
-                flattenedEvent.start_time = event.event_data.start_time;
-            }
+        console.log(`Saving event ${event.event_id} with device_id: ${event.event_data.device_id}, GPS epoch timestamp: ${event.event_data.start_time}`);
 
-            // Add duration for event types that have it
-            if ('duration' in event.event_data && event.event_data.duration !== undefined) {
-                flattenedEvent.duration = event.event_data.duration;
+        // Copy ALL fields from event_data to preserve complete event information
+        Object.entries(event.event_data).forEach(([key, value]) => {
+            // Skip device_id since we already have it at the top level
+            if (key !== 'device_id') {
+                flattenedEvent[key] = value;
             }
-        }
-
-        // Add device_id as a GSI partition key for querying by device
-        flattenedEvent["device_id"] = event.event_data.device_id;
+        });
 
         // Transform the flattened event to the format expected by DynamoDB
         const marshalledEvent = marshall(flattenedEvent);
@@ -60,7 +52,7 @@ export async function saveEventToDynamoDB(event: EventSchemaType): Promise<boole
             Item: marshalledEvent
         });
 
-        console.log(`Event ${event.event_id} saved to DynamoDB successfully`);
+        console.log(`Event ${event.event_id} saved to DynamoDB successfully with device_id: ${flattenedEvent.device_id}, GPS epoch timestamp: ${event.event_data.start_time}`);
         return true;
     } catch (error) {
         console.error("Error saving event to DynamoDB:", error);

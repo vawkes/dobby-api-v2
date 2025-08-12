@@ -52,38 +52,38 @@ export const handleAdvancedLoadUp = async (
             throw new Error('When value is 0x0000, units must be set to 0xFF');
         }
 
-        // Convert start time to UTC seconds since 1/1/2000
-        const startTimeUTC = Math.floor((startTime.getTime() - new Date('2000-01-01').getTime()) / 1000);
+        // Convert start time to GPS epoch time
+        const gpsTimeEpoch = Math.floor((startTime.getTime() - new Date('2000-01-01').getTime()) / 1000);
 
         // Create the message payload according to the spec
         const buffer = new ArrayBuffer(17);
         const view = new DataView(buffer);
-        
+
         // Command Type
         view.setUint8(0, EventMap.SET_ADVANCED_LOAD_UP);
-        
+
         // Event Duration in Minutes (2 bytes)
         view.setUint16(1, duration, true);
-        
+
         // Value (2 bytes)
         view.setUint16(3, value, true);
-        
+
         // Units
         view.setUint8(5, units);
-        
+
         // Suggested Load Up Efficiency
         view.setUint8(6, suggestedLoadUpEfficiency);
-        
+
         // Event ID (4 bytes)
         const eventIdNum = parseInt(eventId.replace(/-/g, '').substring(0, 8), 16);
         view.setUint32(7, eventIdNum, true);
-        
+
         // Start Time UTC (4 bytes)
-        view.setUint32(11, startTimeUTC, true);
-        
+        view.setUint32(11, gpsTimeEpoch, true);
+
         // Start Randomization
         view.setUint8(15, startRandomization);
-        
+
         // End Randomization
         view.setUint8(16, endRandomization);
 
@@ -96,7 +96,7 @@ export const handleAdvancedLoadUp = async (
             event_type: EventType.ADVANCED_LOAD_UP,
             event_data: {
                 device_id: deviceId,
-                start_time: startTime.toISOString(),
+                start_time: gpsTimeEpoch, // Store GPS epoch timestamp directly as number
                 duration,
                 value,
                 units,

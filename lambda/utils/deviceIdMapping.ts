@@ -11,7 +11,7 @@ export async function getWirelessDeviceId(dynamodb: DynamoDB, deviceId: string):
                 ":deviceId": { S: deviceId }
             }
         });
-
+        
         if (!result.Items || result.Items.length === 0) {
             return null;
         }

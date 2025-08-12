@@ -26,7 +26,7 @@ const handleLoadUp = async (device_id: string, startTime?: Date, eventDurationSe
         event_type: EventType.LOAD_UP,
         event_data: {
             device_id: device_id,
-            start_time: startTime ? startTime.toISOString() : "0",
+            start_time: gpsTimeEpoch, // Store GPS epoch timestamp directly as number
             duration: duration,
             event_sent: sentToDobby
         }
