@@ -8,6 +8,8 @@ import * as iam from 'aws-cdk-lib/aws-iam'
 import * as cognito from 'aws-cdk-lib/aws-cognito'
 import * as iotwireless from 'aws-cdk-lib/aws-iotwireless'
 import * as iot from 'aws-cdk-lib/aws-iot'
+import * as events from 'aws-cdk-lib/aws-events'
+import * as targets from 'aws-cdk-lib/aws-events-targets'
 import * as path from 'node:path'
 import { EnvironmentConfig } from '../deployment/config'
 import * as acm from 'aws-cdk-lib/aws-certificatemanager'
@@ -423,6 +425,38 @@ export class DobbyApiV2Stack extends cdk.Stack {
       ],
       resources: ['*'],
     }));
+
+    // Create the watchdog timer Lambda function
+    const watchdogFunction = new NodejsFunction(this, 'WatchdogFunction', {
+      entry: path.join(__dirname, '../lambda/watchdog/watchdog.ts'),
+      handler: 'handler',
+      runtime: lambda.Runtime.NODEJS_20_X,
+      timeout: cdk.Duration.minutes(15), // Allow time for processing many devices
+      memorySize: 512, // Enough memory for processing large device lists
+      environment: {
+        // No environment variables needed - function will discover resources
+      },
+      description: 'Sends periodic info requests to all devices to feed watchdog timers'
+    });
+
+    // Grant the watchdog function read access to ProductionLine table
+    productionLineTable.grantReadData(watchdogFunction);
+
+    // Grant IoT Wireless permissions for device communication
+    watchdogFunction.addToRolePolicy(new iam.PolicyStatement({
+      actions: [
+        'iotwireless:SendDataToWirelessDevice',
+      ],
+      resources: ['*'] // IoT Wireless doesn't support resource-level permissions
+    }));
+
+    // Create EventBridge rule to trigger watchdog function every 5 hours 50 minutes
+    const watchdogRule = new events.Rule(this, 'WatchdogRule', {
+      schedule: events.Schedule.rate(cdk.Duration.hours(5).plus(cdk.Duration.minutes(50))),
+      description: 'Triggers watchdog timer function to feed device watchdog timers every ~6 hours',
+      enabled: true,
+      targets: [new targets.LambdaFunction(watchdogFunction)]
+    });
 
     // Export the API endpoint
     this.apiEndpoint = api.url as string;
