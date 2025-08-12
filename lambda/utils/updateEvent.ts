@@ -1,8 +1,5 @@
-import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { DynamoDBDocumentClient, QueryCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
-
-const client = new DynamoDBClient({ region: "us-east-1" });
-const docClient = DynamoDBDocumentClient.from(client);
+import { QueryCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
+import { docClient, TABLES } from '../../shared/database/client';
 
 /**
  * Updates an event's event_ack field to true when device acknowledges receipt
@@ -21,7 +18,7 @@ export async function updateEventAsAcknowledged(
 
         // Use composite key query: device_id + timestamp
         const queryCommand = new QueryCommand({
-            TableName: "DobbyEvent",
+            TableName: TABLES.EVENTS,
             IndexName: "device_id-index",
             KeyConditionExpression: "device_id = :deviceId AND #timestamp = :timestamp",
             ExpressionAttributeNames: {
@@ -45,7 +42,7 @@ export async function updateEventAsAcknowledged(
 
         // Update the event_ack field to true
         const updateCommand = new UpdateCommand({
-            TableName: "DobbyEvent",
+            TableName: TABLES.EVENTS,
             Key: {
                 event_id: event.event_id,
                 timestamp: event.timestamp
