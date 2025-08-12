@@ -1,6 +1,7 @@
 import { SSMClient, GetParameterCommand, PutParameterCommand } from '@aws-sdk/client-ssm';
 import { DynamoDBClient, GetItemCommand, QueryCommand } from '@aws-sdk/client-dynamodb';
 import axios from 'axios';
+import { DeviceData } from '../../../shared/schemas/device-data';
 
 const SHIFTED_DATA_URL = "https://cloud.shiftedenergy.com/gridcube/telemetry";
 const AUTH_URL = "https://cloud.shiftedenergy.com/v2/auth";
@@ -17,15 +18,6 @@ interface ShiftedPayload {
   instant_power: number;
   cumulative_energy: number;
   increment: number;
-}
-
-interface DynamoEntry {
-  device_id: string;
-  timestamp: number;
-  message_number: number;
-  instant_power?: bigint;
-  cumulative_energy?: bigint;
-  operational_state?: number;
 }
 
 async function authShifted(): Promise<void> {
@@ -192,7 +184,7 @@ async function makeApiCall(payload: ShiftedPayload, numAttempts: number = 0): Pr
   }
 }
 
-export async function sendToShiftedIfComplete(dynamoEntry: DynamoEntry): Promise<void> {
+export async function sendToShiftedIfComplete(dynamoEntry: DeviceData): Promise<void> {
   console.log('Checking Dynamo entry for complete payload:', dynamoEntry);
   
   const {

@@ -1,17 +1,6 @@
-import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { DynamoDBDocumentClient, UpdateCommand } from '@aws-sdk/lib-dynamodb';
-
-const client = new DynamoDBClient({});
-const docClient = DynamoDBDocumentClient.from(client);
-
-interface DobbyData {
-  device_id: string;
-  timestamp: number;
-  message_number: number;
-  instant_power?: bigint;
-  cumulative_energy?: bigint;
-  operational_state?: number;
-}
+import { UpdateCommand } from '@aws-sdk/lib-dynamodb';
+import { docClient, TABLES } from '../../../shared/database/client';
+import { DeviceData, deviceDataSchema, DeviceDataTransformer } from '../../../shared/schemas/device-data';
 
 
 
@@ -21,9 +10,9 @@ export const writeDobbyDataToDynamo = async (
   messageNumber: number,
   dataType: string,
   value: bigint | number
-): Promise<DobbyData> => {
+): Promise<DeviceData> => {
   const command = new UpdateCommand({
-    TableName: 'DobbyData',
+    TableName: TABLES.DEVICE_DATA,
     Key: {
       device_id: deviceId,
       timestamp: timestamp
@@ -43,15 +32,17 @@ export const writeDobbyDataToDynamo = async (
     const response = await docClient.send(command);
     
     if (response.Attributes) {
-      return response.Attributes as DobbyData;
+      // Use transformer to convert from DB format to internal format
+      return DeviceDataTransformer.fromDb(response.Attributes);
     } else {
       // Fallback to partial data if no attributes returned
-      return {
+      const fallbackData = {
         device_id: deviceId,
         timestamp,
         message_number: messageNumber,
         [dataType]: value
       };
+      return deviceDataSchema.parse(fallbackData);
     }
   } catch (error) {
     console.error('Error writing to DynamoDB:', error);
@@ -65,7 +56,7 @@ export const writeDeviceInfoToDynamo = async (
   value: string | number
 ): Promise<void> => {
   const command = new UpdateCommand({
-    TableName: 'DobbyInfo',
+    TableName: TABLES.DEVICE_INFO,
     Key: {
       device_id: deviceId
     },
