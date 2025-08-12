@@ -25,7 +25,7 @@ const handleGridEmergency = async (device_id: string, startTime?: Date): Promise
         event_type: EventType.GRID_EMERGENCY,
         event_data: {
             device_id: device_id,
-            start_time: startTime ? startTime.toISOString() : "0",
+            start_time: gpsTimeEpoch, // Store GPS epoch timestamp directly as number
             event_sent: sentToDobby
         }
     }

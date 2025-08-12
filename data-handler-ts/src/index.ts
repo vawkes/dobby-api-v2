@@ -8,6 +8,7 @@ import { handleFwVersion } from './packet-handlers/fw-version';
 import { handleOperationalState } from './packet-handlers/operational-state';
 import { handleConnectionInfo } from './packet-handlers/connection-info';
 import { handleGridcubeFwVersion } from './packet-handlers/gridcube-fw-version';
+import { handleEventAcknowledgment } from './packet-handlers/event-acknowledgment';
 
 export const handler = async (event: any): Promise<APIGatewayProxyResult> => {
   try {
@@ -56,6 +57,9 @@ export const handler = async (event: any): Promise<APIGatewayProxyResult> => {
         break;
       case 8:
         await handleGridcubeFwVersion(decodedPayload, deviceId);
+        break;
+      case 9:
+        await handleEventAcknowledgment(decodedPayload, deviceId);
         break;
       default:
         console.log(`No handler for payload type ${payloadType}`);

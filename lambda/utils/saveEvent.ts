@@ -29,10 +29,11 @@ export async function saveEventToDynamoDB(event: EventSchemaType): Promise<boole
             device_id: event.event_data.device_id as string, // This is the wireless device ID (UUID)
             event_sent: (event.event_data.event_sent as boolean) || false,
             event_ack: false, // Default to false
-            timestamp: Date.now() // Always include current timestamp as required sort key
+            timestamp: event.event_data.start_time, // Use GPS epoch timestamp (seconds)
+            created_at: Date.now()
         };
 
-        console.log(`Saving event ${event.event_id} with device_id: ${event.event_data.device_id}`);
+        console.log(`Saving event ${event.event_id} with device_id: ${event.event_data.device_id}, GPS epoch timestamp: ${event.event_data.start_time}`);
 
         // Copy ALL fields from event_data to preserve complete event information
         Object.entries(event.event_data).forEach(([key, value]) => {
@@ -51,7 +52,7 @@ export async function saveEventToDynamoDB(event: EventSchemaType): Promise<boole
             Item: marshalledEvent
         });
 
-        console.log(`Event ${event.event_id} saved to DynamoDB successfully with device_id: ${flattenedEvent.device_id}`);
+        console.log(`Event ${event.event_id} saved to DynamoDB successfully with device_id: ${flattenedEvent.device_id}, GPS epoch timestamp: ${event.event_data.start_time}`);
         return true;
     } catch (error) {
         console.error("Error saving event to DynamoDB:", error);

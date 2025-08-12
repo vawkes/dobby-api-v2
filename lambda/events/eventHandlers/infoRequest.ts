@@ -21,7 +21,7 @@ const handleInfoRequest = async (device_id: string, timestamp?: Date): Promise<E
         event_type: EventType.INFO_REQUEST,
         event_data: {
             device_id: device_id,
-            timestamp: timestamp ? timestamp.toISOString() : new Date().toISOString(),
+            start_time: gpsTimeEpoch, // Store GPS epoch timestamp directly as number
             event_sent: sentToDobby
         }
     }
