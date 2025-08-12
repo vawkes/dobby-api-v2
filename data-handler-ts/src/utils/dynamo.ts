@@ -1,6 +1,13 @@
+import { DeviceRepository } from '../../../shared/database/repositories/device-repository';
+import { DeviceData } from '../../../shared/schemas/device-data';
 import { UpdateCommand } from '@aws-sdk/lib-dynamodb';
 import { docClient, TABLES } from '../../../shared/database/client';
-import { DeviceData, deviceDataSchema, DeviceDataTransformer } from '../../../shared/schemas/device-data';
+
+// Create repository instance
+const deviceRepository = new DeviceRepository();
+
+// Export repository for use by other modules
+export { deviceRepository };
 
 
 
@@ -11,43 +18,13 @@ export const writeDobbyDataToDynamo = async (
   dataType: string,
   value: bigint | number
 ): Promise<DeviceData> => {
-  const command = new UpdateCommand({
-    TableName: TABLES.DEVICE_DATA,
-    Key: {
-      device_id: deviceId,
-      timestamp: timestamp
-    },
-    UpdateExpression: 'SET message_number = :msgNum, #dataType = :value',
-    ExpressionAttributeNames: {
-      '#dataType': dataType
-    },
-    ExpressionAttributeValues: {
-      ':msgNum': messageNumber,
-      ':value': value
-    },
-    ReturnValues: 'ALL_NEW'
-  });
-
-  try {
-    const response = await docClient.send(command);
-    
-    if (response.Attributes) {
-      // Use transformer to convert from DB format to internal format
-      return DeviceDataTransformer.fromDb(response.Attributes);
-    } else {
-      // Fallback to partial data if no attributes returned
-      const fallbackData = {
-        device_id: deviceId,
-        timestamp,
-        message_number: messageNumber,
-        [dataType]: value
-      };
-      return deviceDataSchema.parse(fallbackData);
-    }
-  } catch (error) {
-    console.error('Error writing to DynamoDB:', error);
-    throw error;
-  }
+  return deviceRepository.saveDeviceData(
+    deviceId,
+    timestamp,
+    messageNumber,
+    dataType,
+    value
+  );
 };
 
 export const writeDeviceInfoToDynamo = async (
