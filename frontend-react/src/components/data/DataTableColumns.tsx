@@ -101,7 +101,7 @@ export const deviceColumns: ColumnDef<Device>[] = [
         header: 'Device ID',
         accessorKey: 'device_id',
         cell: ({ getValue }) => (
-            <span className="font-mono text-sm font-medium text-blue-700">
+            <span className="font-mono text-sm font-medium text-blue-600 dark:text-blue-400">
                 {getValue<string>()}
             </span>
         ),
@@ -111,7 +111,7 @@ export const deviceColumns: ColumnDef<Device>[] = [
         header: 'Model',
         accessorKey: 'model_number',
         cell: ({ getValue }) => (
-            <span className="text-sm text-gray-900">
+            <span className="text-sm text-foreground">
                 {getValue<string>()}
             </span>
         ),
@@ -121,7 +121,7 @@ export const deviceColumns: ColumnDef<Device>[] = [
         header: 'Serial Number',
         accessorKey: 'serial_number',
         cell: ({ getValue }) => (
-            <span className="font-mono text-sm text-gray-700">
+            <span className="font-mono text-sm text-muted-foreground">
                 {getValue<string>()}
             </span>
         ),
@@ -131,7 +131,7 @@ export const deviceColumns: ColumnDef<Device>[] = [
         header: 'Type',
         accessorKey: 'device_type',
         cell: ({ getValue }) => (
-            <span className="text-sm text-gray-900">
+            <span className="text-sm text-foreground">
                 {getValue<string>()}
             </span>
         ),
@@ -141,7 +141,7 @@ export const deviceColumns: ColumnDef<Device>[] = [
         header: 'Firmware',
         accessorKey: 'firmware_version',
         cell: ({ getValue }) => (
-            <span className="font-mono text-xs text-gray-600">
+            <span className="font-mono text-xs text-muted-foreground">
                 {getValue<string>()}
             </span>
         ),
@@ -159,7 +159,7 @@ export const deviceColumns: ColumnDef<Device>[] = [
                     <span className={cn('mr-2', color)}>
                         {icon}
                     </span>
-                    <span className="text-sm text-gray-900">
+                    <span className="text-sm text-foreground">
                         {name}
                     </span>
                 </div>
@@ -177,14 +177,14 @@ export const deviceColumns: ColumnDef<Device>[] = [
         accessorKey: 'last_rx_rssi',
         cell: ({ getValue }) => {
             const rssi = getValue<number>();
-            if (rssi === undefined) return <span className="text-gray-400">-</span>;
+            if (rssi === undefined) return <span className="text-muted-foreground">-</span>;
 
-            // Color code RSSI values (typical ranges)
+            // Color code RSSI values (typical ranges) with dark mode support
             const getRssiColor = (value: number): string => {
-                if (value >= -50) return 'text-green-600'; // Excellent
-                if (value >= -70) return 'text-yellow-600'; // Good
-                if (value >= -85) return 'text-orange-600'; // Fair
-                return 'text-red-600'; // Poor
+                if (value >= -50) return 'text-green-600 dark:text-green-400'; // Excellent
+                if (value >= -70) return 'text-yellow-600 dark:text-yellow-400'; // Good
+                if (value >= -85) return 'text-orange-600 dark:text-orange-400'; // Fair
+                return 'text-red-600 dark:text-red-400'; // Poor
             };
 
             return (
@@ -202,9 +202,9 @@ export const deviceColumns: ColumnDef<Device>[] = [
             const date = getValue<string>();
             return (
                 <div className="text-sm">
-                    <div className="text-gray-900">{formatDate(date)}</div>
+                    <div className="text-foreground">{formatDate(date)}</div>
                     {date && (
-                        <div className="text-xs text-gray-500">
+                        <div className="text-xs text-muted-foreground">
                             {isWithinOneDay(date) ? 'Recently active' : 'Inactive'}
                         </div>
                     )}

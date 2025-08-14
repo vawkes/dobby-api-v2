@@ -48,9 +48,9 @@ export const MobileTable = forwardRef<HTMLDivElement, MobileTableProps<any>>(
                     {[...Array(3)].map((_, i) => (
                         <Card key={i} className="animate-pulse">
                             <CardContent className="p-4 space-y-2">
-                                <div className="h-4 bg-gray-200 rounded w-3/4" />
-                                <div className="h-3 bg-gray-200 rounded w-1/2" />
-                                <div className="h-3 bg-gray-200 rounded w-5/6" />
+                                <div className="h-4 bg-muted rounded w-3/4" />
+                                <div className="h-3 bg-muted rounded w-1/2" />
+                                <div className="h-3 bg-muted rounded w-5/6" />
                             </CardContent>
                         </Card>
                     ))}
@@ -62,9 +62,9 @@ export const MobileTable = forwardRef<HTMLDivElement, MobileTableProps<any>>(
         if (error) {
             return (
                 <div ref={ref} className={cn('', className)} {...props}>
-                    <Card variant="outline" className="border-red-200 bg-red-50">
+                    <Card variant="outline" className="border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-900/20">
                         <CardContent className="p-4">
-                            <p className="text-sm text-red-800">{error}</p>
+                            <p className="text-sm text-red-800 dark:text-red-200">{error}</p>
                         </CardContent>
                     </Card>
                 </div>
@@ -77,7 +77,7 @@ export const MobileTable = forwardRef<HTMLDivElement, MobileTableProps<any>>(
                 <div ref={ref} className={cn('', className)} {...props}>
                     <Card>
                         <CardContent className="p-8 text-center">
-                            <p className="text-gray-500">{emptyMessage}</p>
+                            <p className="text-muted-foreground">{emptyMessage}</p>
                         </CardContent>
                     </Card>
                 </div>
@@ -122,10 +122,10 @@ export const MobileTable = forwardRef<HTMLDivElement, MobileTableProps<any>>(
 
                                     return (
                                         <div key={cell.id} className="flex justify-between items-start gap-2">
-                                            <dt className="text-xs font-medium text-gray-500 uppercase tracking-wider flex-shrink-0 min-w-0">
+                                            <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wider flex-shrink-0 min-w-0">
                                                 {typeof headerContent === 'string' ? headerContent : cell.column.id}
                                             </dt>
-                                            <dd className="text-sm text-gray-900 text-right break-words min-w-0 flex-1">
+                                            <dd className="text-sm text-card-foreground text-right break-words min-w-0 flex-1">
                                                 {flexRender(cell.column.columnDef.cell, cell.getContext())}
                                             </dd>
                                         </div>
@@ -144,14 +144,14 @@ export const MobileTable = forwardRef<HTMLDivElement, MobileTableProps<any>>(
                             disabled={!table.getCanPreviousPage()}
                             className={cn(
                                 'inline-flex items-center px-3 py-2 text-sm font-medium rounded-md',
-                                'border border-gray-300 bg-white text-gray-700',
-                                'hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500',
+                                'border border-border bg-background text-foreground',
+                                'hover:bg-muted focus:outline-none focus:ring-2 focus:ring-blue-500',
                                 'disabled:opacity-50 disabled:cursor-not-allowed'
                             )}
                         >
                             Previous
                         </button>
-                        <span className="text-sm text-gray-700">
+                        <span className="text-sm text-foreground">
                             Page {table.getState().pagination.pageIndex + 1} of{' '}
                             {table.getPageCount()}
                         </span>
@@ -160,8 +160,8 @@ export const MobileTable = forwardRef<HTMLDivElement, MobileTableProps<any>>(
                             disabled={!table.getCanNextPage()}
                             className={cn(
                                 'inline-flex items-center px-3 py-2 text-sm font-medium rounded-md',
-                                'border border-gray-300 bg-white text-gray-700',
-                                'hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500',
+                                'border border-border bg-background text-foreground',
+                                'hover:bg-muted focus:outline-none focus:ring-2 focus:ring-blue-500',
                                 'disabled:opacity-50 disabled:cursor-not-allowed'
                             )}
                         >

@@ -10,11 +10,11 @@ export const buttonVariants = cva(
     {
         variants: {
             variant: {
-                primary: 'bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-600',
+                primary: 'bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-600 dark:bg-blue-500 dark:hover:bg-blue-600',
                 secondary: 'bg-muted text-foreground hover:bg-muted/80 focus:ring-blue-600',
                 outline: 'border border-border bg-background text-foreground hover:bg-muted focus:ring-blue-600',
                 ghost: 'text-foreground hover:bg-muted focus:ring-blue-600',
-                danger: 'bg-red-600 text-white hover:bg-red-700 focus:ring-red-600',
+                danger: 'bg-red-600 text-white hover:bg-red-700 focus:ring-red-600 dark:bg-red-500 dark:hover:bg-red-600',
             },
             size: {
                 sm: 'h-8 px-3 text-sm',
@@ -107,12 +107,12 @@ export const badgeVariants = cva(
     {
         variants: {
             variant: {
-                default: 'border-transparent bg-gray-900 text-gray-50',
-                secondary: 'border-transparent bg-gray-100 text-gray-900',
-                success: 'border-transparent bg-green-100 text-green-800',
-                warning: 'border-transparent bg-yellow-100 text-yellow-800',
-                error: 'border-transparent bg-red-100 text-red-800',
-                outline: 'text-gray-950 border-gray-200',
+                default: 'border-transparent bg-gray-900 text-gray-50 dark:bg-gray-100 dark:text-gray-900',
+                secondary: 'border-transparent bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-gray-100',
+                success: 'border-transparent bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-200',
+                warning: 'border-transparent bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-200',
+                error: 'border-transparent bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-200',
+                outline: 'text-foreground border-border',
             },
         },
         defaultVariants: {
@@ -132,11 +132,11 @@ export const alertVariants = cva(
     {
         variants: {
             variant: {
-                default: 'bg-white text-gray-950 border-gray-200',
-                info: 'bg-blue-50 text-blue-900 border-blue-200',
-                success: 'bg-green-50 text-green-900 border-green-200',
-                warning: 'bg-yellow-50 text-yellow-900 border-yellow-200',
-                error: 'bg-red-50 text-red-900 border-red-200',
+                default: 'bg-background text-foreground border-border',
+                info: 'bg-blue-50 text-blue-900 border-blue-200 dark:bg-blue-900/20 dark:text-blue-200 dark:border-blue-800',
+                success: 'bg-green-50 text-green-900 border-green-200 dark:bg-green-900/20 dark:text-green-200 dark:border-green-800',
+                warning: 'bg-yellow-50 text-yellow-900 border-yellow-200 dark:bg-yellow-900/20 dark:text-yellow-200 dark:border-yellow-800',
+                error: 'bg-red-50 text-red-900 border-red-200 dark:bg-red-900/20 dark:text-red-200 dark:border-red-800',
             },
         },
         defaultVariants: {

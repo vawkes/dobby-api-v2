@@ -143,6 +143,60 @@
     color: rgb(var(--color-gray-500));
   }
 
+  /* Additional dark mode utilities for better contrast */
+  .text-primary {
+    color: rgb(59 130 246);
+  }
+
+  .dark .text-primary {
+    color: rgb(96 165 250);
+  }
+
+  .text-success {
+    color: rgb(16 185 129);
+  }
+
+  .dark .text-success {
+    color: rgb(52 211 153);
+  }
+
+  .text-warning {
+    color: rgb(245 158 11);
+  }
+
+  .dark .text-warning {
+    color: rgb(251 191 36);
+  }
+
+  .text-error {
+    color: rgb(239 68 68);
+  }
+
+  .dark .text-error {
+    color: rgb(248 113 113);
+  }
+
+  /* High contrast text utilities for accessibility */
+  .text-high-contrast {
+    color: rgb(var(--color-foreground));
+  }
+
+  .text-medium-contrast {
+    color: rgb(var(--color-gray-600));
+  }
+
+  .dark .text-medium-contrast {
+    color: rgb(var(--color-gray-400));
+  }
+
+  .text-low-contrast {
+    color: rgb(var(--color-gray-500));
+  }
+
+  .dark .text-low-contrast {
+    color: rgb(var(--color-gray-500));
+  }
+
   .bg-muted\/80 {
     background-color: rgb(var(--color-muted) / 0.8);
   }

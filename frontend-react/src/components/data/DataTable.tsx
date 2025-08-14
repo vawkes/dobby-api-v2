@@ -130,16 +130,16 @@ export const DataTable = forwardRef<HTMLDivElement, DataTableProps<any>>(
                 {loading && (
                     <div className="flex items-center justify-center py-8">
                         <div className="flex items-center space-x-2">
-                            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600" />
-                            <span className="text-sm text-gray-600">Loading...</span>
+                            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 dark:border-blue-400" />
+                            <span className="text-sm text-muted-foreground">Loading...</span>
                         </div>
                     </div>
                 )}
 
                 {/* Error state */}
                 {error && (
-                    <div className="rounded-lg border border-red-200 bg-red-50 p-4">
-                        <p className="text-sm text-red-800">{error}</p>
+                    <div className="rounded-lg border border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-900/20 p-4">
+                        <p className="text-sm text-red-800 dark:text-red-200">{error}</p>
                     </div>
                 )}
 

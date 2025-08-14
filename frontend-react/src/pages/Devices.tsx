@@ -116,7 +116,7 @@ const Devices: React.FC = () => {
                                         </div>
                                         <input
                                             type="text"
-                                            className="focus:ring-blue-600 focus:border-blue-600 block w-full pl-10 pr-12 py-2 sm:text-sm border-border rounded-md bg-background text-foreground placeholder:text-muted-foreground"
+                                            className="focus:ring-blue-600 focus:border-blue-600 dark:focus:ring-blue-400 dark:focus:border-blue-400 block w-full pl-10 pr-12 py-2 sm:text-sm border-border rounded-md bg-background text-foreground placeholder:text-muted-foreground"
                                             placeholder="Search devices..."
                                             value={searchTerm}
                                             onChange={(e) => setSearchTerm(e.target.value)}
