@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { deviceAPI } from '../services/api';
 import { Device, DeviceDataPoint } from '../types';
 import { FiAlertCircle, FiArrowLeft, FiBattery, FiCpu, FiWifi, FiActivity } from 'react-icons/fi';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Label } from 'recharts';
+import { InstantPowerChart, CumulativeEnergyChart, OperationalStateChart } from '../components/charts';
 import DeviceEvents from '../components/DeviceEvents';
 import ScheduleEvent from '../components/ScheduleEvent';
 
@@ -103,60 +103,17 @@ const DeviceDetail: React.FC = () => {
         fetchDeviceData();
     }, [deviceId, timeRange]);
 
-    // Format data for the chart
-    const formattedChartData = deviceData.map(item => {
-        // Keep timestamp in milliseconds for x-axis
+    // Format data for the enhanced chart components
+    const renderData = deviceData.map(item => {
         const timeMs = item.timestamp * 1000;
         const date = new Date(timeMs);
         return {
             ...item,
-            timeMs,  // Use milliseconds timestamp for x-axis
+            timeMs,
             formattedTime: date.toLocaleTimeString(),
             formattedDate: date.toLocaleDateString(),
         };
-    });
-
-    // Sort data by timestamp to ensure proper line rendering
-    formattedChartData.sort((a, b) => a.timeMs - b.timeMs);
-
-    // Calculate time domain for chart
-    const currentTime = Date.now(); // Current time in milliseconds
-    let startTime: number | 'auto' = 'auto';
-
-    // Create a separate array for rendering that includes a virtual point
-    let renderData = [...formattedChartData];
-
-    // Only use calculated start time if we have data points
-    if (formattedChartData.length > 0) {
-        // Get the time range in milliseconds based on selection
-        const timeRangeMs = timeRange * 24 * 60 * 60 * 1000;
-        // Set the start time based on current time minus the selected time range
-        // This ensures that we use the same time range as the data fetch
-        startTime = Math.min(formattedChartData[0].timeMs, currentTime - timeRangeMs);
-
-        // Add a virtual data point at the current time to extend the line
-        // This uses the step-after interpolation by carrying forward the last value
-        if (formattedChartData.length > 0) {
-            const lastDataPoint = formattedChartData[formattedChartData.length - 1];
-
-            // Only add the virtual point if it's after the last real data point
-            if (currentTime > lastDataPoint.timeMs) {
-                const virtualDataPoint = {
-                    ...lastDataPoint,
-                    timeMs: currentTime,
-                    formattedTime: new Date(currentTime).toLocaleTimeString(),
-                    formattedDate: new Date(currentTime).toLocaleDateString()
-                };
-                renderData.push(virtualDataPoint);
-            }
-        }
-    }
-
-    // Time formatter for axis ticks
-    const formatXAxis = (tickItem: number) => {
-        const date = new Date(tickItem);
-        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    };
+    }).sort((a, b) => a.timeMs - b.timeMs);
 
     // Function to refresh events after scheduling a new one
     const handleEventScheduled = () => {
@@ -164,46 +121,7 @@ const DeviceDetail: React.FC = () => {
         setEventsKey(prevKey => prevKey + 1);
     };
 
-    // Custom tooltip component that shows all metrics
-    const CustomTooltip = ({ active, payload, label }: any) => {
-        if (active && payload && payload.length) {
-            const dataIndex = payload[0].payload.timeMs === currentTime &&
-                payload[0].payload.timeMs !== formattedChartData[formattedChartData.length - 1]?.timeMs;
-            if (dataIndex) {
-                return null;
-            }
-
-            return (
-                <div className="custom-tooltip bg-white p-3 border border-gray-300 rounded shadow-lg z-50">
-                    <p className="font-semibold text-gray-900 mb-2">{new Date(label).toLocaleString()}</p>
-                    <div className="space-y-1">
-                        {payload.map((entry: any, index: number) => {
-                            let formattedValue = entry.value;
-                            let unit = '';
-
-                            // Format based on metric type
-                            if (entry.name === 'Instant Power') {
-                                unit = 'W';
-                            } else if (entry.name === 'Cumulative Energy') {
-                                // Convert Wh to kWh
-                                formattedValue = (Number(entry.value) / 1000).toFixed(3);
-                                unit = 'kWh';
-                            } else if (entry.name === 'Operational State') {
-                                unit = '';
-                            }
-
-                            return (
-                                <p key={`item-${index}`} style={{ color: entry.color }} className="text-sm">
-                                    {entry.name}: {formattedValue} {unit}
-                                </p>
-                            );
-                        })}
-                    </div>
-                </div>
-            );
-        }
-        return null;
-    };
+    // Chart components now handle their own tooltips and formatting
 
     return (
         <div className="min-h-screen bg-gray-100">
@@ -275,111 +193,33 @@ const DeviceDetail: React.FC = () => {
                                     ) : (
                                         <div className="p-4">
                                             <div className="grid grid-cols-1 gap-6">
-                                                {/* Instant Power Chart */}
-                                                <div className="h-80">
-                                                    <h4 className="text-sm font-medium text-gray-900 mb-2">Instant Power</h4>
-                                                    <ResponsiveContainer width="100%" height="100%">
-                                                        <LineChart
-                                                            data={renderData}
-                                                            margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                                                        >
-                                                            <CartesianGrid strokeDasharray="3 3" />
-                                                            <XAxis
-                                                                dataKey="timeMs"
-                                                                scale="time"
-                                                                domain={[startTime, currentTime]}
-                                                                type="number"
-                                                                tickFormatter={formatXAxis}
-                                                                label={{ value: 'Time', position: 'center' }}
-                                                            />
-                                                            <YAxis
-                                                                domain={[0, 'auto']}
-                                                                label={{ value: 'Power (W)', position: 'left', angle: 270, style: { textAnchor: 'middle' } }}
-                                                            />
-                                                            <Tooltip content={<CustomTooltip />} />
-                                                            <Line
-                                                                type="stepAfter"
-                                                                dataKey="instant_power"
-                                                                stroke="#3b82f6"
-                                                                dot={false}
-                                                                activeDot={true}
-                                                                name="Instant Power"
-                                                            />
-                                                        </LineChart>
-                                                    </ResponsiveContainer>
-                                                </div>
-
-                                                {/* Cumulative Energy Chart */}
-                                                <div className="h-80">
-                                                    <h4 className="text-sm font-medium text-gray-900 mb-2">Cumulative Energy</h4>
-                                                    <ResponsiveContainer width="100%" height="100%">
-                                                        <LineChart
-                                                            data={renderData}
-                                                            margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                                                        >
-                                                            <CartesianGrid strokeDasharray="3 3" />
-                                                            <XAxis
-                                                                dataKey="timeMs"
-                                                                scale="time"
-                                                                domain={[startTime, currentTime]}
-                                                                type="number"
-                                                                tickFormatter={formatXAxis}
-                                                                label={{ value: 'Time', position: 'center' }}
-                                                            />
-                                                            <YAxis
-                                                                domain={['auto', 'auto']}
-                                                                tickFormatter={(value) => {
-                                                                    // Convert Wh to kWh
-                                                                    return (value / 1000).toFixed(0);
-                                                                }}
-                                                                label={{ value: 'Energy (kWh)', position: 'left', angle: 270, style: { textAnchor: 'middle' } }}
-                                                            />
-                                                            <Tooltip content={<CustomTooltip />} />
-                                                            <Line
-                                                                type="stepAfter"
-                                                                dataKey="cumulative_energy"
-                                                                stroke="#10b981"
-                                                                dot={false}
-                                                                activeDot={true}
-                                                                name="Cumulative Energy"
-                                                            />
-                                                        </LineChart>
-                                                    </ResponsiveContainer>
-                                                </div>
-
-                                                {/* Operational State Chart */}
-                                                <div className="h-80">
-                                                    <h4 className="text-sm font-medium text-gray-900 mb-2">Operational State</h4>
-                                                    <ResponsiveContainer width="100%" height="100%">
-                                                        <LineChart
-                                                            data={renderData}
-                                                            margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                                                        >
-                                                            <CartesianGrid strokeDasharray="3 3" />
-                                                            <XAxis
-                                                                dataKey="timeMs"
-                                                                scale="time"
-                                                                domain={[startTime, currentTime]}
-                                                                type="number"
-                                                                tickFormatter={formatXAxis}
-                                                                label={{ value: 'Time', position: 'center' }}
-                                                            />
-                                                            <YAxis
-                                                                domain={['auto', 'auto']}
-                                                                label={{ value: 'State', position: 'left', angle: 270, style: { textAnchor: 'middle' } }}
-                                                            />
-                                                            <Tooltip content={<CustomTooltip />} />
-                                                            <Line
-                                                                type="stepAfter"
-                                                                dataKey="operational_state"
-                                                                stroke="#ef4444"
-                                                                dot={false}
-                                                                activeDot={true}
-                                                                name="Operational State"
-                                                            />
-                                                        </LineChart>
-                                                    </ResponsiveContainer>
-                                                </div>
+                                                {/* Enhanced Charts with Theme Support */}
+                                                <InstantPowerChart
+                                                    data={renderData}
+                                                    loading={isLoadingData}
+                                                    error={dataError}
+                                                    timeRange={`${timeRange}d`}
+                                                    exportable={true}
+                                                    onRetry={() => window.location.reload()}
+                                                />
+                                                
+                                                <CumulativeEnergyChart
+                                                    data={renderData}
+                                                    loading={isLoadingData}
+                                                    error={dataError}
+                                                    timeRange={`${timeRange}d`}
+                                                    exportable={true}
+                                                    onRetry={() => window.location.reload()}
+                                                />
+                                                
+                                                <OperationalStateChart
+                                                    data={renderData}
+                                                    loading={isLoadingData}
+                                                    error={dataError}
+                                                    timeRange={`${timeRange}d`}
+                                                    exportable={true}
+                                                    onRetry={() => window.location.reload()}
+                                                />
                                             </div>
                                         </div>
                                     )}
