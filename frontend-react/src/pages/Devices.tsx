@@ -172,4 +172,3 @@ const Devices: React.FC = () => {
 };
 
 export default Devices; 
-export default Devices; 
