@@ -35,7 +35,7 @@ import { inputVariants, type InputVariantProps } from '../../lib/variants';
  * />
  */
 interface InputProps 
-  extends React.InputHTMLAttributes<HTMLInputElement>,
+  extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'size'>,
           Omit<InputVariantProps, 'variant'> {
   label?: string;
   error?: string;
