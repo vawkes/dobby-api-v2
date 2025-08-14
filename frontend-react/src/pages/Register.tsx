@@ -106,7 +106,7 @@ const RegisterPage: React.FC = () => {
                             <Button
                                 type="submit"
                                 fullWidth
-                                isLoading={isSubmitting}
+                                loading={isSubmitting}
                             >
                                 Register
                             </Button>

@@ -114,7 +114,7 @@ const ResetPasswordPage: React.FC = () => {
                             <Button
                                 type="submit"
                                 fullWidth
-                                isLoading={isSubmitting}
+                                loading={isSubmitting}
                             >
                                 Reset Password
                             </Button>

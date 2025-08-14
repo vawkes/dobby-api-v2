@@ -89,7 +89,7 @@ const VerifyPage: React.FC = () => {
                             <Button
                                 type="submit"
                                 fullWidth
-                                isLoading={isSubmitting}
+                                loading={isSubmitting}
                             >
                                 Verify Email
                             </Button>

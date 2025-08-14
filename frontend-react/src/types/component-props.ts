@@ -19,11 +19,6 @@ export interface VariantProps {
   size?: 'sm' | 'md' | 'lg';
 }
 
-export interface InteractiveProps {
-  disabled?: boolean;
-  onClick?: (event: React.MouseEvent) => void;
-}
-
 export interface ResponsiveProps {
   fullWidth?: boolean;
   responsive?: boolean;
@@ -36,7 +31,6 @@ export interface StandardButtonProps extends
   BaseComponentProps, 
   LoadingState, 
   VariantProps,
-  InteractiveProps,
   ResponsiveProps,
   React.ButtonHTMLAttributes<HTMLButtonElement> {
   // Component-specific props go here

@@ -88,7 +88,7 @@ const LoginPage: React.FC = () => {
                             <Button
                                 type="submit"
                                 fullWidth
-                                isLoading={isSubmitting}
+                                loading={isSubmitting}
                             >
                                 Sign in
                             </Button>
