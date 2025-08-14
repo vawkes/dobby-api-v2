@@ -17,6 +17,7 @@
     "@types/react-dom": "^19.0.4",
     "@types/react-icons": "^3.0.0",
     "axios": "^1.8.2",
+    "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
@@ -26,6 +27,7 @@
     "react-scripts": "5.0.1",
     "react-toastify": "^11.0.5",
     "recharts": "^2.15.1",
+    "tailwind-merge": "^3.3.1",
     "typescript": "^5.8.2",
     "web-vitals": "^2.1.4",
     "zod": "^3.24.2"
