@@ -71,7 +71,7 @@ const Dashboard: React.FC = () => {
         : 0;
 
     return (
-        <div className="min-h-screen bg-gray-100">
+        <div className="min-h-screen bg-background">
             <main>
                 <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
                     {isLoading ? (
@@ -79,27 +79,27 @@ const Dashboard: React.FC = () => {
                             <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-600"></div>
                         </div>
                     ) : error ? (
-                        <div className="bg-red-50 border-l-4 border-red-600 p-4 mb-4">
+                        <div className="bg-red-50 border-l-4 border-red-600 p-4 mb-4 dark:bg-red-900/20 dark:border-red-500">
                             <div className="flex">
                                 <div className="flex-shrink-0">
-                                    <FiAlertCircle className="h-5 w-5 text-red-600" />
+                                    <FiAlertCircle className="h-5 w-5 text-red-600 dark:text-red-400" />
                                 </div>
                                 <div className="ml-3">
-                                    <p className="text-sm text-red-800">{error}</p>
+                                    <p className="text-sm text-red-800 dark:text-red-200">{error}</p>
                                 </div>
                             </div>
                         </div>
                     ) : (
                         <>
                             <div className="mb-8">
-                                <h2 className="text-3xl font-bold text-gray-900">Dashboard</h2>
-                                <p className="mt-2 text-gray-800">
+                                <h2 className="text-3xl font-bold text-foreground">Dashboard</h2>
+                                <p className="mt-2 text-muted-foreground">
                                     Welcome back{user?.name ? `, ${user.name}` : ''}! Here's an overview of your devices.
                                 </p>
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-                                <div className="bg-white overflow-hidden shadow rounded-lg">
+                                <div className="bg-card overflow-hidden shadow rounded-lg">
                                     <div className="px-4 py-5 sm:p-6">
                                         <div className="flex items-center">
                                             <div className="flex-shrink-0 bg-blue-600 rounded-md p-3">
@@ -107,11 +107,11 @@ const Dashboard: React.FC = () => {
                                             </div>
                                             <div className="ml-5 w-0 flex-1">
                                                 <dl>
-                                                    <dt className="text-sm font-medium text-gray-800 truncate">
+                                                    <dt className="text-sm font-medium text-card-foreground truncate">
                                                         Total Devices
                                                     </dt>
                                                     <dd className="flex items-baseline">
-                                                        <div className="text-2xl font-semibold text-gray-900">
+                                                        <div className="text-2xl font-semibold text-card-foreground">
                                                             {devices.length}
                                                         </div>
                                                     </dd>
@@ -119,7 +119,7 @@ const Dashboard: React.FC = () => {
                                             </div>
                                         </div>
                                     </div>
-                                    <div className="bg-gray-50 px-4 py-4 sm:px-6">
+                                    <div className="bg-muted px-4 py-4 sm:px-6">
                                         <div className="text-sm">
                                             <Link
                                                 to="/devices"
@@ -131,7 +131,7 @@ const Dashboard: React.FC = () => {
                                     </div>
                                 </div>
 
-                                <div className="bg-white overflow-hidden shadow rounded-lg">
+                                <div className="bg-card overflow-hidden shadow rounded-lg">
                                     <div className="px-4 py-5 sm:p-6">
                                         <div className="flex items-center">
                                             <div className="flex-shrink-0 bg-red-600 rounded-md p-3">
@@ -139,11 +139,11 @@ const Dashboard: React.FC = () => {
                                             </div>
                                             <div className="ml-5 w-0 flex-1">
                                                 <dl>
-                                                    <dt className="text-sm font-medium text-gray-800 truncate">
+                                                    <dt className="text-sm font-medium text-card-foreground truncate">
                                                         Needs Attention
                                                     </dt>
                                                     <dd className="flex items-baseline">
-                                                        <div className="text-2xl font-semibold text-gray-900">
+                                                        <div className="text-2xl font-semibold text-card-foreground">
                                                             {devicesNeedingAttention.length}
                                                         </div>
                                                         <div className="ml-2 text-sm font-medium text-red-600">
@@ -154,7 +154,7 @@ const Dashboard: React.FC = () => {
                                             </div>
                                         </div>
                                     </div>
-                                    <div className="bg-gray-50 px-4 py-4 sm:px-6">
+                                    <div className="bg-muted px-4 py-4 sm:px-6">
                                         <div className="text-sm">
                                             <Link
                                                 to="/devices?filter=attention"
@@ -166,7 +166,7 @@ const Dashboard: React.FC = () => {
                                     </div>
                                 </div>
 
-                                <div className="bg-white overflow-hidden shadow rounded-lg">
+                                <div className="bg-card overflow-hidden shadow rounded-lg">
                                     <div className="px-4 py-5 sm:p-6">
                                         <div className="flex items-center">
                                             <div className="flex-shrink-0 bg-green-600 rounded-md p-3">
@@ -174,11 +174,11 @@ const Dashboard: React.FC = () => {
                                             </div>
                                             <div className="ml-5 w-0 flex-1">
                                                 <dl>
-                                                    <dt className="text-sm font-medium text-gray-800 truncate">
+                                                    <dt className="text-sm font-medium text-card-foreground truncate">
                                                         Healthy Devices
                                                     </dt>
                                                     <dd className="flex items-baseline">
-                                                        <div className="text-2xl font-semibold text-gray-900">
+                                                        <div className="text-2xl font-semibold text-card-foreground">
                                                             {healthyDevices.length}
                                                         </div>
                                                         <div className="ml-2 text-sm font-medium text-green-600">
@@ -189,7 +189,7 @@ const Dashboard: React.FC = () => {
                                             </div>
                                         </div>
                                     </div>
-                                    <div className="bg-gray-50 px-4 py-4 sm:px-6">
+                                    <div className="bg-muted px-4 py-4 sm:px-6">
                                         <div className="text-sm">
                                             <Link
                                                 to="/devices?filter=healthy"
@@ -203,9 +203,9 @@ const Dashboard: React.FC = () => {
                             </div>
 
                             <div className="mb-8">
-                                <h2 className="text-xl font-bold text-gray-900 mb-4">Recent Activity</h2>
-                                <div className="bg-white shadow overflow-hidden sm:rounded-md">
-                                    <ul className="divide-y divide-gray-200">
+                                <h2 className="text-xl font-bold text-foreground mb-4">Recent Activity</h2>
+                                <div className="bg-card shadow overflow-hidden sm:rounded-md">
+                                    <ul className="divide-y divide-border">
                                         {devices.slice(0, 5).map((device) => {
                                             // Determine health status based on updated_at time
                                             const isHealthy = device.updated_at ? isWithinOneDay(device.updated_at) : false;
@@ -214,7 +214,7 @@ const Dashboard: React.FC = () => {
                                                 <li key={device.device_id}>
                                                     <Link
                                                         to={`/devices/${device.device_id}`}
-                                                        className="block hover:bg-gray-50"
+                                                        className="block hover:bg-muted/50"
                                                     >
                                                         <div className="px-4 py-4 sm:px-6">
                                                             <div className="flex items-center justify-between">
@@ -231,12 +231,12 @@ const Dashboard: React.FC = () => {
                                                             <div className="mt-2 sm:flex sm:justify-between">
                                                                 <div className="sm:flex flex-col">
                                                                     {device.last_rx_rssi !== undefined && (
-                                                                        <p className="flex items-center text-sm text-gray-700">
+                                                                        <p className="flex items-center text-sm text-card-foreground">
                                                                             RSSI: {device.last_rx_rssi} dBm
                                                                         </p>
                                                                     )}
                                                                 </div>
-                                                                <div className="mt-2 flex flex-col items-end text-sm text-gray-700 sm:mt-0">
+                                                                <div className="mt-2 flex flex-col items-end text-sm text-card-foreground sm:mt-0">
                                                                     {device.last_link_type !== undefined && (
                                                                         <p>
                                                                             Link Type: {getLinkTypeName(device.last_link_type)}

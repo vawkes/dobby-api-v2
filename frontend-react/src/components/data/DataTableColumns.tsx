@@ -61,25 +61,25 @@ export const deviceColumns: ColumnDef<Device>[] = [
         cell: ({ row }) => {
             const device = row.original;
             const isHealthy = device.updated_at ? isWithinOneDay(device.updated_at) : false;
-            
+
             return (
                 <div className="flex items-center">
                     {isHealthy ? (
                         <>
-                            <FiCheckCircle className="h-4 w-4 text-green-600 mr-2" />
+                            <FiCheckCircle className="h-4 w-4 text-green-600 dark:text-green-400 mr-2" />
                             <span className={cn(
                                 'px-2 py-1 text-xs font-medium rounded-full',
-                                'bg-green-100 text-green-800'
+                                'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-200'
                             )}>
                                 Healthy
                             </span>
                         </>
                     ) : (
                         <>
-                            <FiAlertCircle className="h-4 w-4 text-red-600 mr-2" />
+                            <FiAlertCircle className="h-4 w-4 text-red-600 dark:text-red-400 mr-2" />
                             <span className={cn(
                                 'px-2 py-1 text-xs font-medium rounded-full',
-                                'bg-red-100 text-red-800'
+                                'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-200'
                             )}>
                                 Needs Attention
                             </span>
@@ -91,7 +91,7 @@ export const deviceColumns: ColumnDef<Device>[] = [
         sortingFn: (rowA, rowB) => {
             const aHealthy = rowA.original.updated_at ? isWithinOneDay(rowA.original.updated_at) : false;
             const bHealthy = rowB.original.updated_at ? isWithinOneDay(rowB.original.updated_at) : false;
-            
+
             if (aHealthy === bHealthy) return 0;
             return aHealthy ? 1 : -1; // Healthy devices first
         },
@@ -153,7 +153,7 @@ export const deviceColumns: ColumnDef<Device>[] = [
         cell: ({ getValue }) => {
             const linkType = getValue<number>();
             const { name, icon, color } = getLinkTypeInfo(linkType);
-            
+
             return (
                 <div className="flex items-center">
                     <span className={cn('mr-2', color)}>
@@ -178,7 +178,7 @@ export const deviceColumns: ColumnDef<Device>[] = [
         cell: ({ getValue }) => {
             const rssi = getValue<number>();
             if (rssi === undefined) return <span className="text-gray-400">-</span>;
-            
+
             // Color code RSSI values (typical ranges)
             const getRssiColor = (value: number): string => {
                 if (value >= -50) return 'text-green-600'; // Excellent
@@ -186,7 +186,7 @@ export const deviceColumns: ColumnDef<Device>[] = [
                 if (value >= -85) return 'text-orange-600'; // Fair
                 return 'text-red-600'; // Poor
             };
-            
+
             return (
                 <span className={cn('text-sm font-mono', getRssiColor(rssi))}>
                     {rssi} dBm
@@ -214,12 +214,12 @@ export const deviceColumns: ColumnDef<Device>[] = [
         sortingFn: (rowA, rowB) => {
             const aDate = rowA.original.updated_at;
             const bDate = rowB.original.updated_at;
-            
+
             // Handle null/undefined dates
             if (!aDate && !bDate) return 0;
             if (!aDate) return 1; // Put nulls at the end
             if (!bDate) return -1;
-            
+
             return new Date(bDate).getTime() - new Date(aDate).getTime(); // Most recent first
         },
     },

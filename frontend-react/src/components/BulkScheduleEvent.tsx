@@ -132,17 +132,17 @@ const BulkScheduleEvent: React.FC<BulkScheduleEventProps> = ({ onEventsScheduled
     };
 
     return (
-        <div className="bg-white shadow overflow-hidden sm:rounded-lg mb-8">
+        <div className="bg-card shadow overflow-hidden sm:rounded-lg mb-8">
             <div className="px-4 py-5 sm:px-6">
-                <h3 className="text-lg leading-6 font-medium text-gray-900">Bulk Schedule Events</h3>
-                <p className="mt-1 max-w-2xl text-sm text-gray-500">Schedule the same event for multiple devices.</p>
+                <h3 className="text-lg leading-6 font-medium text-card-foreground">Bulk Schedule Events</h3>
+                <p className="mt-1 max-w-2xl text-sm text-muted-foreground">Schedule the same event for multiple devices.</p>
             </div>
-            <div className="border-t border-gray-200 px-4 py-5 sm:p-6">
+            <div className="border-t border-border px-4 py-5 sm:p-6">
                 {success && (
-                    <div className="bg-green-50 border-l-4 border-green-600 p-4 mb-4">
+                    <div className="bg-green-50 border-l-4 border-green-600 p-4 mb-4 dark:bg-green-900/20 dark:border-green-500">
                         <div className="flex">
                             <div className="ml-3">
-                                <p className="text-sm text-green-800">
+                                <p className="text-sm text-green-800 dark:text-green-200">
                                     Events scheduled successfully!
                                     {successCount > 0 && ` ${successCount} device(s) succeeded.`}
                                     {failedCount > 0 && ` ${failedCount} device(s) failed.`}
@@ -153,10 +153,10 @@ const BulkScheduleEvent: React.FC<BulkScheduleEventProps> = ({ onEventsScheduled
                 )}
 
                 {error && (
-                    <div className="bg-red-50 border-l-4 border-red-600 p-4 mb-4">
+                    <div className="bg-red-50 border-l-4 border-red-600 p-4 mb-4 dark:bg-red-900/20 dark:border-red-500">
                         <div className="flex">
                             <div className="ml-3">
-                                <p className="text-sm text-red-800">{error}</p>
+                                <p className="text-sm text-red-800 dark:text-red-200">{error}</p>
                             </div>
                         </div>
                     </div>
@@ -166,13 +166,13 @@ const BulkScheduleEvent: React.FC<BulkScheduleEventProps> = ({ onEventsScheduled
                     <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
                         {/* Event Type */}
                         <div className="sm:col-span-3">
-                            <label htmlFor="event-type" className="block text-sm font-medium text-gray-700">
+                            <label htmlFor="event-type" className="block text-sm font-medium text-card-foreground">
                                 Event Type
                             </label>
                             <select
                                 id="event-type"
                                 name="event-type"
-                                className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
+                                className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-border bg-background text-foreground focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
                                 value={eventType}
                                 onChange={(e) => setEventType(e.target.value as EventType)}
                                 required
@@ -189,18 +189,18 @@ const BulkScheduleEvent: React.FC<BulkScheduleEventProps> = ({ onEventsScheduled
                         {/* Timing Option */}
                         <div className="sm:col-span-3">
                             <fieldset className="mt-4">
-                                <legend className="block text-sm font-medium text-gray-700">When to schedule</legend>
+                                <legend className="block text-sm font-medium text-card-foreground">When to schedule</legend>
                                 <div className="mt-2 space-y-2">
                                     <div className="flex items-center">
                                         <input
                                             id="now"
                                             name="schedule-time"
                                             type="radio"
-                                            className="focus:ring-blue-500 h-4 w-4 text-blue-600 border-gray-300"
+                                            className="focus:ring-blue-500 h-4 w-4 text-blue-600 border-border"
                                             checked={scheduleForNow}
                                             onChange={() => setScheduleForNow(true)}
                                         />
-                                        <label htmlFor="now" className="ml-3 block text-sm font-medium text-gray-700">
+                                        <label htmlFor="now" className="ml-3 block text-sm font-medium text-card-foreground">
                                             Right now
                                         </label>
                                     </div>
@@ -209,11 +209,11 @@ const BulkScheduleEvent: React.FC<BulkScheduleEventProps> = ({ onEventsScheduled
                                             id="later"
                                             name="schedule-time"
                                             type="radio"
-                                            className="focus:ring-blue-500 h-4 w-4 text-blue-600 border-gray-300"
+                                            className="focus:ring-blue-500 h-4 w-4 text-blue-600 border-border"
                                             checked={!scheduleForNow}
                                             onChange={() => setScheduleForNow(false)}
                                         />
-                                        <label htmlFor="later" className="ml-3 block text-sm font-medium text-gray-700">
+                                        <label htmlFor="later" className="ml-3 block text-sm font-medium text-card-foreground">
                                             Schedule for later
                                         </label>
                                     </div>
@@ -224,14 +224,14 @@ const BulkScheduleEvent: React.FC<BulkScheduleEventProps> = ({ onEventsScheduled
                         {/* Date/Time Picker (shown only if scheduling for later) */}
                         {!scheduleForNow && (
                             <div className="sm:col-span-3">
-                                <label htmlFor="start-time" className="block text-sm font-medium text-gray-700">
+                                <label htmlFor="start-time" className="block text-sm font-medium text-card-foreground">
                                     Start Time
                                 </label>
                                 <input
                                     type="datetime-local"
                                     name="start-time"
                                     id="start-time"
-                                    className="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md"
+                                    className="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-border bg-background text-foreground rounded-md"
                                     value={startTime}
                                     onChange={(e) => setStartTime(e.target.value)}
                                     required={!scheduleForNow}
@@ -242,7 +242,7 @@ const BulkScheduleEvent: React.FC<BulkScheduleEventProps> = ({ onEventsScheduled
                         {/* Duration (shown only for event types that need it) */}
                         {eventRequiresDuration() && (
                             <div className="sm:col-span-3">
-                                <label htmlFor="duration" className="block text-sm font-medium text-gray-700">
+                                <label htmlFor="duration" className="block text-sm font-medium text-card-foreground">
                                     Duration (seconds)
                                 </label>
                                 <input
@@ -250,11 +250,11 @@ const BulkScheduleEvent: React.FC<BulkScheduleEventProps> = ({ onEventsScheduled
                                     name="duration"
                                     id="duration"
                                     min="1"
-                                    className="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-gray-300 rounded-md"
+                                    className="mt-1 focus:ring-blue-500 focus:border-blue-500 block w-full shadow-sm sm:text-sm border-border bg-background text-foreground rounded-md"
                                     value={duration || ''}
                                     onChange={(e) => setDuration(e.target.value ? parseInt(e.target.value) : undefined)}
                                 />
-                                <p className="mt-1 text-sm text-gray-500">
+                                <p className="mt-1 text-sm text-muted-foreground">
                                     {duration ? `${Math.floor(duration / 60)} minutes ${duration % 60} seconds` : ''}
                                 </p>
                             </div>
@@ -262,14 +262,14 @@ const BulkScheduleEvent: React.FC<BulkScheduleEventProps> = ({ onEventsScheduled
 
                         {/* Device Selection */}
                         <div className="sm:col-span-6">
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                            <label className="block text-sm font-medium text-card-foreground mb-2">
                                 Select Devices
                             </label>
 
                             {isLoadingDevices ? (
                                 <p>Loading devices...</p>
                             ) : loadDevicesError ? (
-                                <p className="text-red-600">{loadDevicesError}</p>
+                                <p className="text-red-600 dark:text-red-400">{loadDevicesError}</p>
                             ) : (
                                 <>
                                     <div className="mb-2">
@@ -280,20 +280,20 @@ const BulkScheduleEvent: React.FC<BulkScheduleEventProps> = ({ onEventsScheduled
                                         >
                                             {selectedDeviceIds.length === devices.length ? 'Deselect All' : 'Select All'}
                                         </button>
-                                        <span className="ml-2 text-sm text-gray-500">
+                                        <span className="ml-2 text-sm text-muted-foreground">
                                             {selectedDeviceIds.length} of {devices.length} selected
                                         </span>
                                     </div>
 
-                                    <div className="max-h-60 overflow-y-auto border border-gray-300 rounded-md p-2">
+                                    <div className="max-h-60 overflow-y-auto border border-border rounded-md p-2">
                                         {devices.length === 0 ? (
-                                            <p className="text-gray-500">No devices available</p>
+                                            <p className="text-muted-foreground">No devices available</p>
                                         ) : (
                                             devices.map((device) => (
                                                 <div key={device.device_id} className="flex items-center py-1">
                                                     <input
                                                         type="checkbox"
-                                                        className="focus:ring-blue-500 h-4 w-4 text-blue-600 border-gray-300 rounded"
+                                                        className="focus:ring-blue-500 h-4 w-4 text-blue-600 border-border rounded"
                                                         checked={selectedDeviceIds.includes(device.device_id)}
                                                         onChange={() => handleDeviceSelection(device.device_id)}
                                                         id={`device-${device.device_id}`}
