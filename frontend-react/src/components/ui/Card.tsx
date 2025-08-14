@@ -107,15 +107,12 @@ CardHeader.displayName = 'CardHeader';
  */
 interface CardTitleProps extends React.HTMLAttributes<HTMLHeadingElement> {
   children: React.ReactNode;
-  level?: 1 | 2 | 3 | 4 | 5 | 6;
 }
 
 export const CardTitle = forwardRef<HTMLHeadingElement, CardTitleProps>(
-  ({ className, children, level = 3, ...props }, ref) => {
-    const Heading = `h${level}` as keyof JSX.IntrinsicElements;
-    
+  ({ className, children, ...props }, ref) => {
     return (
-      <Heading
+      <h3
         ref={ref}
         className={cn(
           'text-lg font-semibold leading-none tracking-tight text-card-foreground',
@@ -124,7 +121,7 @@ export const CardTitle = forwardRef<HTMLHeadingElement, CardTitleProps>(
         {...props}
       >
         {children}
-      </Heading>
+      </h3>
     );
   }
 );
