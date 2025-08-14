@@ -124,7 +124,7 @@ const DeviceDetail: React.FC = () => {
     // Chart components now handle their own tooltips and formatting
 
     return (
-        <div className="min-h-screen bg-gray-100">
+        <div className="min-h-screen bg-background">
             <main>
                 <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
                     {isLoading ? (
@@ -132,13 +132,13 @@ const DeviceDetail: React.FC = () => {
                             <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-600"></div>
                         </div>
                     ) : error || !device ? (
-                        <div className="bg-red-50 border-l-4 border-red-600 p-4 mb-4">
+                        <div className="bg-red-50 border-l-4 border-red-600 p-4 mb-4 dark:bg-red-900/20 dark:border-red-500">
                             <div className="flex">
                                 <div className="flex-shrink-0">
-                                    <FiAlertCircle className="h-5 w-5 text-red-600" />
+                                    <FiAlertCircle className="h-5 w-5 text-red-600 dark:text-red-400" />
                                 </div>
                                 <div className="ml-3">
-                                    <p className="text-sm text-red-800">{error || 'Device not found'}</p>
+                                    <p className="text-sm text-red-800 dark:text-red-200">{error || 'Device not found'}</p>
                                 </div>
                             </div>
                         </div>
@@ -151,17 +151,17 @@ const DeviceDetail: React.FC = () => {
                                 </Link>
                             </div>
                             {/* Device Data Charts Section */}
-                            <div className="bg-white shadow overflow-hidden sm:rounded-lg mb-8">
+                            <div className="bg-card shadow overflow-hidden sm:rounded-lg mb-8">
                                 <div className="px-4 py-5 sm:px-6 flex justify-between items-center">
                                     <div>
-                                        <h3 className="text-lg leading-6 font-medium text-gray-900">Device Data</h3>
-                                        <p className="mt-1 max-w-2xl text-sm text-gray-500">Time series data from DobbyData table.</p>
+                                        <h3 className="text-lg leading-6 font-medium text-card-foreground">Device Data</h3>
+                                        <p className="mt-1 max-w-2xl text-sm text-muted-foreground">Time series data from DobbyData table.</p>
                                     </div>
                                     <div className="flex items-center space-x-4">
                                         <select
                                             value={timeRange}
                                             onChange={(e) => setTimeRange(Number(e.target.value))}
-                                            className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
+                                            className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-border bg-background text-foreground focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
                                         >
                                             <option value={1}>Last 24 Hours</option>
                                             <option value={7}>Last 7 Days</option>
@@ -169,25 +169,25 @@ const DeviceDetail: React.FC = () => {
                                         </select>
                                     </div>
                                 </div>
-                                <div className="border-t border-gray-200">
+                                <div className="border-t border-border">
                                     {isLoadingData ? (
                                         <div className="flex justify-center items-center h-64">
                                             <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-600"></div>
                                         </div>
                                     ) : dataError ? (
-                                        <div className="bg-red-50 border-l-4 border-red-600 p-4 mb-4">
+                                        <div className="bg-red-50 border-l-4 border-red-600 p-4 mb-4 dark:bg-red-900/20 dark:border-red-500">
                                             <div className="flex">
                                                 <div className="flex-shrink-0">
-                                                    <FiAlertCircle className="h-5 w-5 text-red-600" />
+                                                    <FiAlertCircle className="h-5 w-5 text-red-600 dark:text-red-400" />
                                                 </div>
                                                 <div className="ml-3">
-                                                    <p className="text-sm text-red-800">{dataError}</p>
+                                                    <p className="text-sm text-red-800 dark:text-red-200">{dataError}</p>
                                                 </div>
                                             </div>
                                         </div>
                                     ) : deviceData.length === 0 ? (
-                                        <div className="p-6 text-center text-gray-500">
-                                            <FiActivity className="h-12 w-12 mx-auto text-gray-400" />
+                                        <div className="p-6 text-center text-muted-foreground">
+                                            <FiActivity className="h-12 w-12 mx-auto text-muted-foreground" />
                                             <p className="mt-2">No data available for this device.</p>
                                         </div>
                                     ) : (
@@ -202,7 +202,7 @@ const DeviceDetail: React.FC = () => {
                                                     exportable={true}
                                                     onRetry={() => window.location.reload()}
                                                 />
-                                                
+
                                                 <CumulativeEnergyChart
                                                     data={renderData}
                                                     loading={isLoadingData}
@@ -211,7 +211,7 @@ const DeviceDetail: React.FC = () => {
                                                     exportable={true}
                                                     onRetry={() => window.location.reload()}
                                                 />
-                                                
+
                                                 <OperationalStateChart
                                                     data={renderData}
                                                     loading={isLoadingData}
@@ -243,11 +243,11 @@ const DeviceDetail: React.FC = () => {
                                 </>
                             )}
 
-                            <div className="bg-white shadow overflow-hidden sm:rounded-lg mb-8">
+                            <div className="bg-card shadow overflow-hidden sm:rounded-lg mb-8">
                                 <div className="px-4 py-5 sm:px-6 flex justify-between items-center">
                                     <div>
-                                        <h3 className="text-lg leading-6 font-medium text-gray-900">Device Information</h3>
-                                        <p className="mt-1 max-w-2xl text-sm text-gray-500">Details and specifications.</p>
+                                        <h3 className="text-lg leading-6 font-medium text-card-foreground">Device Information</h3>
+                                        <p className="mt-1 max-w-2xl text-sm text-muted-foreground">Details and specifications.</p>
                                     </div>
                                     <div>
                                         {/* Change health status logic - now based on updated_at time */}
@@ -262,78 +262,78 @@ const DeviceDetail: React.FC = () => {
                                         })()}
                                     </div>
                                 </div>
-                                <div className="border-t border-gray-200">
+                                <div className="border-t border-border">
                                     <dl>
-                                        <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                                            <dt className="text-sm font-medium text-gray-500">Device ID</dt>
-                                            <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{device.device_id}</dd>
+                                        <div className="bg-muted px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                                            <dt className="text-sm font-medium text-muted-foreground">Device ID</dt>
+                                            <dd className="mt-1 text-sm text-card-foreground sm:mt-0 sm:col-span-2">{device.device_id}</dd>
                                         </div>
-                                        <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                                            <dt className="text-sm font-medium text-gray-500">Device Type</dt>
-                                            <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{device.device_type}</dd>
+                                        <div className="bg-card px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                                            <dt className="text-sm font-medium text-muted-foreground">Device Type</dt>
+                                            <dd className="mt-1 text-sm text-card-foreground sm:mt-0 sm:col-span-2">{device.device_type}</dd>
                                         </div>
-                                        <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                                            <dt className="text-sm font-medium text-gray-500">Model Number</dt>
-                                            <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{device.model_number}</dd>
+                                        <div className="bg-muted px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                                            <dt className="text-sm font-medium text-muted-foreground">Model Number</dt>
+                                            <dd className="mt-1 text-sm text-card-foreground sm:mt-0 sm:col-span-2">{device.model_number}</dd>
                                         </div>
-                                        <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                                            <dt className="text-sm font-medium text-gray-500">Serial Number</dt>
-                                            <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{device.serial_number}</dd>
+                                        <div className="bg-card px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                                            <dt className="text-sm font-medium text-muted-foreground">Serial Number</dt>
+                                            <dd className="mt-1 text-sm text-card-foreground sm:mt-0 sm:col-span-2">{device.serial_number}</dd>
                                         </div>
-                                        <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                                            <dt className="text-sm font-medium text-gray-500">Firmware Version</dt>
-                                            <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{device.firmware_version}</dd>
+                                        <div className="bg-muted px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                                            <dt className="text-sm font-medium text-muted-foreground">Firmware Version</dt>
+                                            <dd className="mt-1 text-sm text-card-foreground sm:mt-0 sm:col-span-2">{device.firmware_version}</dd>
                                         </div>
-                                        <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                                            <dt className="text-sm font-medium text-gray-500">Firmware Date</dt>
-                                            <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{device.firmware_date}</dd>
+                                        <div className="bg-card px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                                            <dt className="text-sm font-medium text-muted-foreground">Firmware Date</dt>
+                                            <dd className="mt-1 text-sm text-card-foreground sm:mt-0 sm:col-span-2">{device.firmware_date}</dd>
                                         </div>
-                                        <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                                            <dt className="text-sm font-medium text-gray-500">CTA Version</dt>
-                                            <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{device.cta_version}</dd>
+                                        <div className="bg-muted px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                                            <dt className="text-sm font-medium text-muted-foreground">CTA Version</dt>
+                                            <dd className="mt-1 text-sm text-card-foreground sm:mt-0 sm:col-span-2">{device.cta_version}</dd>
                                         </div>
-                                        <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                                            <dt className="text-sm font-medium text-gray-500">Vendor ID</dt>
-                                            <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{device.vendor_id}</dd>
+                                        <div className="bg-card px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                                            <dt className="text-sm font-medium text-muted-foreground">Vendor ID</dt>
+                                            <dd className="mt-1 text-sm text-card-foreground sm:mt-0 sm:col-span-2">{device.vendor_id}</dd>
                                         </div>
-                                        <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                                            <dt className="text-sm font-medium text-gray-500">Device Revision</dt>
-                                            <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{device.device_revision}</dd>
+                                        <div className="bg-muted px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                                            <dt className="text-sm font-medium text-muted-foreground">Device Revision</dt>
+                                            <dd className="mt-1 text-sm text-card-foreground sm:mt-0 sm:col-span-2">{device.device_revision}</dd>
                                         </div>
-                                        <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                                            <dt className="text-sm font-medium text-gray-500">Capability Bitmap</dt>
-                                            <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{device.capability_bitmap}</dd>
+                                        <div className="bg-card px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                                            <dt className="text-sm font-medium text-muted-foreground">Capability Bitmap</dt>
+                                            <dd className="mt-1 text-sm text-card-foreground sm:mt-0 sm:col-span-2">{device.capability_bitmap}</dd>
                                         </div>
                                         {device.gridcube_firmware_version && (
-                                            <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                                                <dt className="text-sm font-medium text-gray-500">GridCube Firmware Version</dt>
-                                                <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{device.gridcube_firmware_version}</dd>
+                                            <div className="bg-muted px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                                                <dt className="text-sm font-medium text-muted-foreground">GridCube Firmware Version</dt>
+                                                <dd className="mt-1 text-sm text-card-foreground sm:mt-0 sm:col-span-2">{device.gridcube_firmware_version}</dd>
                                             </div>
                                         )}
                                         {device.last_rx_rssi !== undefined && (
-                                            <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                                                <dt className="text-sm font-medium text-gray-500 flex items-center">
+                                            <div className="bg-card px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                                                <dt className="text-sm font-medium text-muted-foreground flex items-center">
                                                     <FiWifi className="mr-2" /> Signal Strength (RSSI)
                                                 </dt>
-                                                <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
+                                                <dd className="mt-1 text-sm text-card-foreground sm:mt-0 sm:col-span-2">
                                                     {device.last_rx_rssi} dBm
                                                 </dd>
                                             </div>
                                         )}
                                         {device.last_link_type !== undefined && (
-                                            <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                                                <dt className="text-sm font-medium text-gray-500 flex items-center">
+                                            <div className="bg-muted px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                                                <dt className="text-sm font-medium text-muted-foreground flex items-center">
                                                     <FiCpu className="mr-2" /> Link Type
                                                 </dt>
-                                                <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
+                                                <dd className="mt-1 text-sm text-card-foreground sm:mt-0 sm:col-span-2">
                                                     {getLinkTypeName(device.last_link_type)}
                                                 </dd>
                                             </div>
                                         )}
                                         {device.updated_at && (
-                                            <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                                                <dt className="text-sm font-medium text-gray-500">Last Updated</dt>
-                                                <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
+                                            <div className="bg-card px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                                                <dt className="text-sm font-medium text-muted-foreground">Last Updated</dt>
+                                                <dd className="mt-1 text-sm text-card-foreground sm:mt-0 sm:col-span-2">
                                                     {formatDate(device.updated_at)}
                                                 </dd>
                                             </div>
