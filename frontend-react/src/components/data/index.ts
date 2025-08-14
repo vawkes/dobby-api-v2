@@ -9,13 +9,13 @@ export { default as MobileTable } from './MobileTable';
 export { default as DataTablePagination } from './DataTablePagination';
 
 // Column definitions
-export { 
-    deviceColumns, 
+export {
+    deviceColumns,
     deviceMobileColumns
 } from './DataTableColumns';
 
 // Re-export useful types from react-table for consumers
-export type { 
+export type {
     ColumnDef,
     Table,
     SortingState,

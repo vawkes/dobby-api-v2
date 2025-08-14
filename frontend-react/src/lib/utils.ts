@@ -9,7 +9,7 @@ import { twMerge } from 'tailwind-merge';
  * cn('px-4 py-2', isActive && 'bg-blue-500', className)
  */
 export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
+    return twMerge(clsx(inputs));
 }
 
 /**
@@ -19,11 +19,11 @@ export function cn(...inputs: ClassValue[]) {
  * export const Button = withDisplayName(ButtonComponent, 'Button');
  */
 export function withDisplayName<T extends React.ComponentType<any>>(
-  Component: T,
-  name: string
+    Component: T,
+    name: string
 ): T {
-  Component.displayName = name;
-  return Component;
+    Component.displayName = name;
+    return Component;
 }
 
 /**
@@ -34,11 +34,11 @@ export function withDisplayName<T extends React.ComponentType<any>>(
  * debugProps(props, 'Button');
  */
 export function debugProps(props: any, componentName: string) {
-  if (process.env.NODE_ENV === 'development') {
-    console.group(`${componentName} props:`);
-    console.table(props);
-    console.groupEnd();
-  }
+    if (process.env.NODE_ENV === 'development') {
+        console.group(`${componentName} props:`);
+        console.table(props);
+        console.groupEnd();
+    }
 }
 
 /**
@@ -48,16 +48,16 @@ export function debugProps(props: any, componentName: string) {
  * formatDisplayName('user_name') // returns 'User Name'
  */
 export function formatDisplayName(str: string): string {
-  return str
-    .replace(/[_-]/g, ' ')
-    .replace(/\b\w/g, (char) => char.toUpperCase());
+    return str
+        .replace(/[_-]/g, ' ')
+        .replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
 /**
  * Check if the current device likely supports touch
  */
 export function isTouchDevice(): boolean {
-  return 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    return 'ontouchstart' in window || navigator.maxTouchPoints > 0;
 }
 
 /**
@@ -67,13 +67,13 @@ export function isTouchDevice(): boolean {
  * formatFileSize(1024) // returns '1 KB'
  */
 export function formatFileSize(bytes: number): string {
-  if (bytes === 0) return '0 Bytes';
-  
-  const k = 1024;
-  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  
-  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
+    if (bytes === 0) return '0 Bytes';
+
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+
+    return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
 }
 
 /**
@@ -83,20 +83,20 @@ export function formatFileSize(bytes: number): string {
  * const debouncedSearch = debounce((query) => search(query), 300);
  */
 export function debounce<T extends (...args: any[]) => any>(
-  func: T,
-  wait: number
+    func: T,
+    wait: number
 ): (...args: Parameters<T>) => void {
-  let timeout: NodeJS.Timeout;
-  
-  return (...args: Parameters<T>) => {
-    clearTimeout(timeout);
-    timeout = setTimeout(() => func(...args), wait);
-  };
+    let timeout: NodeJS.Timeout;
+
+    return (...args: Parameters<T>) => {
+        clearTimeout(timeout);
+        timeout = setTimeout(() => func(...args), wait);
+    };
 }
 
 /**
  * Generate a random ID for components that need unique identifiers
  */
 export function generateId(prefix: string = 'id'): string {
-  return `${prefix}-${Math.random().toString(36).substr(2, 9)}`;
+    return `${prefix}-${Math.random().toString(36).substr(2, 9)}`;
 }

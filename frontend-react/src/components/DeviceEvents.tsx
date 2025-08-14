@@ -27,7 +27,7 @@ const DeviceEvents: React.FC<DeviceEventsProps> = ({ deviceId }) => {
                 setEvents(data);
             } catch (err: any) {
                 console.error('Error fetching device events:', err);
-                
+
                 // Check if it's a 404 error (no events found)
                 if (err.response?.status === 404) {
                     // No events is a normal state, not an error

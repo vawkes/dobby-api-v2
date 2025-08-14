@@ -170,8 +170,8 @@ export const DataTable = forwardRef<HTMLDivElement, DataTableProps<any>>(
                                                         }}
                                                         aria-sort={
                                                             header.column.getIsSorted() === 'asc' ? 'ascending' :
-                                                            header.column.getIsSorted() === 'desc' ? 'descending' :
-                                                            'none'
+                                                                header.column.getIsSorted() === 'desc' ? 'descending' :
+                                                                    'none'
                                                         }
                                                     >
                                                         <div className="flex items-center space-x-1">

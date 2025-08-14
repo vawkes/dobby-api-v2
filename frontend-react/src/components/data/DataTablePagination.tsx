@@ -1,10 +1,10 @@
 import React from 'react';
 import { Table } from '@tanstack/react-table';
-import { 
-    ChevronLeftIcon, 
+import {
+    ChevronLeftIcon,
     ChevronRightIcon,
     ChevronDoubleLeftIcon,
-    ChevronDoubleRightIcon 
+    ChevronDoubleRightIcon
 } from '@heroicons/react/24/outline';
 import { cn } from '../../lib/utils';
 import { Button } from '../ui/Button';
@@ -35,7 +35,7 @@ export function DataTablePagination<T>({
     const totalPages = table.getPageCount();
     const pageSize = table.getState().pagination.pageSize;
     const totalRows = table.getFilteredRowModel().rows.length;
-    
+
     // Calculate the range of items being shown
     const startRow = table.getState().pagination.pageIndex * pageSize + 1;
     const endRow = Math.min(startRow + pageSize - 1, totalRows);

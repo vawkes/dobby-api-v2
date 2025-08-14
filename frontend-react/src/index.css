@@ -167,3 +167,26 @@
     transform: rotate(360deg);
   }
 }
+
+@keyframes progress-indeterminate {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+/* Progress bar utility class */
+.progress-indeterminate {
+  animation: progress-indeterminate 1.5s infinite linear;
+}
