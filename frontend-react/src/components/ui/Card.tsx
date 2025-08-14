@@ -48,15 +48,15 @@ export const Card = forwardRef<HTMLDivElement, CardProps>(
     children,
     ...props 
   }, ref) => {
-    const Component = interactive && onClick ? 'button' : 'div';
-    
+    // Use div for all cards to avoid ref typing issues
+    // Interactive behavior is handled through props
     return (
-      <Component
+      <div
         className={cn(
           cardVariants({ variant, padding, interactive }),
           // Additional styling for interactive cards
           interactive && onClick && [
-            'text-left',
+            'cursor-pointer',
             'focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500',
             'disabled:pointer-events-none disabled:opacity-50'
           ],
@@ -68,11 +68,11 @@ export const Card = forwardRef<HTMLDivElement, CardProps>(
         onClick={onClick}
         role={interactive && onClick ? 'button' : undefined}
         tabIndex={interactive && onClick ? 0 : undefined}
-        disabled={loading}
+        aria-disabled={loading}
         {...props}
       >
         {children}
-      </Component>
+      </div>
     );
   }
 );
