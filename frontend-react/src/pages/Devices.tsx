@@ -1,17 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { deviceAPI } from '../services/api';
 import { Device } from '../types';
 import { FiAlertCircle, FiCheckCircle, FiSearch } from 'react-icons/fi';
+import { DataTable, deviceColumns } from '../components/data';
+import { Button } from '../components/ui/Button';
 
-// Helper function to get link type name
-const getLinkTypeName = (linkType?: number): string => {
-    if (linkType === 1) return 'BLE';
-    if (linkType === 4) return 'LoRA';
-    return 'Unknown';
-};
-
-// Helper function to check if a date is within 1 day of now
+// Helper function to check if a date is within 1 day of now (kept for filtering logic)
 const isWithinOneDay = (dateString?: string): boolean => {
     if (!dateString) return false;
     try {
@@ -25,6 +20,7 @@ const isWithinOneDay = (dateString?: string): boolean => {
 };
 
 const Devices: React.FC = () => {
+    const navigate = useNavigate();
     const [devices, setDevices] = useState<Device[]>([]);
     const [filteredDevices, setFilteredDevices] = useState<Device[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -85,7 +81,7 @@ const Devices: React.FC = () => {
     }, [devices, filterParam, searchTerm]);
 
     return (
-        <div className="min-h-screen bg-gray-100">
+        <div className="min-h-screen bg-background">
             <main>
                 <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
                     {isLoading ? (
@@ -93,21 +89,21 @@ const Devices: React.FC = () => {
                             <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-600"></div>
                         </div>
                     ) : error ? (
-                        <div className="bg-red-50 border-l-4 border-red-600 p-4 mb-4">
+                        <div className="bg-red-50 border-l-4 border-red-600 p-4 mb-4 dark:bg-red-900/20 dark:border-red-500">
                             <div className="flex">
                                 <div className="flex-shrink-0">
-                                    <FiAlertCircle className="h-5 w-5 text-red-600" />
+                                    <FiAlertCircle className="h-5 w-5 text-red-600 dark:text-red-400" />
                                 </div>
                                 <div className="ml-3">
-                                    <p className="text-sm text-red-800">{error}</p>
+                                    <p className="text-sm text-red-800 dark:text-red-200">{error}</p>
                                 </div>
                             </div>
                         </div>
                     ) : (
                         <>
                             <div className="mb-8">
-                                <h2 className="text-3xl font-bold text-gray-900">Devices</h2>
-                                <p className="mt-2 text-gray-800">
+                                <h2 className="text-3xl font-bold text-foreground">Devices</h2>
+                                <p className="mt-2 text-muted-foreground">
                                     Manage and monitor all your connected devices.
                                 </p>
                             </div>
@@ -116,11 +112,11 @@ const Devices: React.FC = () => {
                                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                                     <div className="relative rounded-md shadow-sm max-w-md">
                                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                            <FiSearch className="h-5 w-5 text-gray-500" />
+                                            <FiSearch className="h-5 w-5 text-muted-foreground" />
                                         </div>
                                         <input
                                             type="text"
-                                            className="focus:ring-blue-600 focus:border-blue-600 block w-full pl-10 pr-12 py-2 sm:text-sm border-gray-300 rounded-md text-gray-900"
+                                            className="focus:ring-blue-600 focus:border-blue-600 block w-full pl-10 pr-12 py-2 sm:text-sm border-border rounded-md bg-background text-foreground placeholder:text-muted-foreground"
                                             placeholder="Search devices..."
                                             value={searchTerm}
                                             onChange={(e) => setSearchTerm(e.target.value)}
@@ -128,91 +124,45 @@ const Devices: React.FC = () => {
                                     </div>
 
                                     <div className="flex space-x-2">
-                                        <Link
-                                            to="/devices"
-                                            className={`inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md ${!filterParam ? 'text-white bg-blue-700 hover:bg-blue-800' : 'text-gray-800 bg-white hover:bg-gray-50'
-                                                }`}
+                                        <Button
+                                            variant={!filterParam ? "primary" : "outline"}
+                                            size="sm"
+                                            onClick={() => navigate('/devices')}
                                         >
                                             All
-                                        </Link>
-                                        <Link
-                                            to="/devices?filter=attention"
-                                            className={`inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md ${filterParam === 'attention' ? 'text-white bg-red-700 hover:bg-red-800' : 'text-gray-800 bg-white hover:bg-gray-50'
-                                                }`}
+                                        </Button>
+                                        <Button
+                                            variant={filterParam === 'attention' ? "danger" : "outline"}
+                                            size="sm"
+                                            onClick={() => navigate('/devices?filter=attention')}
+                                            icon={<FiAlertCircle className="h-4 w-4" />}
                                         >
-                                            <FiAlertCircle className="mr-1.5 h-4 w-4" />
                                             Needs Attention
-                                        </Link>
-                                        <Link
-                                            to="/devices?filter=healthy"
-                                            className={`inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md ${filterParam === 'healthy' ? 'text-white bg-green-700 hover:bg-green-800' : 'text-gray-800 bg-white hover:bg-gray-50'
-                                                }`}
+                                        </Button>
+                                        <Button
+                                            variant={filterParam === 'healthy' ? "primary" : "outline"}
+                                            size="sm"
+                                            onClick={() => navigate('/devices?filter=healthy')}
+                                            icon={<FiCheckCircle className="h-4 w-4" />}
+                                            className={filterParam === 'healthy' ? "bg-green-600 hover:bg-green-700 focus:ring-green-600" : ""}
                                         >
-                                            <FiCheckCircle className="mr-1.5 h-4 w-4" />
                                             Healthy
-                                        </Link>
+                                        </Button>
                                     </div>
                                 </div>
                             </div>
 
-                            {filteredDevices.length === 0 ? (
-                                <div className="bg-white shadow overflow-hidden sm:rounded-md p-6 text-center">
-                                    <p className="text-gray-700">No devices found matching your criteria.</p>
-                                </div>
-                            ) : (
-                                <div className="bg-white shadow overflow-hidden sm:rounded-md">
-                                    <ul className="divide-y divide-gray-200">
-                                        {filteredDevices.map((device) => {
-                                            // Determine health status based on updated_at time
-                                            const isHealthy = device.updated_at ? isWithinOneDay(device.updated_at) : false;
-
-                                            return (
-                                                <li key={device.device_id}>
-                                                    <Link
-                                                        to={`/devices/${device.device_id}`}
-                                                        className="block hover:bg-gray-50"
-                                                    >
-                                                        <div className="px-4 py-4 sm:px-6">
-                                                            <div className="flex items-center justify-between">
-                                                                <p className="text-sm font-medium text-blue-700 truncate">
-                                                                    {device.device_id}
-                                                                </p>
-                                                                <div className="ml-2 flex-shrink-0 flex">
-                                                                    <p className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${!isHealthy ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'
-                                                                        }`}>
-                                                                        {!isHealthy ? 'Needs Attention' : 'Healthy'}
-                                                                    </p>
-                                                                </div>
-                                                            </div>
-                                                            <div className="mt-2 sm:flex sm:justify-between">
-                                                                <div className="sm:flex flex-col">
-                                                                    {device.last_rx_rssi !== undefined && (
-                                                                        <p className="flex items-center text-sm text-gray-700">
-                                                                            RSSI: {device.last_rx_rssi} dBm
-                                                                        </p>
-                                                                    )}
-                                                                </div>
-                                                                <div className="mt-2 flex flex-col items-end text-sm text-gray-700 sm:mt-0">
-                                                                    {device.last_link_type !== undefined && (
-                                                                        <p>
-                                                                            Link Type: {getLinkTypeName(device.last_link_type)}
-                                                                        </p>
-                                                                    )}
-                                                                    {device.updated_at && (
-                                                                        <p className="mt-1 text-xs">
-                                                                            Updated: {new Date(device.updated_at).toLocaleString()}
-                                                                        </p>
-                                                                    )}
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    </Link>
-                                                </li>
-                                            );
-                                        })}
-                                    </ul>
-                                </div>
-                            )}
+                            <DataTable
+                                data={filteredDevices}
+                                columns={deviceColumns}
+                                loading={isLoading}
+                                error={error || undefined}
+                                globalFilter={searchTerm}
+                                onGlobalFilterChange={setSearchTerm}
+                                onRowClick={(device) => navigate(`/devices/${device.device_id}`)}
+                                emptyMessage="No devices found matching your criteria."
+                                pageSize={25}
+                            />
                         </>
                     )}
                 </div>
@@ -221,4 +171,5 @@ const Devices: React.FC = () => {
     );
 };
 
+export default Devices; 
 export default Devices; 
