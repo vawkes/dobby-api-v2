@@ -19,6 +19,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 
 // Context
 import { AuthProvider } from './context/AuthContext';
+import { NavigationProvider } from './components/navigation';
 
 // Utils
 import { getApiUrl } from './utils/config';
@@ -49,32 +50,34 @@ function App() {
 
   return (
     <AuthProvider>
-      <Router>
-        <ToastContainer position="top-right" />
-        <Routes>
-          {/* Public routes */}
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
-          <Route path="/verify" element={<VerifyPage />} />
-          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-          <Route path="/reset-password" element={<ResetPasswordPage />} />
+      <NavigationProvider>
+        <Router>
+          <ToastContainer position="top-right" />
+          <Routes>
+            {/* Public routes */}
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/register" element={<RegisterPage />} />
+            <Route path="/verify" element={<VerifyPage />} />
+            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+            <Route path="/reset-password" element={<ResetPasswordPage />} />
 
-          {/* Protected routes */}
-          <Route element={<ProtectedRoute />}>
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/devices" element={<Devices />} />
-            <Route path="/devices/:deviceId" element={<DeviceDetail />} />
-            <Route path="/bulk-schedule" element={<BulkSchedulePage />} />
-            {/* Add more protected routes here */}
-          </Route>
+            {/* Protected routes */}
+            <Route element={<ProtectedRoute />}>
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/devices" element={<Devices />} />
+              <Route path="/devices/:deviceId" element={<DeviceDetail />} />
+              <Route path="/bulk-schedule" element={<BulkSchedulePage />} />
+              {/* Add more protected routes here */}
+            </Route>
 
-          {/* Redirect to dashboard if authenticated, otherwise to login */}
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            {/* Redirect to dashboard if authenticated, otherwise to login */}
+            <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
-          {/* Catch all - redirect to dashboard */}
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
-        </Routes>
-      </Router>
+            {/* Catch all - redirect to dashboard */}
+            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          </Routes>
+        </Router>
+      </NavigationProvider>
     </AuthProvider>
   );
 }

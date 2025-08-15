@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { deviceAPI } from '../services/api';
 import { Device, DeviceDataPoint } from '../types';
 import { FiAlertCircle, FiArrowLeft, FiBattery, FiCpu, FiWifi, FiActivity } from 'react-icons/fi';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Label } from 'recharts';
+import { InstantPowerChart, CumulativeEnergyChart, OperationalStateChart } from '../components/charts';
 import DeviceEvents from '../components/DeviceEvents';
 import ScheduleEvent from '../components/ScheduleEvent';
 
@@ -103,60 +103,17 @@ const DeviceDetail: React.FC = () => {
         fetchDeviceData();
     }, [deviceId, timeRange]);
 
-    // Format data for the chart
-    const formattedChartData = deviceData.map(item => {
-        // Keep timestamp in milliseconds for x-axis
+    // Format data for the enhanced chart components
+    const renderData = deviceData.map(item => {
         const timeMs = item.timestamp * 1000;
         const date = new Date(timeMs);
         return {
             ...item,
-            timeMs,  // Use milliseconds timestamp for x-axis
+            timeMs,
             formattedTime: date.toLocaleTimeString(),
             formattedDate: date.toLocaleDateString(),
         };
-    });
-
-    // Sort data by timestamp to ensure proper line rendering
-    formattedChartData.sort((a, b) => a.timeMs - b.timeMs);
-
-    // Calculate time domain for chart
-    const currentTime = Date.now(); // Current time in milliseconds
-    let startTime: number | 'auto' = 'auto';
-
-    // Create a separate array for rendering that includes a virtual point
-    let renderData = [...formattedChartData];
-
-    // Only use calculated start time if we have data points
-    if (formattedChartData.length > 0) {
-        // Get the time range in milliseconds based on selection
-        const timeRangeMs = timeRange * 24 * 60 * 60 * 1000;
-        // Set the start time based on current time minus the selected time range
-        // This ensures that we use the same time range as the data fetch
-        startTime = Math.min(formattedChartData[0].timeMs, currentTime - timeRangeMs);
-
-        // Add a virtual data point at the current time to extend the line
-        // This uses the step-after interpolation by carrying forward the last value
-        if (formattedChartData.length > 0) {
-            const lastDataPoint = formattedChartData[formattedChartData.length - 1];
-
-            // Only add the virtual point if it's after the last real data point
-            if (currentTime > lastDataPoint.timeMs) {
-                const virtualDataPoint = {
-                    ...lastDataPoint,
-                    timeMs: currentTime,
-                    formattedTime: new Date(currentTime).toLocaleTimeString(),
-                    formattedDate: new Date(currentTime).toLocaleDateString()
-                };
-                renderData.push(virtualDataPoint);
-            }
-        }
-    }
-
-    // Time formatter for axis ticks
-    const formatXAxis = (tickItem: number) => {
-        const date = new Date(tickItem);
-        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    };
+    }).sort((a, b) => a.timeMs - b.timeMs);
 
     // Function to refresh events after scheduling a new one
     const handleEventScheduled = () => {
@@ -164,49 +121,10 @@ const DeviceDetail: React.FC = () => {
         setEventsKey(prevKey => prevKey + 1);
     };
 
-    // Custom tooltip component that shows all metrics
-    const CustomTooltip = ({ active, payload, label }: any) => {
-        if (active && payload && payload.length) {
-            const dataIndex = payload[0].payload.timeMs === currentTime &&
-                payload[0].payload.timeMs !== formattedChartData[formattedChartData.length - 1]?.timeMs;
-            if (dataIndex) {
-                return null;
-            }
-
-            return (
-                <div className="custom-tooltip bg-white p-3 border border-gray-300 rounded shadow-lg z-50">
-                    <p className="font-semibold text-gray-900 mb-2">{new Date(label).toLocaleString()}</p>
-                    <div className="space-y-1">
-                        {payload.map((entry: any, index: number) => {
-                            let formattedValue = entry.value;
-                            let unit = '';
-
-                            // Format based on metric type
-                            if (entry.name === 'Instant Power') {
-                                unit = 'W';
-                            } else if (entry.name === 'Cumulative Energy') {
-                                // Convert Wh to kWh
-                                formattedValue = (Number(entry.value) / 1000).toFixed(3);
-                                unit = 'kWh';
-                            } else if (entry.name === 'Operational State') {
-                                unit = '';
-                            }
-
-                            return (
-                                <p key={`item-${index}`} style={{ color: entry.color }} className="text-sm">
-                                    {entry.name}: {formattedValue} {unit}
-                                </p>
-                            );
-                        })}
-                    </div>
-                </div>
-            );
-        }
-        return null;
-    };
+    // Chart components now handle their own tooltips and formatting
 
     return (
-        <div className="min-h-screen bg-gray-100">
+        <div className="min-h-screen bg-background">
             <main>
                 <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
                     {isLoading ? (
@@ -214,13 +132,13 @@ const DeviceDetail: React.FC = () => {
                             <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-600"></div>
                         </div>
                     ) : error || !device ? (
-                        <div className="bg-red-50 border-l-4 border-red-600 p-4 mb-4">
+                        <div className="bg-red-50 border-l-4 border-red-600 p-4 mb-4 dark:bg-red-900/20 dark:border-red-500">
                             <div className="flex">
                                 <div className="flex-shrink-0">
-                                    <FiAlertCircle className="h-5 w-5 text-red-600" />
+                                    <FiAlertCircle className="h-5 w-5 text-red-600 dark:text-red-400" />
                                 </div>
                                 <div className="ml-3">
-                                    <p className="text-sm text-red-800">{error || 'Device not found'}</p>
+                                    <p className="text-sm text-red-800 dark:text-red-200">{error || 'Device not found'}</p>
                                 </div>
                             </div>
                         </div>
@@ -233,17 +151,17 @@ const DeviceDetail: React.FC = () => {
                                 </Link>
                             </div>
                             {/* Device Data Charts Section */}
-                            <div className="bg-white shadow overflow-hidden sm:rounded-lg mb-8">
+                            <div className="bg-card shadow overflow-hidden sm:rounded-lg mb-8">
                                 <div className="px-4 py-5 sm:px-6 flex justify-between items-center">
                                     <div>
-                                        <h3 className="text-lg leading-6 font-medium text-gray-900">Device Data</h3>
-                                        <p className="mt-1 max-w-2xl text-sm text-gray-500">Time series data from DobbyData table.</p>
+                                        <h3 className="text-lg leading-6 font-medium text-card-foreground">Device Data</h3>
+                                        <p className="mt-1 max-w-2xl text-sm text-muted-foreground">Time series data from DobbyData table.</p>
                                     </div>
                                     <div className="flex items-center space-x-4">
                                         <select
                                             value={timeRange}
                                             onChange={(e) => setTimeRange(Number(e.target.value))}
-                                            className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
+                                            className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-border bg-background text-foreground focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
                                         >
                                             <option value={1}>Last 24 Hours</option>
                                             <option value={7}>Last 7 Days</option>
@@ -251,135 +169,57 @@ const DeviceDetail: React.FC = () => {
                                         </select>
                                     </div>
                                 </div>
-                                <div className="border-t border-gray-200">
+                                <div className="border-t border-border">
                                     {isLoadingData ? (
                                         <div className="flex justify-center items-center h-64">
                                             <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-600"></div>
                                         </div>
                                     ) : dataError ? (
-                                        <div className="bg-red-50 border-l-4 border-red-600 p-4 mb-4">
+                                        <div className="bg-red-50 border-l-4 border-red-600 p-4 mb-4 dark:bg-red-900/20 dark:border-red-500">
                                             <div className="flex">
                                                 <div className="flex-shrink-0">
-                                                    <FiAlertCircle className="h-5 w-5 text-red-600" />
+                                                    <FiAlertCircle className="h-5 w-5 text-red-600 dark:text-red-400" />
                                                 </div>
                                                 <div className="ml-3">
-                                                    <p className="text-sm text-red-800">{dataError}</p>
+                                                    <p className="text-sm text-red-800 dark:text-red-200">{dataError}</p>
                                                 </div>
                                             </div>
                                         </div>
                                     ) : deviceData.length === 0 ? (
-                                        <div className="p-6 text-center text-gray-500">
-                                            <FiActivity className="h-12 w-12 mx-auto text-gray-400" />
+                                        <div className="p-6 text-center text-muted-foreground">
+                                            <FiActivity className="h-12 w-12 mx-auto text-muted-foreground" />
                                             <p className="mt-2">No data available for this device.</p>
                                         </div>
                                     ) : (
                                         <div className="p-4">
                                             <div className="grid grid-cols-1 gap-6">
-                                                {/* Instant Power Chart */}
-                                                <div className="h-80">
-                                                    <h4 className="text-sm font-medium text-gray-900 mb-2">Instant Power</h4>
-                                                    <ResponsiveContainer width="100%" height="100%">
-                                                        <LineChart
-                                                            data={renderData}
-                                                            margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                                                        >
-                                                            <CartesianGrid strokeDasharray="3 3" />
-                                                            <XAxis
-                                                                dataKey="timeMs"
-                                                                scale="time"
-                                                                domain={[startTime, currentTime]}
-                                                                type="number"
-                                                                tickFormatter={formatXAxis}
-                                                                label={{ value: 'Time', position: 'center' }}
-                                                            />
-                                                            <YAxis
-                                                                domain={[0, 'auto']}
-                                                                label={{ value: 'Power (W)', position: 'left', angle: 270, style: { textAnchor: 'middle' } }}
-                                                            />
-                                                            <Tooltip content={<CustomTooltip />} />
-                                                            <Line
-                                                                type="stepAfter"
-                                                                dataKey="instant_power"
-                                                                stroke="#3b82f6"
-                                                                dot={false}
-                                                                activeDot={true}
-                                                                name="Instant Power"
-                                                            />
-                                                        </LineChart>
-                                                    </ResponsiveContainer>
-                                                </div>
+                                                {/* Enhanced Charts with Theme Support */}
+                                                <InstantPowerChart
+                                                    data={renderData}
+                                                    loading={isLoadingData}
+                                                    error={dataError}
+                                                    timeRange={`${timeRange}d`}
+                                                    exportable={true}
+                                                    onRetry={() => window.location.reload()}
+                                                />
 
-                                                {/* Cumulative Energy Chart */}
-                                                <div className="h-80">
-                                                    <h4 className="text-sm font-medium text-gray-900 mb-2">Cumulative Energy</h4>
-                                                    <ResponsiveContainer width="100%" height="100%">
-                                                        <LineChart
-                                                            data={renderData}
-                                                            margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                                                        >
-                                                            <CartesianGrid strokeDasharray="3 3" />
-                                                            <XAxis
-                                                                dataKey="timeMs"
-                                                                scale="time"
-                                                                domain={[startTime, currentTime]}
-                                                                type="number"
-                                                                tickFormatter={formatXAxis}
-                                                                label={{ value: 'Time', position: 'center' }}
-                                                            />
-                                                            <YAxis
-                                                                domain={['auto', 'auto']}
-                                                                tickFormatter={(value) => {
-                                                                    // Convert Wh to kWh
-                                                                    return (value / 1000).toFixed(0);
-                                                                }}
-                                                                label={{ value: 'Energy (kWh)', position: 'left', angle: 270, style: { textAnchor: 'middle' } }}
-                                                            />
-                                                            <Tooltip content={<CustomTooltip />} />
-                                                            <Line
-                                                                type="stepAfter"
-                                                                dataKey="cumulative_energy"
-                                                                stroke="#10b981"
-                                                                dot={false}
-                                                                activeDot={true}
-                                                                name="Cumulative Energy"
-                                                            />
-                                                        </LineChart>
-                                                    </ResponsiveContainer>
-                                                </div>
+                                                <CumulativeEnergyChart
+                                                    data={renderData}
+                                                    loading={isLoadingData}
+                                                    error={dataError}
+                                                    timeRange={`${timeRange}d`}
+                                                    exportable={true}
+                                                    onRetry={() => window.location.reload()}
+                                                />
 
-                                                {/* Operational State Chart */}
-                                                <div className="h-80">
-                                                    <h4 className="text-sm font-medium text-gray-900 mb-2">Operational State</h4>
-                                                    <ResponsiveContainer width="100%" height="100%">
-                                                        <LineChart
-                                                            data={renderData}
-                                                            margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                                                        >
-                                                            <CartesianGrid strokeDasharray="3 3" />
-                                                            <XAxis
-                                                                dataKey="timeMs"
-                                                                scale="time"
-                                                                domain={[startTime, currentTime]}
-                                                                type="number"
-                                                                tickFormatter={formatXAxis}
-                                                                label={{ value: 'Time', position: 'center' }}
-                                                            />
-                                                            <YAxis
-                                                                domain={['auto', 'auto']}
-                                                                label={{ value: 'State', position: 'left', angle: 270, style: { textAnchor: 'middle' } }}
-                                                            />
-                                                            <Tooltip content={<CustomTooltip />} />
-                                                            <Line
-                                                                type="stepAfter"
-                                                                dataKey="operational_state"
-                                                                stroke="#ef4444"
-                                                                dot={false}
-                                                                activeDot={true}
-                                                                name="Operational State"
-                                                            />
-                                                        </LineChart>
-                                                    </ResponsiveContainer>
-                                                </div>
+                                                <OperationalStateChart
+                                                    data={renderData}
+                                                    loading={isLoadingData}
+                                                    error={dataError}
+                                                    timeRange={`${timeRange}d`}
+                                                    exportable={true}
+                                                    onRetry={() => window.location.reload()}
+                                                />
                                             </div>
                                         </div>
                                     )}
@@ -403,11 +243,11 @@ const DeviceDetail: React.FC = () => {
                                 </>
                             )}
 
-                            <div className="bg-white shadow overflow-hidden sm:rounded-lg mb-8">
+                            <div className="bg-card shadow overflow-hidden sm:rounded-lg mb-8">
                                 <div className="px-4 py-5 sm:px-6 flex justify-between items-center">
                                     <div>
-                                        <h3 className="text-lg leading-6 font-medium text-gray-900">Device Information</h3>
-                                        <p className="mt-1 max-w-2xl text-sm text-gray-500">Details and specifications.</p>
+                                        <h3 className="text-lg leading-6 font-medium text-card-foreground">Device Information</h3>
+                                        <p className="mt-1 max-w-2xl text-sm text-muted-foreground">Details and specifications.</p>
                                     </div>
                                     <div>
                                         {/* Change health status logic - now based on updated_at time */}
@@ -422,78 +262,78 @@ const DeviceDetail: React.FC = () => {
                                         })()}
                                     </div>
                                 </div>
-                                <div className="border-t border-gray-200">
+                                <div className="border-t border-border">
                                     <dl>
-                                        <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                                            <dt className="text-sm font-medium text-gray-500">Device ID</dt>
-                                            <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{device.device_id}</dd>
+                                        <div className="bg-muted px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                                            <dt className="text-sm font-medium text-muted-foreground">Device ID</dt>
+                                            <dd className="mt-1 text-sm text-card-foreground sm:mt-0 sm:col-span-2">{device.device_id}</dd>
                                         </div>
-                                        <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                                            <dt className="text-sm font-medium text-gray-500">Device Type</dt>
-                                            <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{device.device_type}</dd>
+                                        <div className="bg-card px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                                            <dt className="text-sm font-medium text-muted-foreground">Device Type</dt>
+                                            <dd className="mt-1 text-sm text-card-foreground sm:mt-0 sm:col-span-2">{device.device_type}</dd>
                                         </div>
-                                        <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                                            <dt className="text-sm font-medium text-gray-500">Model Number</dt>
-                                            <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{device.model_number}</dd>
+                                        <div className="bg-muted px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                                            <dt className="text-sm font-medium text-muted-foreground">Model Number</dt>
+                                            <dd className="mt-1 text-sm text-card-foreground sm:mt-0 sm:col-span-2">{device.model_number}</dd>
                                         </div>
-                                        <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                                            <dt className="text-sm font-medium text-gray-500">Serial Number</dt>
-                                            <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{device.serial_number}</dd>
+                                        <div className="bg-card px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                                            <dt className="text-sm font-medium text-muted-foreground">Serial Number</dt>
+                                            <dd className="mt-1 text-sm text-card-foreground sm:mt-0 sm:col-span-2">{device.serial_number}</dd>
                                         </div>
-                                        <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                                            <dt className="text-sm font-medium text-gray-500">Firmware Version</dt>
-                                            <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{device.firmware_version}</dd>
+                                        <div className="bg-muted px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                                            <dt className="text-sm font-medium text-muted-foreground">Firmware Version</dt>
+                                            <dd className="mt-1 text-sm text-card-foreground sm:mt-0 sm:col-span-2">{device.firmware_version}</dd>
                                         </div>
-                                        <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                                            <dt className="text-sm font-medium text-gray-500">Firmware Date</dt>
-                                            <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{device.firmware_date}</dd>
+                                        <div className="bg-card px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                                            <dt className="text-sm font-medium text-muted-foreground">Firmware Date</dt>
+                                            <dd className="mt-1 text-sm text-card-foreground sm:mt-0 sm:col-span-2">{device.firmware_date}</dd>
                                         </div>
-                                        <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                                            <dt className="text-sm font-medium text-gray-500">CTA Version</dt>
-                                            <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{device.cta_version}</dd>
+                                        <div className="bg-muted px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                                            <dt className="text-sm font-medium text-muted-foreground">CTA Version</dt>
+                                            <dd className="mt-1 text-sm text-card-foreground sm:mt-0 sm:col-span-2">{device.cta_version}</dd>
                                         </div>
-                                        <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                                            <dt className="text-sm font-medium text-gray-500">Vendor ID</dt>
-                                            <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{device.vendor_id}</dd>
+                                        <div className="bg-card px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                                            <dt className="text-sm font-medium text-muted-foreground">Vendor ID</dt>
+                                            <dd className="mt-1 text-sm text-card-foreground sm:mt-0 sm:col-span-2">{device.vendor_id}</dd>
                                         </div>
-                                        <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                                            <dt className="text-sm font-medium text-gray-500">Device Revision</dt>
-                                            <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{device.device_revision}</dd>
+                                        <div className="bg-muted px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                                            <dt className="text-sm font-medium text-muted-foreground">Device Revision</dt>
+                                            <dd className="mt-1 text-sm text-card-foreground sm:mt-0 sm:col-span-2">{device.device_revision}</dd>
                                         </div>
-                                        <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                                            <dt className="text-sm font-medium text-gray-500">Capability Bitmap</dt>
-                                            <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{device.capability_bitmap}</dd>
+                                        <div className="bg-card px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                                            <dt className="text-sm font-medium text-muted-foreground">Capability Bitmap</dt>
+                                            <dd className="mt-1 text-sm text-card-foreground sm:mt-0 sm:col-span-2">{device.capability_bitmap}</dd>
                                         </div>
                                         {device.gridcube_firmware_version && (
-                                            <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                                                <dt className="text-sm font-medium text-gray-500">GridCube Firmware Version</dt>
-                                                <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{device.gridcube_firmware_version}</dd>
+                                            <div className="bg-muted px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                                                <dt className="text-sm font-medium text-muted-foreground">GridCube Firmware Version</dt>
+                                                <dd className="mt-1 text-sm text-card-foreground sm:mt-0 sm:col-span-2">{device.gridcube_firmware_version}</dd>
                                             </div>
                                         )}
                                         {device.last_rx_rssi !== undefined && (
-                                            <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                                                <dt className="text-sm font-medium text-gray-500 flex items-center">
+                                            <div className="bg-card px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                                                <dt className="text-sm font-medium text-muted-foreground flex items-center">
                                                     <FiWifi className="mr-2" /> Signal Strength (RSSI)
                                                 </dt>
-                                                <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
+                                                <dd className="mt-1 text-sm text-card-foreground sm:mt-0 sm:col-span-2">
                                                     {device.last_rx_rssi} dBm
                                                 </dd>
                                             </div>
                                         )}
                                         {device.last_link_type !== undefined && (
-                                            <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                                                <dt className="text-sm font-medium text-gray-500 flex items-center">
+                                            <div className="bg-muted px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                                                <dt className="text-sm font-medium text-muted-foreground flex items-center">
                                                     <FiCpu className="mr-2" /> Link Type
                                                 </dt>
-                                                <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
+                                                <dd className="mt-1 text-sm text-card-foreground sm:mt-0 sm:col-span-2">
                                                     {getLinkTypeName(device.last_link_type)}
                                                 </dd>
                                             </div>
                                         )}
                                         {device.updated_at && (
-                                            <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                                                <dt className="text-sm font-medium text-gray-500">Last Updated</dt>
-                                                <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
+                                            <div className="bg-card px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                                                <dt className="text-sm font-medium text-muted-foreground">Last Updated</dt>
+                                                <dd className="mt-1 text-sm text-card-foreground sm:mt-0 sm:col-span-2">
                                                     {formatDate(device.updated_at)}
                                                 </dd>
                                             </div>

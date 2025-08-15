@@ -301,12 +301,12 @@ export class DobbyApiV2Stack extends cdk.Stack {
     infoTable.grantReadWriteData(dataHandlerFn);
     eventTable.grantReadWriteData(dataHandlerFn);
     dataTable.grantReadWriteData(dataHandlerFn);
-    
+
     // Grant permissions for company-related tables
     companiesTable.grantReadData(dataHandlerFn);
     companyUsersTable.grantReadData(dataHandlerFn);
     companyDevicesTable.grantReadData(dataHandlerFn);
-    
+
     // Grant permissions for ProductionLine table (needed for device ID mapping)
     productionLineTable.grantReadData(dataHandlerFn);
 
@@ -451,7 +451,7 @@ export class DobbyApiV2Stack extends cdk.Stack {
     }));
 
     // Create EventBridge rule to trigger watchdog function every 5 hours 50 minutes
-    const watchdogRule = new events.Rule(this, 'WatchdogRule', {
+    new events.Rule(this, 'WatchdogRule', {
       schedule: events.Schedule.rate(cdk.Duration.hours(5).plus(cdk.Duration.minutes(50))),
       description: 'Triggers watchdog timer function to feed device watchdog timers every ~6 hours',
       enabled: true,

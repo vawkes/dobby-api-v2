@@ -72,7 +72,7 @@ const ForgotPasswordPage: React.FC = () => {
                             <Button
                                 type="submit"
                                 fullWidth
-                                isLoading={isSubmitting}
+                                loading={isSubmitting}
                             >
                                 Send Reset Code
                             </Button>

@@ -27,7 +27,7 @@ const DeviceEvents: React.FC<DeviceEventsProps> = ({ deviceId }) => {
                 setEvents(data);
             } catch (err: any) {
                 console.error('Error fetching device events:', err);
-                
+
                 // Check if it's a 404 error (no events found)
                 if (err.response?.status === 404) {
                     // No events is a normal state, not an error
@@ -129,10 +129,10 @@ const DeviceEvents: React.FC<DeviceEventsProps> = ({ deviceId }) => {
     });
 
     return (
-        <div className="bg-white shadow overflow-hidden sm:rounded-lg mb-8">
+        <div className="bg-card shadow overflow-hidden sm:rounded-lg mb-8">
             <div className="px-4 py-5 sm:px-6">
-                <h3 className="text-lg leading-6 font-medium text-gray-900">Device Events</h3>
-                <p className="mt-1 max-w-2xl text-sm text-gray-500">Current and past events for this device.</p>
+                <h3 className="text-lg leading-6 font-medium text-card-foreground">Device Events</h3>
+                <p className="mt-1 max-w-2xl text-sm text-muted-foreground">Current and past events for this device.</p>
             </div>
 
             {isLoading ? (
@@ -151,30 +151,30 @@ const DeviceEvents: React.FC<DeviceEventsProps> = ({ deviceId }) => {
                     </div>
                 </div>
             ) : sortedEvents.length === 0 ? (
-                <div className="p-6 text-center text-gray-500">
-                    <FiCalendar className="h-12 w-12 mx-auto text-gray-400" />
+                <div className="p-6 text-center text-muted-foreground">
+                    <FiCalendar className="h-12 w-12 mx-auto text-muted-foreground" />
                     <p className="mt-2">No events found for this device.</p>
                 </div>
             ) : (
                 <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
+                    <table className="min-w-full divide-y divide-border">
+                        <thead className="bg-muted">
                             <tr>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                                     Event Type
                                 </th>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                                     Start Time
                                 </th>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                                     Duration
                                 </th>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                                     Status
                                 </th>
                             </tr>
                         </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
+                        <tbody className="bg-card divide-y divide-border">
                             {sortedEvents.map((event) => {
                                 const eventInfo = getEventInfo(event.event_type);
                                 // Get the appropriate date field based on event type
@@ -190,17 +190,17 @@ const DeviceEvents: React.FC<DeviceEventsProps> = ({ deviceId }) => {
                                                     {eventInfo.icon}
                                                 </div>
                                                 <div className="ml-4">
-                                                    <div className="text-sm font-medium text-gray-900">
+                                                    <div className="text-sm font-medium text-card-foreground">
                                                         {eventInfo.name}
                                                     </div>
                                                 </div>
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
-                                            <div className="text-sm text-gray-900">{formatDate(dateField)}</div>
+                                            <div className="text-sm text-card-foreground">{formatDate(dateField)}</div>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
-                                            <div className="text-sm text-gray-900">
+                                            <div className="text-sm text-card-foreground">
                                                 {event.event_type === EventType.INFO_REQUEST
                                                     ? 'N/A'
                                                     : (event.event_data.duration
