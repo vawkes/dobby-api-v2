@@ -3,7 +3,8 @@ import { CognitoIdentityProvider } from '@aws-sdk/client-cognito-identity-provid
 import { z } from 'zod';
 import { zValidator } from '@hono/zod-validator';
 import { describeRoute } from 'hono-openapi';
-import { resolver } from '@hono/zod-openapi';
+import {resolver} from "hono-openapi/zod"
+
 
 const cognitoClient = new CognitoIdentityProvider({
     region: process.env.USER_POOL_ID?.split('_')[0] || 'us-east-1',
