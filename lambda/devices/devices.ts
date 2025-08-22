@@ -23,17 +23,46 @@ const app = new Hono()
 
 app.get('/',
     describeRoute({
-        description: "Fetch all devices accessible to the authenticated user",
+        tags: ['Devices'],
+        summary: 'Fetch all accessible devices',
+        description: 'Retrieves a list of all devices that the authenticated user has access to.',
         responses: {
             200: {
                 content: {
                     'application/json': {
                         schema: resolver(devicesSchema),
+                        example: [
+                            {
+                                updated_at: "2023-10-27T10:00:00Z",
+                                cta_version: "1.0.0",
+                                firmware_date: "2023-01-15",
+                                model_number: "GC-1000",
+                                device_id: "000012",
+                                device_type: "GridCube",
+                                gridcube_firmware_version: "2.0.0",
+                                capability_bitmap: "0011",
+                                device_revision: "A",
+                                firmware_version: "1.0.0",
+                                serial_number: "SN12345",
+                                vendor_id: "VNDR",
+                                last_rx_rssi: -70,
+                                last_link_type: 4
+                            }
+                        ]
                     },
                 },
                 description: 'Retrieve List of Accessible Devices',
             },
+            401: {
+                description: 'User not authenticated',
+                content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } }
+            },
+            500: {
+                description: 'Internal server error',
+                content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } }
+            }
         },
+        security: [{ bearerAuth: [] }] // This is a protected endpoint
     }),
     requirePermission(Action.READ_DEVICES),
     async (c) => {
@@ -168,26 +197,62 @@ app.get('/',
 
 app.get('/:deviceId',
     describeRoute({
-        description: "Fetch single device if accessible to the authenticated user",
+        tags: ['Devices'],
+        summary: 'Fetch a single accessible device',
+        description: 'Retrieves details for a specific device, identified by its 6-digit ID, if accessible to the authenticated user.',
+        parameters: [
+            {
+                name: 'deviceId',
+                in: 'path',
+                required: true,
+                schema: { type: 'string', pattern: '^\\d{6}$' },
+                description: 'The 6-digit identifier of the device to retrieve.',
+                example: '000012'
+            }
+        ],
         responses: {
             200: {
                 content: {
                     'application/json': {
                         schema: resolver(deviceSchema),
+                        example: {
+                            updated_at: "2023-10-27T10:00:00Z",
+                            cta_version: "1.0.0",
+                            firmware_date: "2023-01-15",
+                            model_number: "GC-1000",
+                            device_id: "000012",
+                            device_type: "GridCube",
+                            gridcube_firmware_version: "2.0.0",
+                            capability_bitmap: "0011",
+                            device_revision: "A",
+                            firmware_version: "1.0.0",
+                            serial_number: "SN12345",
+                            vendor_id: "VNDR",
+                            last_rx_rssi: -70,
+                            last_link_type: 4
+                        }
                     },
                 },
                 description: 'Retrieve a single device',
             },
+            400: {
+                description: 'Invalid device ID format',
+                content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } }
+            },
             403: {
                 description: 'Access denied to this device',
+                content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } }
             },
             404: {
                 description: 'Device not found',
+                content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } }
             },
             500: {
                 description: 'Internal server error',
+                content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } }
             },
         },
+        security: [{ bearerAuth: [] }] // This is a protected endpoint
     }),
     requireDevicePermission(Action.READ_DEVICES),
     async (c) => {
@@ -263,81 +328,64 @@ app.get('/:deviceId',
 
 app.get('/:deviceId/data',
     describeRoute({
-        description: "Fetch device data if accessible to the authenticated user",
+        tags: ['Devices'],
+        summary: 'Get device time series data',
+        description: 'Fetch historical data points for a specific device with optional time range filtering.',
+        parameters: [
+            {
+                name: 'deviceId',
+                in: 'path',
+                required: true,
+                schema: { type: 'string', pattern: '^\\d{6}$' },
+                description: '6-digit device identifier',
+                example: '000012'
+            },
+            {
+                name: 'days',
+                in: 'query',
+                required: false,
+                schema: { type: 'integer', minimum: 1, maximum: 365, default: 1 },
+                description: 'Number of days of historical data to retrieve (default: 1 day).',
+                example: 7
+            }
+        ],
         responses: {
             200: {
+                description: 'Device data retrieved successfully',
                 content: {
                     'application/json': {
                         schema: resolver(deviceDataSchema),
-                    },
-                },
-                description: 'Successfully retrieved device time series data',
+                        example: [
+                            {
+                                device_id: "000012",
+                                timestamp: 1640995200,
+                                cumulative_energy: 1234.5,
+                                instant_power: 2500,
+                                msg_number: 12345,
+                                operational_state: 1
+                            }
+                        ]
+                    }
+                }
             },
             400: {
                 description: 'Invalid device ID format',
-                content: {
-                    'application/json': {
-                        schema: {
-                            type: 'object',
-                            properties: {
-                                error: {
-                                    type: 'string',
-                                    example: 'Invalid device ID format'
-                                }
-                            }
-                        }
-                    }
-                }
+                content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } }
             },
             403: {
                 description: 'Access denied to this device',
-                content: {
-                    'application/json': {
-                        schema: {
-                            type: 'object',
-                            properties: {
-                                error: {
-                                    type: 'string',
-                                    example: 'Access denied to this device'
-                                }
-                            }
-                        }
-                    }
-                }
+                content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } }
             },
             404: {
                 description: 'Device not found or no data available',
-                content: {
-                    'application/json': {
-                        schema: {
-                            type: 'object',
-                            properties: {
-                                error: {
-                                    type: 'string',
-                                    example: 'Device not found in production line'
-                                }
-                            }
-                        }
-                    }
-                }
+                content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } }
             },
             500: {
                 description: 'Internal server error',
-                content: {
-                    'application/json': {
-                        schema: {
-                            type: 'object',
-                            properties: {
-                                error: {
-                                    type: 'string',
-                                    example: 'Internal server error'
-                                }
-                            }
-                        }
-                    }
-                }
+                content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } }
             },
         },
+        security: [{ bearerAuth: [] }] // This is a protected endpoint
     }),
     requireDevicePermission(Action.READ_DEVICES),
     async (c) => {

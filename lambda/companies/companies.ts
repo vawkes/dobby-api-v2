@@ -44,23 +44,53 @@ async function checkUserRole(dynamodb: DynamoDB, companyId: string, userId: stri
 // Create a new company (admin only)
 app.post('/',
     describeRoute({
-        description: 'Create a new company',
+        tags: ['Companies'],
+        summary: 'Create a new company',
+        description: 'Creates a new company. This operation requires `WRITE_COMPANIES` permission.',
+        requestBody: {
+            required: true,
+            content: {
+                'application/json': {
+                    schema: resolver(createCompanySchema),
+                    example: {
+                        name: "New Company Name"
+                    }
+                }
+            }
+        },
         responses: {
             201: {
                 description: 'Company created successfully',
                 content: {
                     'application/json': {
                         schema: resolver(companySchema),
+                        example: {
+                            id: "a1b2c3d4-e5f6-7890-1234-567890abcdef",
+                            name: "New Company Name",
+                            createdAt: "2023-10-27T10:00:00Z",
+                            updatedAt: "2023-10-27T10:00:00Z"
+                        }
                     },
                 },
             },
             400: {
                 description: 'Invalid request data',
+                content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } }
+            },
+            401: {
+                description: 'User not authenticated',
+                content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } }
             },
             403: {
                 description: 'Access denied - insufficient permissions',
+                content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } }
             },
+            500: {
+                description: 'Internal server error',
+                content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } }
+            }
         },
+        security: [{ bearerAuth: [] }] // This is a protected endpoint
     }),
     requirePermission(Action.WRITE_COMPANIES),
     validator('json', createCompanySchema),
@@ -92,20 +122,40 @@ app.post('/',
 // Get all companies (admin only)
 app.get('/',
     describeRoute({
-        description: 'Get all companies',
+        tags: ['Companies'],
+        summary: 'Get all companies',
+        description: 'Retrieves a list of all companies. This operation requires `WRITE_COMPANIES` permission.',
         responses: {
             200: {
                 description: 'List of companies',
                 content: {
                     'application/json': {
                         schema: resolver(companiesSchema),
+                        example: [
+                            {
+                                id: "a1b2c3d4-e5f6-7890-1234-567890abcdef",
+                                name: "Example Corp",
+                                createdAt: "2023-10-27T10:00:00Z",
+                                updatedAt: "2023-10-27T10:00:00Z"
+                            }
+                        ]
                     },
                 },
             },
+            401: {
+                description: 'User not authenticated',
+                content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } }
+            },
             403: {
                 description: 'Access denied - insufficient permissions',
+                content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } }
             },
+            500: {
+                description: 'Internal server error',
+                content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } }
+            }
         },
+        security: [{ bearerAuth: [] }] // This is a protected endpoint
     }),
     requirePermission(Action.WRITE_COMPANIES), // Using WRITE_COMPANIES since READ_COMPANIES was removed
     async (c) => {
@@ -125,23 +175,42 @@ app.get('/',
 // Get specific company
 app.get('/:companyId',
     describeRoute({
-        description: 'Get a specific company',
+        tags: ['Companies'],
+        summary: 'Get a specific company by ID',
+        description: 'Retrieves details for a specific company, identified by its unique ID. This operation requires `WRITE_COMPANIES` permission.',
         responses: {
             200: {
                 description: 'Company details',
                 content: {
                     'application/json': {
                         schema: resolver(companySchema),
+                        example: {
+                            id: "a1b2c3d4-e5f6-7890-1234-567890abcdef",
+                            name: "Example Corp",
+                            createdAt: "2023-10-27T10:00:00Z",
+                            updatedAt: "2023-10-27T10:00:00Z"
+                        }
                     },
                 },
             },
+            401: {
+                description: 'User not authenticated',
+                content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } }
+            },
             403: {
                 description: 'Access denied - insufficient permissions',
+                content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } }
             },
             404: {
                 description: 'Company not found',
+                content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } }
             },
+            500: {
+                description: 'Internal server error',
+                content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } }
+            }
         },
+        security: [{ bearerAuth: [] }] // This is a protected endpoint
     }),
     requireCompanyPermission(Action.WRITE_COMPANIES), // Using WRITE_COMPANIES since READ_COMPANIES was removed
     async (c) => {
@@ -168,26 +237,68 @@ app.get('/:companyId',
 // Add user to company (admin only)
 app.post('/:companyId/users',
     describeRoute({
-        description: 'Add a user to a company',
+        tags: ['Companies'],
+        summary: 'Add a user to a company',
+        description: 'Adds an existing user to a specified company with a given role. This operation requires `WRITE_USERS` permission within the company.',
+        parameters: [
+            {
+                name: 'companyId',
+                in: 'path',
+                required: true,
+                schema: { type: 'string', format: 'uuid' },
+                description: 'The unique identifier of the company.',
+                example: 'a1b2c3d4-e5f6-7890-1234-567890abcdef'
+            }
+        ],
+        requestBody: {
+            required: true,
+            content: {
+                'application/json': {
+                    schema: resolver(addUserToCompanySchema),
+                    example: {
+                        user_id: "user-123",
+                        role: "DEVICE_VIEWER"
+                    }
+                }
+            }
+        },
         responses: {
             201: {
                 description: 'User added to company successfully',
                 content: {
                     'application/json': {
-                        schema: resolver(addUserToCompanySchema),
+                        schema: resolver(addUserToCompanySchema), // Reusing schema for response
+                        example: {
+                            company_id: "a1b2c3d4-e5f6-7890-1234-567890abcdef",
+                            user_id: "user-123",
+                            role: "DEVICE_VIEWER",
+                            added_at: "2023-10-27T10:00:00Z"
+                        }
                     },
                 },
             },
             400: {
                 description: 'Invalid request data',
+                content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } }
+            },
+            401: {
+                description: 'User not authenticated',
+                content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } }
             },
             403: {
-                description: 'Access denied - insufficient permissions',
+                description: 'Access denied - insufficient permissions or role assignment not allowed',
+                content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } }
             },
             404: {
                 description: 'Company not found',
+                content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } }
             },
+            500: {
+                description: 'Internal server error',
+                content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } }
+            }
         },
+        security: [{ bearerAuth: [] }] // This is a protected endpoint
     }),
     requireCompanyPermission(Action.WRITE_USERS),
     validator('json', addUserToCompanySchema),
@@ -248,26 +359,73 @@ app.post('/:companyId/users',
 // Update user role in company
 app.put('/:companyId/users/:userId',
     describeRoute({
-        description: 'Update user role in company',
+        tags: ['Companies'],
+        summary: 'Update user role in a company',
+        description: 'Updates the role of an existing user within a specified company. This operation requires `WRITE_USERS` permission within the company.',
+        parameters: [
+            {
+                name: 'companyId',
+                in: 'path',
+                required: true,
+                schema: { type: 'string', format: 'uuid' },
+                description: 'The unique identifier of the company.',
+                example: 'a1b2c3d4-e5f6-7890-1234-567890abcdef'
+            },
+            {
+                name: 'userId',
+                in: 'path',
+                required: true,
+                schema: { type: 'string' },
+                description: 'The unique identifier of the user whose role is to be updated.',
+                example: 'user-123'
+            }
+        ],
+        requestBody: {
+            required: true,
+            content: {
+                'application/json': {
+                    schema: resolver(updateUserRoleSchema),
+                    example: {
+                        role: "COMPANY_ADMIN"
+                    }
+                }
+            }
+        },
         responses: {
             200: {
                 description: 'User role updated successfully',
                 content: {
                     'application/json': {
-                        schema: resolver(updateUserRoleSchema),
+                        schema: resolver(updateUserRoleSchema), // Reusing schema for response
+                        example: {
+                            role: "COMPANY_ADMIN",
+                            updated_at: "2023-10-27T10:00:00Z"
+                        }
                     },
                 },
             },
             400: {
                 description: 'Invalid request data',
+                content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } }
+            },
+            401: {
+                description: 'User not authenticated',
+                content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } }
             },
             403: {
-                description: 'Access denied - insufficient permissions',
+                description: 'Access denied - insufficient permissions or role assignment not allowed',
+                content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } }
             },
             404: {
                 description: 'Company or user not found',
+                content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } }
             },
+            500: {
+                description: 'Internal server error',
+                content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } }
+            }
         },
+        security: [{ bearerAuth: [] }] // This is a protected endpoint
     }),
     requireCompanyPermission(Action.WRITE_USERS),
     validator('json', updateUserRoleSchema),
@@ -342,18 +500,59 @@ app.put('/:companyId/users/:userId',
 // Remove user from company
 app.delete('/:companyId/users/:userId',
     describeRoute({
-        description: 'Remove user from company',
+        tags: ['Companies'],
+        summary: 'Remove user from company',
+        description: 'Removes a user from a specified company. This operation requires `DELETE_USERS` permission within the company.',
+        parameters: [
+            {
+                name: 'companyId',
+                in: 'path',
+                required: true,
+                schema: { type: 'string', format: 'uuid' },
+                description: 'The unique identifier of the company.',
+                example: 'a1b2c3d4-e5f6-7890-1234-567890abcdef'
+            },
+            {
+                name: 'userId',
+                in: 'path',
+                required: true,
+                schema: { type: 'string' },
+                description: 'The unique identifier of the user to be removed.',
+                example: 'user-123'
+            }
+        ],
         responses: {
             200: {
                 description: 'User removed from company successfully',
+                content: {
+                    'application/json': {
+                        schema: {
+                            type: 'object',
+                            properties: {
+                                message: { type: 'string', example: 'User removed from company successfully' }
+                            }
+                        }
+                    }
+                }
+            },
+            401: {
+                description: 'User not authenticated',
+                content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } }
             },
             403: {
                 description: 'Access denied - insufficient permissions',
+                content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } }
             },
             404: {
                 description: 'Company or user not found',
+                content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } }
             },
+            500: {
+                description: 'Internal server error',
+                content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } }
+            }
         },
+        security: [{ bearerAuth: [] }] // This is a protected endpoint
     }),
     requireCompanyPermission(Action.DELETE_USERS),
     async (c) => {
@@ -674,4 +873,102 @@ app.delete('/:companyId/devices/:deviceId',
         }
     });
 
+// Delete a company (admin only)
+app.delete('/:companyId',
+    describeRoute({
+        tags: ['Companies'],
+        summary: 'Delete a company',
+        description: 'Deletes a company by its unique identifier. This operation requires `DELETE_COMPANIES` permission.',
+        parameters: [
+            {
+                name: 'companyId',
+                in: 'path',
+                required: true,
+                schema: { type: 'string', format: 'uuid' },
+                description: 'The unique identifier of the company to delete.',
+                example: 'a1b2c3d4-e5f6-7890-1234-567890abcdef'
+            }
+        ],
+        responses: {
+            200: {
+                description: 'Company deleted successfully',
+                content: {
+                    'application/json': {
+                        schema: {
+                            type: 'object',
+                            properties: {
+                                message: { type: 'string', example: 'Company deleted successfully' }
+                            }
+                        }
+                    }
+                }
+            },
+            401: {
+                description: 'User not authenticated',
+                content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } }
+            },
+            403: {
+                description: 'Access denied - insufficient permissions',
+                content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } }
+            },
+            404: {
+                description: 'Company not found',
+                content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } }
+            },
+            500: {
+                description: 'Internal server error',
+                content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } }
+            }
+        },
+        security: [{ bearerAuth: [] }] // This is a protected endpoint
+    }),
+    requirePermission(Action.DELETE_COMPANIES),
+    async (c) => {
+        try {
+            const companyId = c.req.param('companyId');
+            const dynamodb = new DynamoDB({ region: 'us-east-1' });
+
+            // Check if company exists
+            const companyResult = await dynamodb.getItem({
+                TableName: 'Companies',
+                Key: { id: { S: companyId } }
+            });
+
+            if (!companyResult.Item) {
+                return c.json({ error: 'Company not found' }, 404);
+            }
+
+            // Delete the company
+            await dynamodb.deleteItem({
+                TableName: 'Companies',
+                Key: { id: { S: companyId } }
+            });
+
+            // Delete all users associated with the company
+            const companyUsers = await dynamodb.query({
+                TableName: 'CompanyUsers',
+                KeyConditionExpression: 'company_id = :companyId',
+                ExpressionAttributeValues: {
+                    ':companyId': { S: companyId }
+                }
+            });
+
+            if (companyUsers.Items) {
+                for (const userItem of companyUsers.Items) {
+                    await dynamodb.deleteItem({
+                        TableName: 'CompanyUsers',
+                        Key: {
+                            company_id: { S: companyId },
+                            user_id: userItem.user_id
+                        }
+                    });
+                }
+            }
+
+            return c.json({ message: 'Company deleted successfully' });
+        } catch (error) {
+            console.error('Error deleting company:', error);
+            return c.json({ error: 'Failed to delete company' }, 500);
+        }
+    });
 export default app; 

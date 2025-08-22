@@ -119,6 +119,10 @@ For technical support or questions about this API, please contact our developmen
                 {
                     name: 'Authentication',
                     description: 'User authentication and authorization endpoints. Register, login, and manage user sessions.'
+                },
+                {
+                    name: 'Companies',
+                    description: 'Company management endpoints. Manage organizations, users, roles, and device assignments.'
                 }
             ],
             components: {
@@ -227,9 +231,6 @@ For technical support or questions about this API, please contact our developmen
                     }
                 }
             },
-            security: [
-                { bearerAuth: [] }
-            ],
             externalDocs: {
                 description: 'Vawkes GridCube Documentation',
                 url: 'https://docs.vawkes.com/gridcube'
