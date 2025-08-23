@@ -26,20 +26,41 @@ const app = new Hono();
 
 app.get("/",
     describeRoute({
-        description: "Fetch all events for devices accessible to the authenticated user",
+        tags: ['Events'],
+        summary: 'Fetch all accessible events',
+        description: 'Retrieves a list of all events associated with devices accessible to the authenticated user.',
         responses: {
             200: {
-                description: "Retrieve List of Events",
+                description: "Retrieve List of Accessible Events",
                 content: {
                     'application/json': {
                         schema: resolver(eventsSchema),
+                        example: [
+                            {
+                                event_id: "a1b2c3d4-e5f6-7890-1234-567890abcdef",
+                                device_id: "000012",
+                                event_type: "LOAD_UP",
+                                timestamp: "2023-10-27T10:00:00Z",
+                                event_data: {
+                                    start_time: "2023-10-27T10:00:00Z",
+                                    duration: 3600
+                                },
+                                event_ack: false
+                            }
+                        ]
                     },
                 },
             },
+            401: {
+                description: 'User not authenticated',
+                content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } }
+            },
             500: {
                 description: "Internal Server Error",
+                content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } }
             },
         },
+        security: [{ bearerAuth: [] }] // This is a protected endpoint
     }),
     requirePermission(Action.READ_EVENTS),
     async (c) => {
@@ -108,26 +129,49 @@ app.get("/",
 
 app.get("/device/:deviceId",
     describeRoute({
-        description: "Fetch events for a specific device if accessible to the authenticated user",
+        tags: ['Events'],
+        summary: 'Fetch events for a specific device',
+        description: 'Retrieves a list of events for a given device, identified by its 6-digit ID, if accessible to the authenticated user.',
         responses: {
             200: {
                 description: "Retrieve events for a device",
                 content: {
                     'application/json': {
                         schema: resolver(eventsSchema),
+                        example: [
+                            {
+                                event_id: "a1b2c3d4-e5f6-7890-1234-567890abcdef",
+                                device_id: "000012",
+                                event_type: "LOAD_UP",
+                                timestamp: "2023-10-27T10:00:00Z",
+                                event_data: {
+                                    start_time: "2023-10-27T10:00:00Z",
+                                    duration: 3600
+                                },
+                                event_ack: false
+                            }
+                        ]
                     },
                 },
             },
+            400: {
+                description: 'Invalid device ID format or resolution failed',
+                content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } }
+            },
             403: {
                 description: "Access denied to this device",
+                content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } }
             },
             404: {
                 description: "No events found for this device",
+                content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } }
             },
             500: {
                 description: "Internal Server Error",
+                content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } }
             },
         },
+        security: [{ bearerAuth: [] }] // This is a protected endpoint
     }),
     requireDevicePermission(Action.READ_EVENTS),
     async (c) => {
@@ -207,23 +251,53 @@ app.get("/device/:deviceId",
 
 app.get("/:eventId",
     describeRoute({
-        description: "Fetch single event",
+        tags: ['Events'],
+        summary: 'Fetch a single event by ID',
+        description: 'Retrieves details for a specific event, identified by its unique event ID, if accessible to the authenticated user.',
+        parameters: [
+            {
+                name: 'eventId',
+                in: 'path',
+                required: true,
+                schema: { type: 'string', format: 'uuid' },
+                description: 'The unique identifier of the event to retrieve.',
+                example: 'a1b2c3d4-e5f6-7890-1234-567890abcdef'
+            }
+        ],
         responses: {
             200: {
                 description: "Retrieve a single event",
                 content: {
                     'application/json': {
                         schema: resolver(eventSchema),
+                        example: {
+                            event_id: "a1b2c3d4-e5f6-7890-1234-567890abcdef",
+                            device_id: "000012",
+                            event_type: "LOAD_UP",
+                            timestamp: "2023-10-27T10:00:00Z",
+                            event_data: {
+                                start_time: "2023-10-27T10:00:00Z",
+                                duration: 3600
+                            },
+                            event_ack: false
+                        }
                     },
                 },
             },
+            401: {
+                description: 'User not authenticated',
+                content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } }
+            },
             404: {
                 description: "Event not found",
+                content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } }
             },
             500: {
                 description: "Internal Server Error",
+                content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } }
             },
         },
+        security: [{ bearerAuth: [] }] // This is a protected endpoint
     }),
     requirePermission(Action.READ_EVENTS),
     async (c) => {
@@ -271,23 +345,100 @@ app.get("/:eventId",
 
 app.post("/",
     describeRoute({
-        description: "Create event(s) for one or multiple devices",
+        tags: ['Events'],
+        summary: 'Create one or multiple events',
+        description: 'Creates a new event or a batch of events for one or more devices. The `event_data` structure varies based on the `event_type`. The `event_id` is generated on the client-side.',
+        requestBody: {
+            required: true,
+            content: {
+                'application/json': {
+                    schema: resolver(eventRequestSchema),
+                    examples: {
+                        loadUpSingleDevice: {
+                            summary: 'Load Up Event for a Single Device',
+                            value: {
+                                event_id: "a1b2c3d4-e5f6-7890-1234-567890abcdef",
+                                event_type: "LOAD_UP",
+                                event_data: {
+                                    device_id: "000012",
+                                    start_time: "2023-10-27T10:00:00Z",
+                                    duration: 3600
+                                }
+                            }
+                        },
+                        loadUpMultipleDevices: {
+                            summary: 'Load Up Event for Multiple Devices',
+                            value: {
+                                event_id: "b2c3d4e5-f6a7-8901-2345-67890abcdef0",
+                                event_type: "LOAD_UP",
+                                event_data: {
+                                    device_id: ["000012", "000013"],
+                                    start_time: "2023-10-27T11:00:00Z",
+                                    duration: 7200
+                                }
+                            }
+                        },
+                        infoRequest: {
+                            summary: 'Info Request Event',
+                            value: {
+                                event_id: "c3d4e5f6-a7b8-9012-3456-7890abcdef01",
+                                event_type: "INFO_REQUEST",
+                                event_data: {
+                                    device_id: "000012",
+                                    timestamp: "2023-10-27T12:00:00Z"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         responses: {
             200: {
                 description: "Event(s) created successfully",
                 content: {
                     'application/json': {
                         schema: resolver(bulkResponseSchema),
+                        example: {
+                            statusCode: 200,
+                            body: {
+                                successful_events: [
+                                    {
+                                        event_id: "a1b2c3d4-e5f6-7890-1234-567890abcdef",
+                                        device_id: "000012",
+                                        event_type: "LOAD_UP",
+                                        timestamp: "2023-10-27T10:00:00Z",
+                                        event_data: {
+                                            start_time: "2023-10-27T10:00:00Z",
+                                            duration: 3600
+                                        },
+                                        event_ack: false
+                                    }
+                                ],
+                                failed_events: []
+                            }
+                        }
                     },
                 },
             },
             400: {
-                description: "Bad Request",
+                description: "Bad Request - Invalid event data or unsupported event type",
+                content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } }
+            },
+            401: {
+                description: 'User not authenticated',
+                content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } }
+            },
+            403: {
+                description: 'Insufficient permissions to create events',
+                content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } }
             },
             500: {
                 description: "Internal Server Error",
+                content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } }
             },
         },
+        security: [{ bearerAuth: [] }] // This is a protected endpoint
     }),
     requirePermission(Action.CREATE_EVENTS),
     zValidator('json', eventRequestSchema),
