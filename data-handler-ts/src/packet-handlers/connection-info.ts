@@ -14,7 +14,7 @@ export const handleConnectionInfo = async (payload: Buffer, deviceId: string): P
   const snr = new DataView(payload.buffer).getInt8(2);
 
   // Parse Link Type (4 bytes, little-endian)
-  const linkType = new DataView(payload.buffer).getUint32(3);
+  const linkType = new DataView(payload.buffer).getUint32(3, true);
 
   console.log(`RSSI: ${rssi}`);
   console.log(`SNR: ${snr}`);
