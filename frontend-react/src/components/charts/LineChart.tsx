@@ -195,7 +195,7 @@ export const LineChart: React.FC<LineChartProps> = ({
                     {linesWithColors.map((line) => (
                         <Line
                             key={line.dataKey}
-                            type="monotone"
+                            type="stepAfter"
                             dataKey={line.dataKey}
                             name={line.name}
                             stroke={line.color}
