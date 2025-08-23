@@ -91,6 +91,12 @@ export const DeviceChart: React.FC<DeviceChartProps> = ({
                 };
 
             case 'cumulative_energy':
+                // Calculate min and max values from the data for auto-scaling
+                const energyValues = data.map(d => d.cumulative_energy).filter(v => v !== undefined) as number[];
+                const minEnergy = energyValues.length > 0 ? Math.min(...energyValues) : 0;
+                const maxEnergy = energyValues.length > 0 ? Math.max(...energyValues) : 0;
+                const padding = (maxEnergy - minEnergy) * 0.05; // 5% padding
+
                 return {
                     title: title || 'Cumulative Energy',
                     description: description || 'Total energy consumption over time',
@@ -102,7 +108,7 @@ export const DeviceChart: React.FC<DeviceChartProps> = ({
                         }
                     ],
                     yAxisLabel: 'Energy (kWh)',
-                    domain: [0, 'auto'] as [number, string],
+                    domain: [Math.max(0, minEnergy - padding), maxEnergy + padding], // Auto-scale with padding, ensuring it doesn't go below 0
                 };
 
             case 'operational_state':
