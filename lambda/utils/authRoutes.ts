@@ -55,7 +55,27 @@ app.post(
             required: true,
             content: {
                 'application/json': {
-                    schema: resolver(registerSchema),
+                    schema: {
+                        type: 'object',
+                        properties: {
+                            email: {
+                                type: 'string',
+                                format: 'email',
+                                description: 'User email address'
+                            },
+                            password: {
+                                type: 'string',
+                                minLength: 8,
+                                description: 'User password (minimum 8 characters)'
+                            },
+                            name: {
+                                type: 'string',
+                                minLength: 1,
+                                description: 'User full name'
+                            }
+                        },
+                        required: ['email', 'password', 'name']
+                    },
                     example: {
                         email: "newuser@example.com",
                         password: "SecurePass123!",
@@ -129,7 +149,21 @@ app.post(
             required: true,
             content: {
                 'application/json': {
-                    schema: resolver(confirmRegistrationSchema),
+                    schema: {
+                        type: 'object',
+                        properties: {
+                            email: {
+                                type: 'string',
+                                format: 'email',
+                                description: 'User email address'
+                            },
+                            confirmationCode: {
+                                type: 'string',
+                                description: 'Confirmation code sent to user email'
+                            }
+                        },
+                        required: ['email', 'confirmationCode']
+                    },
                     example: {
                         email: "newuser@example.com",
                         confirmationCode: "123456"
@@ -188,7 +222,21 @@ app.post(
             required: true,
             content: {
                 'application/json': {
-                    schema: resolver(loginSchema),
+                    schema: {
+                        type: 'object',
+                        properties: {
+                            email: {
+                                type: 'string',
+                                format: 'email',
+                                description: 'User email address'
+                            },
+                            password: {
+                                type: 'string',
+                                description: 'User password'
+                            }
+                        },
+                        required: ['email', 'password']
+                    },
                     example: {
                         email: "user@example.com",
                         password: "SecurePass123!"
@@ -268,7 +316,17 @@ app.post(
             required: true,
             content: {
                 'application/json': {
-                    schema: resolver(forgotPasswordSchema),
+                    schema: {
+                        type: 'object',
+                        properties: {
+                            email: {
+                                type: 'string',
+                                format: 'email',
+                                description: 'User email address'
+                            }
+                        },
+                        required: ['email']
+                    },
                     example: {
                         email: "user@example.com"
                     }
@@ -325,7 +383,26 @@ app.post(
             required: true,
             content: {
                 'application/json': {
-                    schema: resolver(resetPasswordSchema),
+                    schema: {
+                        type: 'object',
+                        properties: {
+                            email: {
+                                type: 'string',
+                                format: 'email',
+                                description: 'User email address'
+                            },
+                            confirmationCode: {
+                                type: 'string',
+                                description: 'Confirmation code sent to user email'
+                            },
+                            newPassword: {
+                                type: 'string',
+                                minLength: 8,
+                                description: 'New password (minimum 8 characters)'
+                            }
+                        },
+                        required: ['email', 'confirmationCode', 'newPassword']
+                    },
                     example: {
                         email: "user@example.com",
                         confirmationCode: "123456",
@@ -386,7 +463,16 @@ app.post(
             required: true,
             content: {
                 'application/json': {
-                    schema: resolver(refreshTokenSchema),
+                    schema: {
+                        type: 'object',
+                        properties: {
+                            refreshToken: {
+                                type: 'string',
+                                description: 'Valid refresh token'
+                            }
+                        },
+                        required: ['refreshToken']
+                    },
                     example: {
                         refreshToken: "eyJjdHkiOiJKV1QiLCJlbmMiOiJBMjU2R0NNIiwiYWxnIjoiUlNBLU9BRVAifQ..."
                     }
