@@ -1,7 +1,7 @@
 import { ScanCommand } from "@aws-sdk/lib-dynamodb"
 import { docClient, TABLES } from "../../shared/database/client"
 import { WirelessDeviceId, wirelessDeviceIdSchema } from "../../shared/schemas/primitives"
-import { sendInfoRequestToDevice } from "../utils/sendInfoRequest"
+import { sendConnectionInfoRequestToDevice } from "../utils/sendConnectionInfoRequest"
 
 interface WatchdogResult {
     statusCode: number
@@ -16,18 +16,18 @@ interface WatchdogResult {
 
 /**
  * Watchdog timer Lambda function
- * Scans all devices in ProductionLine table and sends info requests to feed watchdog timers
+ * Scans all devices in ProductionLine table and sends connection info requests to feed watchdog timers
  * Runs every ~6 hours to prevent device watchdog timeouts
  */
 export async function handler(event: any): Promise<WatchdogResult> {
-    console.log('Starting watchdog timer feed for all devices')
+    console.log('Starting watchdog timer feed with connection info requests for all devices')
     
     const startTime = Date.now()
     
     try {
         // Scan ProductionLine table to get all wireless device IDs
         const allDevices = await getAllWirelessDeviceIds()
-        console.log(`Found ${allDevices.length} devices to ping`)
+        console.log(`Found ${allDevices.length} devices to send connection info requests`)
         
         if (allDevices.length === 0) {
             console.log('No devices found - nothing to process')
@@ -43,7 +43,7 @@ export async function handler(event: any): Promise<WatchdogResult> {
             }
         }
         
-        // Send info requests in batches to avoid overwhelming the system
+        // Send connection info requests in batches to avoid overwhelming the system
         const batchSize = 10 // Process 10 devices concurrently per batch
         let successCount = 0
         let failureCount = 0
@@ -53,11 +53,11 @@ export async function handler(event: any): Promise<WatchdogResult> {
             const batch = allDevices.slice(i, i + batchSize)
             batchesProcessed++
             
-            console.log(`Processing batch ${batchesProcessed} (devices ${i + 1}-${Math.min(i + batchSize, allDevices.length)})`)
+            console.log(`Processing batch ${batchesProcessed} with connection info requests (devices ${i + 1}-${Math.min(i + batchSize, allDevices.length)})`)
             
             // Process batch concurrently
             const results = await Promise.allSettled(
-                batch.map(deviceId => sendInfoRequestToDevice(deviceId))
+                batch.map(deviceId => sendConnectionInfoRequestToDevice(deviceId))
             )
             
             // Count successes and failures
@@ -68,7 +68,7 @@ export async function handler(event: any): Promise<WatchdogResult> {
                     failureCount++
                     const deviceId = batch[index]
                     const error = result.status === 'rejected' ? result.reason : 'Send failed'
-                    console.warn(`Failed to send watchdog to device ${deviceId}:`, error)
+                    console.warn(`Failed to send connection info request to device ${deviceId}:`, error)
                 }
             })
             
@@ -79,7 +79,7 @@ export async function handler(event: any): Promise<WatchdogResult> {
         }
         
         const duration = Date.now() - startTime
-        console.log(`Watchdog timer feed completed: ${successCount} success, ${failureCount} failures in ${duration}ms across ${batchesProcessed} batches`)
+        console.log(`Watchdog timer feed with connection info requests completed: ${successCount} success, ${failureCount} failures in ${duration}ms across ${batchesProcessed} batches`)
         
         return {
             statusCode: 200,
