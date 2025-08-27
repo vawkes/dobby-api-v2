@@ -16,7 +16,7 @@ import { ChartTooltip } from './ChartTooltip';
 
 /**
  * Enhanced LineChart component with theme integration and mobile optimization
- * 
+ *
  * Features:
  * - Automatic dark/light theme detection
  * - Mobile-responsive dimensions and interactions
@@ -24,9 +24,9 @@ import { ChartTooltip } from './ChartTooltip';
  * - Multiple data series support
  * - Touch-friendly interactions
  * - Smooth animations
- * 
+ *
  * @example
- * <LineChart 
+ * <LineChart
  *   data={deviceData}
  *   lines={[
  *     { dataKey: 'power_level', name: 'Power Level', unit: 'W' },
@@ -62,6 +62,29 @@ interface LineChartProps {
     className?: string;
 }
 
+// Format x-axis tick based on time range
+const formatXAxisTick = (timeMs: number, timeRangeMs: number): string => {
+    const date = new Date(timeMs);
+    
+    // Less than an hour - show minutes and seconds (HH:mm:ss)
+    if (timeRangeMs < 60 * 60 * 1000) {
+        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    }
+    
+    // Less than a day - show hours and minutes (HH:mm)
+    if (timeRangeMs < 24 * 60 * 60 * 1000) {
+        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+    
+    // Less than a month - show day and month (MMM DD)
+    if (timeRangeMs < 30 * 24 * 60 * 60 * 1000) {
+        return date.toLocaleDateString([], { month: 'short', day: '2-digit' });
+    }
+    
+    // Greater than a month - show month and year (MMM YYYY)
+    return date.toLocaleDateString([], { month: 'short', year: 'numeric' });
+};
+
 export const LineChart: React.FC<LineChartProps> = ({
     data,
     lines,
@@ -93,6 +116,24 @@ export const LineChart: React.FC<LineChartProps> = ({
 
     const chartHeight = height || dimensions.height;
 
+    // Calculate min and max time from data
+    const timeDomain = useMemo(() => {
+        if (!data || data.length === 0) return [0, 1]; // Default domain if no data
+        
+        const timeValues = data.map(d => d.timeMs).filter(t => typeof t === 'number');
+        if (timeValues.length === 0) return [0, 1]; // Default domain if no valid time values
+        
+        const minTime = Math.min(...timeValues);
+        const maxTime = Math.max(...timeValues);
+        return [minTime, maxTime];
+    }, [data]);
+
+    // Calculate time range from data (for existing tickFormatter)
+    const timeRange = useMemo(() => {
+        const [minTime, maxTime] = timeDomain;
+        return maxTime - minTime;
+    }, [timeDomain]);
+
     // Assign colors to lines
     const linesWithColors = useMemo(() =>
         lines.map((line, index) => ({
@@ -119,15 +160,17 @@ export const LineChart: React.FC<LineChartProps> = ({
 
                     {/* X Axis */}
                     <XAxis
-                        dataKey={xAxisKey}
+                        type="number"
+                        dataKey="timeMs"
+                        domain={timeDomain}
                         stroke={theme.axis.line}
                         tick={{
                             fill: theme.axis.tick,
                             fontSize: isMobile ? 10 : chartStyles.axis.fontSize
                         }}
-                        tickFormatter={formatXAxis}
                         axisLine={{ stroke: theme.axis.line }}
                         tickLine={{ stroke: theme.axis.line }}
+                        tickFormatter={(timeMs) => formatXAxisTick(timeMs, timeRange)}
                         label={xAxisLabel ? {
                             value: xAxisLabel,
                             position: 'insideBottom',
@@ -138,7 +181,7 @@ export const LineChart: React.FC<LineChartProps> = ({
                                 fontSize: isMobile ? 10 : 12,
                             }
                         } : undefined}
-                        interval={isMobile ? 'preserveStartEnd' : 0}
+                        interval="preserveStartEnd"
                     />
 
                     {/* Y Axis */}
@@ -195,7 +238,7 @@ export const LineChart: React.FC<LineChartProps> = ({
                     {linesWithColors.map((line) => (
                         <Line
                             key={line.dataKey}
-                            type="monotone"
+                            type="stepAfter"
                             dataKey={line.dataKey}
                             name={line.name}
                             stroke={line.color}
