@@ -108,7 +108,7 @@ export const DeviceChart: React.FC<DeviceChartProps> = ({
                         }
                     ],
                     yAxisLabel: 'Energy (kWh)',
-                    domain: [Math.max(0, minEnergy - padding), maxEnergy + padding] as [number | string, number | string], // Explicitly cast to the exact expected type
+                    domain: [Math.max(0, minEnergy - padding), maxEnergy + padding] as [number, number], // Explicitly cast to [number, number]
                 };
 
             case 'operational_state':

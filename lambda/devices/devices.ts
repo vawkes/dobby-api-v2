@@ -19,6 +19,31 @@ interface ValidationIssue {
 
 const app = new Hono()
 
+// Transform DynamoDB fields to API schema fields
+const transformDeviceData = (device: any) => {
+    // Map rssi to last_rx_rssi and convert to number
+    if (device.rssi !== undefined) {
+        device.last_rx_rssi = Number(device.rssi);
+        delete device.rssi;
+    }
+    
+    // Map link_type to last_link_type and convert to number
+    if (device.link_type !== undefined) {
+        device.last_link_type = Number(device.link_type);
+        delete device.link_type;
+    }
+    
+    // Convert other string values to numbers for fields expected to be numbers
+    if (device.last_rx_rssi !== undefined && typeof device.last_rx_rssi === 'string') {
+        device.last_rx_rssi = Number(device.last_rx_rssi);
+    }
+    
+    if (device.last_link_type !== undefined && typeof device.last_link_type === 'string') {
+        device.last_link_type = Number(device.last_link_type);
+    }
+    
+    return device;
+};
 
 
 app.get('/',
@@ -122,17 +147,7 @@ app.get('/',
                 if (batchResults.Responses?.DobbyInfo) {
                     const batchDevices = batchResults.Responses.DobbyInfo.map(item => {
                         const device = unmarshall(item);
-
-                        // Convert string values to numbers for fields expected to be numbers
-                        if (device.last_rx_rssi !== undefined && typeof device.last_rx_rssi === 'string') {
-                            device.last_rx_rssi = Number(device.last_rx_rssi);
-                        }
-
-                        if (device.last_link_type !== undefined && typeof device.last_link_type === 'string') {
-                            device.last_link_type = Number(device.last_link_type);
-                        }
-
-                        return device;
+                        return transformDeviceData(device);
                     });
 
                     allDevices.push(...batchDevices);
@@ -280,18 +295,37 @@ app.get('/:deviceId',
             }
 
             const device = unmarshall(result.Item);
-
-            // Convert string values to numbers for fields expected to be numbers
-            if (device.last_rx_rssi !== undefined && typeof device.last_rx_rssi === 'string') {
-                device.last_rx_rssi = Number(device.last_rx_rssi);
-            }
-
-            if (device.last_link_type !== undefined && typeof device.last_link_type === 'string') {
-                device.last_link_type = Number(device.last_link_type);
-            }
+            const transformedDevice = transformDeviceData(device);
 
             // Always return the original device ID in the response
-            device.device_id = deviceId;
+            transformedDevice.device_id = deviceId;
+
+            // Use safeParse for more resilient validation
+            const singleDeviceParseResult = deviceSchema.safeParse(transformedDevice);
+
+            if (!singleDeviceParseResult.success) {
+                console.error('Device schema validation failed:', singleDeviceParseResult.error);
+                console.error('Device data that failed validation:', transformedDevice);
+
+                // Log details about the validation errors
+                singleDeviceParseResult.error.issues.forEach((issue: ValidationIssue, index: number) => {
+                    console.error(`Validation issue ${index + 1}:`, {
+                        path: issue.path,
+                        message: issue.message,
+                        received: issue.received,
+                        expected: issue.expected
+                    });
+                });
+
+                // Return the device data anyway but with a warning
+                console.warn('Returning device data despite validation errors');
+                return c.json({
+                    ...transformedDevice,
+                    _validation_warnings: singleDeviceParseResult.error.issues.map((issue: ValidationIssue) => issue.message)
+                });
+            }
+
+            return c.json(singleDeviceParseResult.data);
 
             // Use safeParse for more resilient validation
             const parseResult = deviceSchema.safeParse(device);
