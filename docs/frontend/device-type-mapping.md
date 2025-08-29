@@ -27,6 +27,7 @@ The implementation covers:
 - Water heaters, HVAC systems, appliances
 - Electric vehicles and charging equipment
 - Energy management and gateway devices
+- Distributed energy resources (solar, battery storage)
 
 #### UCM Device Types (0x4000-0x4011)
 
@@ -96,8 +97,8 @@ import DeviceTypeDisplay from '../components/ui/DeviceTypeDisplay';
 
 ```ts
 import {
-    formatDeviceType,
-    getDeviceTypeDescription,
+  formatDeviceType,
+  getDeviceTypeDescription,
 } from "../utils/deviceTypes";
 
 // Get structured information

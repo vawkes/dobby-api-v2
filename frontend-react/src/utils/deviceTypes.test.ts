@@ -4,12 +4,12 @@ describe('Device Type Utilities', () => {
   test('should map known hex codes to descriptions', () => {
     // Test a few key device types
     expect(getDeviceTypeDescription('0x0001')).toEqual({
-      description: 'Water Heater - Electric',
+      description: 'Water Heater - Gas',
       hexCode: '0x0001'
     });
     
     expect(getDeviceTypeDescription('0x0002')).toEqual({
-      description: 'Water Heater - Heat Pump',
+      description: 'Water Heater - Electric',
       hexCode: '0x0002'
     });
     
@@ -21,12 +21,12 @@ describe('Device Type Utilities', () => {
 
   test('should handle UCM device types', () => {
     expect(getDeviceTypeDescription('0x4001')).toEqual({
-      description: 'IEEE 802.15.4 (e.g., ZigBee)',
+      description: 'PLC (other, non-standard)',
       hexCode: '0x4001'
     });
     
     expect(getDeviceTypeDescription('0x4002')).toEqual({
-      description: 'IEEE 802.11 (e.g., Wi-Fi)',
+      description: 'Wired (other, non-standard)',
       hexCode: '0x4002'
     });
   });
@@ -69,7 +69,7 @@ describe('Device Type Utilities', () => {
   });
 
   test('should format device types correctly', () => {
-    expect(formatDeviceType('0x0001')).toBe('Water Heater - Electric (0x0001)');
+    expect(formatDeviceType('0x0001')).toBe('Water Heater - Gas (0x0001)');
     expect(formatDeviceType('GridCube')).toBe('GridCube');
     expect(formatDeviceType('')).toBe('Unknown Device Type');
   });

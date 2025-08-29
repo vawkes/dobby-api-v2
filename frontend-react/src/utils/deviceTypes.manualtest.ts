@@ -8,15 +8,15 @@ function runTests() {
   
   // Test cases
   const testCases = [
-    '0x0001', // Water Heater - Electric
-    '0x0002', // Water Heater - Heat Pump
-    '0x4001', // IEEE 802.15.4 (e.g., ZigBee)
+    '0x0001', // Water Heater - Gas
+    '0x0002', // Water Heater - Electric
+    '0x4001', // PLC (other, non-standard)
     '0x1000', // Electric Vehicle
     '0x8000', // Manufacturer Defined
     'GridCube', // Custom string
     '0xFFFF', // Manufacturer Defined
     '', // Empty string
-    '0x0010', // Dishwasher
+    '0x0010', // Freezer
     '0x7001', // Solar Inverter
   ];
   
