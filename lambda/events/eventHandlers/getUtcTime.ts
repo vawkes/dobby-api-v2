@@ -10,7 +10,7 @@ interface GetUtcTimeData {
     event_sent?: boolean;
 }
 
-export const handleGetUtcTime = async (eventData: GetUtcTimeData): Promise<EventSchemaType> => {
+export const handleGetUtcTime = async (eventData: GetUtcTimeData, clientEventId?: string): Promise<EventSchemaType> => {
     // Create the payload using DataView
     const buffer = new ArrayBuffer(1);
     const view = new DataView(buffer);
@@ -21,9 +21,13 @@ export const handleGetUtcTime = async (eventData: GetUtcTimeData): Promise<Event
     // Send the command to the device
     const sentToDobby = await sendToDobby(eventData.device_id, buffer);
 
+    // Use client-provided event ID if available, otherwise generate new UUID for backward compatibility
+    const eventId = clientEventId || uuidv4();
+    console.log(`[DEBUG] GetUtcTime handler using event_id: ${eventId} ${clientEventId ? '(client-provided)' : '(generated for backward compatibility)'}`);
+
     // Create the event object
     const event: EventSchemaType = {
-        event_id: uuidv4(),
+        event_id: eventId,
         event_type: EventType.GET_UTC_TIME,
         event_data: {
             device_id: eventData.device_id,

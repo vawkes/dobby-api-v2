@@ -6,7 +6,7 @@ import { EventSchemaType } from "../eventsSchema"
 import { v4 as uuidv4 } from 'uuid'
 import { EventType } from "../eventsSchema"
 
-const handleInfoRequest = async (device_id: string, timestamp?: Date): Promise<EventSchemaType> => {
+const handleInfoRequest = async (device_id: string, timestamp?: Date, clientEventId?: string): Promise<EventSchemaType> => {
     const gpsTimeEpoch = timestamp ? convertToGpsTimeEpoch(timestamp) : 0
 
     const buffer = new ArrayBuffer(5)
@@ -16,8 +16,12 @@ const handleInfoRequest = async (device_id: string, timestamp?: Date): Promise<E
 
     const sentToDobby = await sendToDobby(device_id, view.buffer)
 
+    // Use client-provided event ID if available, otherwise generate new UUID for backward compatibility
+    const eventId = clientEventId || uuidv4();
+    console.log(`[DEBUG] InfoRequest handler using event_id: ${eventId} ${clientEventId ? '(client-provided)' : '(generated for backward compatibility)'}`);
+
     const event: EventSchemaType = {
-        event_id: uuidv4(),
+        event_id: eventId,
         event_type: EventType.INFO_REQUEST,
         event_data: {
             device_id: device_id,

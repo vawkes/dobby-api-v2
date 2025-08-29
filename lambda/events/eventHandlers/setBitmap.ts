@@ -12,7 +12,7 @@ interface SetBitmapData {
     event_sent?: boolean;
 }
 
-export const handleSetBitmap = async (eventData: SetBitmapData): Promise<EventSchemaType> => {
+export const handleSetBitmap = async (eventData: SetBitmapData, clientEventId?: string): Promise<EventSchemaType> => {
     // Validate bit number
     if (eventData.bit_number < 0 || eventData.bit_number > 255) {
         throw new Error('Bit number must be between 0 and 255');
@@ -34,9 +34,13 @@ export const handleSetBitmap = async (eventData: SetBitmapData): Promise<EventSc
     // Send the command to the device
     const sentToDobby = await sendToDobby(eventData.device_id, buffer);
 
+    // Use client-provided event ID if available, otherwise generate new UUID for backward compatibility
+    const eventId = clientEventId || uuidv4();
+    console.log(`[DEBUG] SetBitmap handler using event_id: ${eventId} ${clientEventId ? '(client-provided)' : '(generated for backward compatibility)'}`);
+
     // Create the event object
     const event: EventSchemaType = {
-        event_id: uuidv4(),
+        event_id: eventId,
         event_type: EventType.SET_BITMAP,
         event_data: {
             device_id: eventData.device_id,
