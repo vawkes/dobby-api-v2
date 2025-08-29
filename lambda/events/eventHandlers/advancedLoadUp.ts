@@ -31,7 +31,8 @@ export const handleAdvancedLoadUp = async (
     suggestedLoadUpEfficiency: number,
     eventId: string,
     startRandomization: number,
-    endRandomization: number
+    endRandomization: number,
+    clientEventId?: string
 ): Promise<EventSchemaType | null> => {
     try {
         // Validate units
@@ -90,9 +91,13 @@ export const handleAdvancedLoadUp = async (
         // Send the message to Dobby
         const sentToDobby = await sendToDobby(deviceId, buffer);
 
+        // Use client-provided event ID if available, otherwise generate new UUID for backward compatibility
+        const finalEventId = clientEventId || uuidv4();
+        console.log(`[DEBUG] AdvancedLoadUp handler using event_id: ${finalEventId} ${clientEventId ? '(client-provided)' : '(generated for backward compatibility)'}`);
+
         // Create the event record
         const event: EventSchemaType = {
-            event_id: uuidv4(),
+            event_id: finalEventId,
             event_type: EventType.ADVANCED_LOAD_UP,
             event_data: {
                 device_id: deviceId,
@@ -101,7 +106,7 @@ export const handleAdvancedLoadUp = async (
                 value,
                 units,
                 suggested_load_up_efficiency: suggestedLoadUpEfficiency,
-                event_id: eventId,
+                event_id: eventId, // This is the internal protocol event ID used in the message
                 start_randomization: startRandomization,
                 end_randomization: endRandomization,
                 message: Array.from(new Uint8Array(buffer)),

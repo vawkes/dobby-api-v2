@@ -7,7 +7,8 @@ import { EventType } from "../eventsSchema";
 
 export async function handleCustomerOverride(
     deviceId: string,
-    override: boolean
+    override: boolean,
+    clientEventId?: string
 ): Promise<EventSchemaType> {
     // Create the payload using DataView
     const buffer = new ArrayBuffer(2);
@@ -18,9 +19,13 @@ export async function handleCustomerOverride(
     // Send the command to the device
     const sentToDobby = await sendToDobby(deviceId, view.buffer);
 
+    // Use client-provided event ID if available, otherwise generate new UUID for backward compatibility
+    const eventId = clientEventId || uuidv4();
+    console.log(`[DEBUG] CustomerOverride handler using event_id: ${eventId} ${clientEventId ? '(client-provided)' : '(generated for backward compatibility)'}`);
+
     // Create the event object
     const event: EventSchemaType = {
-        event_id: uuidv4(),
+        event_id: eventId,
         event_type: EventType.CUSTOMER_OVERRIDE,
         event_data: {
             device_id: deviceId,

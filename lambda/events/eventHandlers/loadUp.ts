@@ -6,7 +6,7 @@ import { EventSchemaType } from "../eventsSchema"
 import { v4 as uuidv4 } from 'uuid'
 import { EventType } from "../eventsSchema"
 
-const handleLoadUp = async (device_id: string, startTime?: Date, eventDurationSeconds?: number): Promise<EventSchemaType> => {
+const handleLoadUp = async (device_id: string, startTime?: Date, eventDurationSeconds?: number, clientEventId?: string): Promise<EventSchemaType> => {
 
     const gpsTimeEpoch = startTime ? convertToGpsTimeEpoch(startTime) : 0
     const duration = eventDurationSeconds ? eventDurationSeconds : 0
@@ -21,8 +21,12 @@ const handleLoadUp = async (device_id: string, startTime?: Date, eventDurationSe
 
     const sentToDobby = await sendToDobby(device_id, view.buffer)
 
+    // Use client-provided event ID if available, otherwise generate new UUID for backward compatibility
+    const eventId = clientEventId || uuidv4();
+    console.log(`[DEBUG] LoadUp handler using event_id: ${eventId} ${clientEventId ? '(client-provided)' : '(generated for backward compatibility)'}`);
+
     const event: EventSchemaType = {
-        event_id: uuidv4(),
+        event_id: eventId,
         event_type: EventType.LOAD_UP,
         event_data: {
             device_id: device_id,

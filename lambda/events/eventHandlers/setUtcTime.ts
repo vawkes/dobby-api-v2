@@ -13,7 +13,7 @@ interface SetUtcTimeData {
     event_sent?: boolean;
 }
 
-export const handleSetUtcTime = async (eventData: SetUtcTimeData): Promise<EventSchemaType> => {
+export const handleSetUtcTime = async (eventData: SetUtcTimeData, clientEventId?: string): Promise<EventSchemaType> => {
     // Create the payload using DataView
     const buffer = new ArrayBuffer(7);
     const view = new DataView(buffer);
@@ -33,9 +33,13 @@ export const handleSetUtcTime = async (eventData: SetUtcTimeData): Promise<Event
     // Send the command to the device
     const sentToDobby = await sendToDobby(eventData.device_id, buffer);
 
+    // Use client-provided event ID if available, otherwise generate new UUID for backward compatibility
+    const eventId = clientEventId || uuidv4();
+    console.log(`[DEBUG] SetUtcTime handler using event_id: ${eventId} ${clientEventId ? '(client-provided)' : '(generated for backward compatibility)'}`);
+
     // Create the event object
     const event: EventSchemaType = {
-        event_id: uuidv4(),
+        event_id: eventId,
         event_type: EventType.SET_UTC_TIME,
         event_data: {
             device_id: eventData.device_id,

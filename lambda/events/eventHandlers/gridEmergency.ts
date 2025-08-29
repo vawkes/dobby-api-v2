@@ -6,7 +6,7 @@ import { EventSchemaType } from "../eventsSchema"
 import { v4 as uuidv4 } from 'uuid'
 import { EventType } from "../eventsSchema"
 
-const handleGridEmergency = async (device_id: string, startTime?: Date): Promise<EventSchemaType> => {
+const handleGridEmergency = async (device_id: string, startTime?: Date, clientEventId?: string): Promise<EventSchemaType> => {
     // Convert start time to GPS epoch time if provided, otherwise use 0
     const gpsTimeEpoch = startTime ? convertToGpsTimeEpoch(startTime) : 0
 
@@ -19,9 +19,13 @@ const handleGridEmergency = async (device_id: string, startTime?: Date): Promise
     // Send to device
     const sentToDobby = await sendToDobby(device_id, view.buffer)
 
+    // Use client-provided event ID if available, otherwise generate new UUID for backward compatibility
+    const eventId = clientEventId || uuidv4();
+    console.log(`[DEBUG] GridEmergency handler using event_id: ${eventId} ${clientEventId ? '(client-provided)' : '(generated for backward compatibility)'}`);
+
     // Create event object
     const event: EventSchemaType = {
-        event_id: uuidv4(),
+        event_id: eventId,
         event_type: EventType.GRID_EMERGENCY,
         event_data: {
             device_id: device_id,

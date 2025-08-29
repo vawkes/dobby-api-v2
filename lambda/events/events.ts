@@ -447,6 +447,9 @@ app.post("/",
             const body = await c.req.json();
             const parsedBody = eventRequestSchema.parse(body);
 
+            // DIAGNOSTIC: Log client-provided event ID
+            console.log(`[DEBUG] Client provided event_id: ${parsedBody.event_id}`);
+
             let result: EventSchemaType | null = null;
             const eventType = parsedBody.event_type;
             const eventData = parsedBody.event_data;
@@ -464,43 +467,49 @@ app.post("/",
                 // Resolve the device ID for communication (get wireless device ID if needed)
                 const resolvedDeviceId = await resolveDeviceIdForCommunication(dynamodb, deviceId);
 
-                // Create event with appropriate handler based on event type
+                // Create event with appropriate handler based on event type, passing client-provided event ID
                 if (eventType === EventType.LOAD_UP) {
                     result = await handleLoadUp(
                         resolvedDeviceId,
                         'start_time' in eventData && eventData.start_time ? new Date(eventData.start_time) : undefined,
-                        'duration' in eventData ? eventData.duration : undefined
+                        'duration' in eventData ? eventData.duration : undefined,
+                        parsedBody.event_id // Pass client-provided event ID
                     );
                 }
                 else if (eventType === EventType.GRID_EMERGENCY) {
                     result = await handleGridEmergency(
                         resolvedDeviceId,
-                        'start_time' in eventData && eventData.start_time ? new Date(eventData.start_time) : undefined
+                        'start_time' in eventData && eventData.start_time ? new Date(eventData.start_time) : undefined,
+                        parsedBody.event_id // Pass client-provided event ID
                     );
                 }
                 else if (eventType === EventType.CRITICAL_PEAK) {
                     result = await handleCriticalPeak(
                         resolvedDeviceId,
-                        'start_time' in eventData && eventData.start_time ? new Date(eventData.start_time) : undefined
+                        'start_time' in eventData && eventData.start_time ? new Date(eventData.start_time) : undefined,
+                        parsedBody.event_id // Pass client-provided event ID
                     );
                 }
                 else if (eventType === EventType.START_SHED) {
                     result = await handleStartShed(
                         resolvedDeviceId,
                         'start_time' in eventData && eventData.start_time ? new Date(eventData.start_time) : undefined,
-                        'duration' in eventData ? eventData.duration || 0 : 0
+                        'duration' in eventData ? eventData.duration || 0 : 0,
+                        parsedBody.event_id // Pass client-provided event ID
                     );
                 }
                 else if (eventType === EventType.END_SHED) {
                     result = await handleEndShed(
                         resolvedDeviceId,
-                        'start_time' in eventData && eventData.start_time ? new Date(eventData.start_time) : undefined
+                        'start_time' in eventData && eventData.start_time ? new Date(eventData.start_time) : undefined,
+                        parsedBody.event_id // Pass client-provided event ID
                     );
                 }
                 else if (eventType === EventType.INFO_REQUEST) {
                     result = await handleInfoRequest(
                         resolvedDeviceId,
-                        'timestamp' in eventData && eventData.timestamp ? new Date(eventData.timestamp) : undefined
+                        'timestamp' in eventData && eventData.timestamp ? new Date(eventData.timestamp) : undefined,
+                        parsedBody.event_id // Pass client-provided event ID
                     );
                 }
                 else if (eventType === EventType.ADVANCED_LOAD_UP) {
@@ -522,29 +531,31 @@ app.post("/",
                         suggestedLoadUpEfficiency,
                         'event_id' in eventData ? eventData.event_id : uuidv4(),
                         startRandomization,
-                        endRandomization
+                        endRandomization,
+                        parsedBody.event_id // Pass client-provided event ID
                     );
                 }
                 else if (eventType === EventType.CUSTOMER_OVERRIDE) {
                     result = await handleCustomerOverride(
                         resolvedDeviceId,
-                        'override' in eventData ? eventData.override : false
+                        'override' in eventData ? eventData.override : false,
+                        parsedBody.event_id // Pass client-provided event ID
                     );
                 }
                 else if (eventType === EventType.SET_UTC_TIME) {
-                    result = await handleSetUtcTime(eventData);
+                    result = await handleSetUtcTime(eventData, parsedBody.event_id);
                 }
                 else if (eventType === EventType.GET_UTC_TIME) {
-                    result = await handleGetUtcTime(eventData);
+                    result = await handleGetUtcTime(eventData, parsedBody.event_id);
                 }
                 else if (eventType === EventType.SET_BITMAP) {
-                    result = await handleSetBitmap(eventData);
+                    result = await handleSetBitmap(eventData, parsedBody.event_id);
                 }
                 else if (eventType === EventType.REQUEST_CONNECTION_INFO) {
                     result = await handleRequestConnectionInfo({
                         device_id: resolvedDeviceId,
                         event_sent: false
-                    });
+                    }, parsedBody.event_id);
                 }
                 else {
                     // Unsupported event type
@@ -583,43 +594,49 @@ app.post("/",
                         // Resolve the device ID for communication (get wireless device ID if needed)
                         const resolvedDeviceId = await resolveDeviceIdForCommunication(dynamodb, deviceId);
 
-                        // Create event with appropriate handler based on event type
+                        // Create event with appropriate handler based on event type, passing client-provided event ID
                         if (eventType === EventType.LOAD_UP) {
                             result = await handleLoadUp(
                                 resolvedDeviceId,
                                 'start_time' in eventData && eventData.start_time ? new Date(eventData.start_time) : undefined,
-                                'duration' in eventData ? eventData.duration : undefined
+                                'duration' in eventData ? eventData.duration : undefined,
+                                parsedBody.event_id // Pass client-provided event ID for bulk operations too
                             );
                         }
                         else if (eventType === EventType.GRID_EMERGENCY) {
                             result = await handleGridEmergency(
                                 resolvedDeviceId,
-                                'start_time' in eventData && eventData.start_time ? new Date(eventData.start_time) : undefined
+                                'start_time' in eventData && eventData.start_time ? new Date(eventData.start_time) : undefined,
+                                parsedBody.event_id // Pass client-provided event ID for bulk operations too
                             );
                         }
                         else if (eventType === EventType.CRITICAL_PEAK) {
                             result = await handleCriticalPeak(
                                 resolvedDeviceId,
-                                'start_time' in eventData && eventData.start_time ? new Date(eventData.start_time) : undefined
+                                'start_time' in eventData && eventData.start_time ? new Date(eventData.start_time) : undefined,
+                                parsedBody.event_id // Pass client-provided event ID for bulk operations too
                             );
                         }
                         else if (eventType === EventType.START_SHED) {
                             result = await handleStartShed(
                                 resolvedDeviceId,
                                 'start_time' in eventData && eventData.start_time ? new Date(eventData.start_time) : undefined,
-                                'duration' in eventData ? eventData.duration || 0 : 0
+                                'duration' in eventData ? eventData.duration || 0 : 0,
+                                parsedBody.event_id // Pass client-provided event ID for bulk operations too
                             );
                         }
                         else if (eventType === EventType.END_SHED) {
                             result = await handleEndShed(
                                 resolvedDeviceId,
-                                'start_time' in eventData && eventData.start_time ? new Date(eventData.start_time) : undefined
+                                'start_time' in eventData && eventData.start_time ? new Date(eventData.start_time) : undefined,
+                                parsedBody.event_id // Pass client-provided event ID for bulk operations too
                             );
                         }
                         else if (eventType === EventType.INFO_REQUEST) {
                             result = await handleInfoRequest(
                                 resolvedDeviceId,
-                                'timestamp' in eventData && eventData.timestamp ? new Date(eventData.timestamp) : undefined
+                                'timestamp' in eventData && eventData.timestamp ? new Date(eventData.timestamp) : undefined,
+                                parsedBody.event_id // Pass client-provided event ID for bulk operations too
                             );
                         }
                         else if (eventType === EventType.ADVANCED_LOAD_UP) {
@@ -641,29 +658,31 @@ app.post("/",
                                 suggestedLoadUpEfficiency,
                                 'event_id' in eventData ? eventData.event_id : uuidv4(),
                                 startRandomization,
-                                endRandomization
+                                endRandomization,
+                                parsedBody.event_id // Pass client-provided event ID for bulk operations too
                             );
                         }
                         else if (eventType === EventType.CUSTOMER_OVERRIDE) {
                             result = await handleCustomerOverride(
                                 resolvedDeviceId,
-                                'override' in eventData ? eventData.override : false
+                                'override' in eventData ? eventData.override : false,
+                                parsedBody.event_id // Pass client-provided event ID for bulk operations too
                             );
                         }
                         else if (eventType === EventType.SET_UTC_TIME) {
-                            result = await handleSetUtcTime(eventData);
+                            result = await handleSetUtcTime(eventData, parsedBody.event_id);
                         }
                         else if (eventType === EventType.GET_UTC_TIME) {
-                            result = await handleGetUtcTime(eventData);
+                            result = await handleGetUtcTime(eventData, parsedBody.event_id);
                         }
                         else if (eventType === EventType.SET_BITMAP) {
-                            result = await handleSetBitmap(eventData);
+                            result = await handleSetBitmap(eventData, parsedBody.event_id);
                         }
                         else if (eventType === EventType.REQUEST_CONNECTION_INFO) {
                             result = await handleRequestConnectionInfo({
                                 device_id: resolvedDeviceId,
                                 event_sent: false
-                            });
+                            }, parsedBody.event_id);
                         }
 
                         if (result) {
