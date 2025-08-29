@@ -1,7 +1,9 @@
+import React from 'react';
 import { ColumnDef } from '@tanstack/react-table';
 import { FiAlertCircle, FiCheckCircle, FiWifi, FiRadio } from 'react-icons/fi';
-import { Device } from '../../types';
-import { cn } from '../../lib/utils';
+import { Device } from '../../types/index.ts';
+import { cn } from '../../lib/utils.ts';
+import DeviceTypeDisplay from '../ui/DeviceTypeDisplay.tsx';
 
 // Helper function to get link type name and icon
 const getLinkTypeInfo = (linkType?: number): { name: string; icon: React.ReactNode; color: string } => {
@@ -131,9 +133,10 @@ export const deviceColumns: ColumnDef<Device>[] = [
         header: 'Type',
         accessorKey: 'device_type',
         cell: ({ getValue }) => (
-            <span className="text-sm text-foreground">
-                {getValue<string>()}
-            </span>
+            <DeviceTypeDisplay
+                deviceType={getValue<string>()}
+                className="text-sm text-foreground"
+            />
         ),
     },
     {

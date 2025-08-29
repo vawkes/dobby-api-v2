@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { deviceAPI } from '../services/api';
-import { Device, DeviceDataPoint } from '../types';
+import { deviceAPI } from '../services/api.ts';
+import { Device, DeviceDataPoint } from '../types/index.ts';
 import { FiAlertCircle, FiArrowLeft, FiBattery, FiCpu, FiWifi, FiActivity } from 'react-icons/fi';
-import { InstantPowerChart, CumulativeEnergyChart, OperationalStateChart } from '../components/charts';
-import DeviceEvents from '../components/DeviceEvents';
-import ScheduleEvent from '../components/ScheduleEvent';
+import { InstantPowerChart, CumulativeEnergyChart, OperationalStateChart } from '../components/charts/index.ts';
+import DeviceEvents from '../components/DeviceEvents.tsx';
+import ScheduleEvent from '../components/ScheduleEvent.tsx';
+import DeviceTypeDisplay from '../components/ui/DeviceTypeDisplay.tsx';
 
 // Extend the DeviceDataPoint type with our custom field
 interface FormattedDataPoint extends DeviceDataPoint {
@@ -270,7 +271,9 @@ const DeviceDetail: React.FC = () => {
                                         </div>
                                         <div className="bg-card px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
                                             <dt className="text-sm font-medium text-muted-foreground">Device Type</dt>
-                                            <dd className="mt-1 text-sm text-card-foreground sm:mt-0 sm:col-span-2">{device.device_type}</dd>
+                                            <dd className="mt-1 text-sm text-card-foreground sm:mt-0 sm:col-span-2">
+                                                <DeviceTypeDisplay deviceType={device.device_type} />
+                                            </dd>
                                         </div>
                                         <div className="bg-muted px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
                                             <dt className="text-sm font-medium text-muted-foreground">Model Number</dt>

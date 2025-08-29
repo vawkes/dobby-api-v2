@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { deviceAPI } from '../services/api';
-import { Device } from '../types';
+import { deviceAPI } from '../services/api.ts';
+import { Device } from '../types/index.ts';
 import { FiAlertCircle, FiCheckCircle, FiSearch } from 'react-icons/fi';
-import { DataTable, deviceColumns } from '../components/data';
-import { Button } from '../components/ui/Button';
+import { DataTable, deviceColumns } from '../components/data/index.ts';
+import { Button } from '../components/ui/Button.tsx';
+import { getDeviceTypeDescription } from '../utils/deviceTypes.ts';
 
 // Helper function to check if a date is within 1 day of now (kept for filtering logic)
 const isWithinOneDay = (dateString?: string): boolean => {
@@ -68,12 +69,21 @@ const Devices: React.FC = () => {
         if (searchTerm) {
             const term = searchTerm.toLowerCase();
             result = result.filter(
-                device =>
-                    device.model_number.toLowerCase().includes(term) ||
-                    device.serial_number.toLowerCase().includes(term) ||
-                    device.device_type.toLowerCase().includes(term) ||
-                    device.firmware_version.toLowerCase().includes(term) ||
-                    device.device_id.toLowerCase().includes(term)
+                device => {
+                    // Get the device type description for searching
+                    const deviceTypeInfo = getDeviceTypeDescription(device.device_type);
+                    const deviceTypeText = deviceTypeInfo.hexCode
+                        ? `${deviceTypeInfo.description.toLowerCase()} ${deviceTypeInfo.hexCode.toLowerCase()}`
+                        : deviceTypeInfo.description.toLowerCase();
+                    
+                    return (
+                        device.model_number.toLowerCase().includes(term) ||
+                        device.serial_number.toLowerCase().includes(term) ||
+                        deviceTypeText.includes(term) ||
+                        device.firmware_version.toLowerCase().includes(term) ||
+                        device.device_id.toLowerCase().includes(term)
+                    );
+                }
             );
         }
 

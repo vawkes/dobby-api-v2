@@ -1,4 +1,5 @@
-export * from './auth';
+export * from './auth.ts';
+export * from './component-props.ts';
 
 // Device related types
 export interface Device {
@@ -8,6 +9,7 @@ export interface Device {
     model_number: string;
     device_id: string;
     device_type: string;
+    device_type_description?: string; // Optional field for formatted device type description
     gridcube_firmware_version?: string;
     capability_bitmap: string;
     device_revision: string;
