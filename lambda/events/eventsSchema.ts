@@ -13,6 +13,7 @@ enum EventType {
     GET_UTC_TIME = "GET_UTC_TIME",
     SET_BITMAP = 'SET_BITMAP',
     REQUEST_CONNECTION_INFO = 'REQUEST_CONNECTION_INFO',
+    START_DATA_PUBLISH = 'START_DATA_PUBLISH',
 }
 
 // Custom validator for 6-digit device ID
@@ -110,6 +111,12 @@ const requestConnectionInfoSchema = z.object({
     last_rx_link_type: z.number().optional()  // Last received link type
 });
 
+const startDataPublishSchema = z.object({
+    device_id: deviceIdSchema,
+    interval_minutes: z.number().min(1).max(65535), // UInt16 range
+    event_sent: z.boolean().optional(),
+});
+
 const eventRequestSchema = z.discriminatedUnion('event_type', [
     z.object({ event_id: z.string(), event_type: z.literal(EventType.LOAD_UP), event_data: loadUpSchema }),
     z.object({ event_id: z.string(), event_type: z.literal(EventType.GRID_EMERGENCY), event_data: gridEmergencySchema }),
@@ -123,6 +130,7 @@ const eventRequestSchema = z.discriminatedUnion('event_type', [
     z.object({ event_id: z.string(), event_type: z.literal(EventType.GET_UTC_TIME), event_data: getUtcTimeSchema }),
     z.object({ event_id: z.string(), event_type: z.literal(EventType.SET_BITMAP), event_data: setBitmapSchema }),
     z.object({ event_id: z.string(), event_type: z.literal(EventType.REQUEST_CONNECTION_INFO), event_data: requestConnectionInfoSchema }),
+    z.object({ event_id: z.string(), event_type: z.literal(EventType.START_DATA_PUBLISH), event_data: startDataPublishSchema }),
 ]);
 
 const eventSchema = z.object({
