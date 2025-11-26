@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { FiAlertCircle, FiCalendar, FiClock, FiInfo } from 'react-icons/fi';
 import { eventsAPI } from '../services/api';
 import { Event, EventType } from '../types';
+import { formatGpsDate, getDateFromGpsOrIso } from '../utils/dateUtils';
 
 interface DeviceEventsProps {
     deviceId: string;
@@ -44,19 +45,6 @@ const DeviceEvents: React.FC<DeviceEventsProps> = ({ deviceId }) => {
 
         fetchDeviceEvents();
     }, [deviceId]);
-
-    // Helper function to format date
-    const formatDate = (dateString?: string): string => {
-        if (!dateString) return "Invalid Date";
-        if (dateString === "0") return "Immediate";
-
-        try {
-            const date = new Date(dateString);
-            return date.toLocaleString();
-        } catch (e) {
-            return "Invalid Date";
-        }
-    };
 
     // Helper to get event type display name and color
     const getEventInfo = (eventType: EventType): { name: string; bgColor: string; textColor: string; icon: React.ReactNode } => {
@@ -123,8 +111,8 @@ const DeviceEvents: React.FC<DeviceEventsProps> = ({ deviceId }) => {
             return event.event_data.start_time || "0";
         };
 
-        const dateA = getDateString(a) === "0" ? new Date() : new Date(getDateString(a));
-        const dateB = getDateString(b) === "0" ? new Date() : new Date(getDateString(b));
+        const dateA = getDateFromGpsOrIso(getDateString(a)) || new Date(0);
+        const dateB = getDateFromGpsOrIso(getDateString(b)) || new Date(0);
         return dateB.getTime() - dateA.getTime();
     });
 
@@ -197,7 +185,7 @@ const DeviceEvents: React.FC<DeviceEventsProps> = ({ deviceId }) => {
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
-                                            <div className="text-sm text-card-foreground">{formatDate(dateField)}</div>
+                                            <div className="text-sm text-card-foreground">{formatGpsDate(dateField)}</div>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <div className="text-sm text-card-foreground">
