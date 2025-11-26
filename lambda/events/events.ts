@@ -17,6 +17,7 @@ import { handleRequestConnectionInfo } from "./eventHandlers/requestConnectionIn
 import { handleSetBitmap } from "./eventHandlers/setBitmap.ts";
 import { handleSetUtcTime } from "./eventHandlers/setUtcTime.ts";
 import { handleGetUtcTime } from "./eventHandlers/getUtcTime.ts";
+import { handleStartDataPublish } from "./eventHandlers/startDataPublish.ts";
 import { v4 as uuidv4 } from 'uuid';
 import { getUserFromContext, getUserAccessibleDevices, checkUserDeviceAccess, UserContext } from '../utils/deviceAccess.ts';
 import { requirePermission, requireDevicePermission, Action } from '../utils/permissions.ts';
@@ -545,6 +546,12 @@ app.post("/",
                         device_id: resolvedDeviceId,
                         event_sent: false
                     });
+                }
+                else if (eventType === EventType.START_DATA_PUBLISH) {
+                    result = await handleStartDataPublish(
+                        resolvedDeviceId,
+                        'interval_minutes' in eventData ? eventData.interval_minutes : 0
+                    );
                 }
                 else {
                     // Unsupported event type

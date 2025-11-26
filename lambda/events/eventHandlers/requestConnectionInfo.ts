@@ -4,6 +4,7 @@ import { saveEventToDynamoDB } from "../../utils/saveEvent.ts";
 import { EventSchemaType } from "../eventsSchema.ts";
 import { v4 as uuidv4 } from 'uuid';
 import { EventType } from "../eventsSchema.ts";
+import { convertToGpsTimeEpoch } from "../../utils/convertGpsTime.ts";
 
 interface RequestConnectionInfoData {
     device_id: string;
@@ -21,12 +22,15 @@ export const handleRequestConnectionInfo = async (eventData: RequestConnectionIn
     // Send the command to the device
     await sendToDobby(eventData.device_id, buffer);
 
+    const gpsTimeEpoch = convertToGpsTimeEpoch(new Date());
+
     // Create the event object
     const event: EventSchemaType = {
         event_id: uuidv4(),
         event_type: EventType.REQUEST_CONNECTION_INFO,
         event_data: {
             device_id: eventData.device_id,
+            start_time: gpsTimeEpoch,
             event_sent: true
         },
         event_ack: false
