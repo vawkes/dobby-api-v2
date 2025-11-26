@@ -4,6 +4,7 @@ import { saveEventToDynamoDB } from "../../utils/saveEvent";
 import { EventSchemaType } from "../eventsSchema";
 import { v4 as uuidv4 } from 'uuid';
 import { EventType } from "../eventsSchema";
+import { convertToGpsTimeEpoch } from "../../utils/convertGpsTime";
 
 export async function handleCustomerOverride(
     deviceId: string,
@@ -18,6 +19,8 @@ export async function handleCustomerOverride(
     // Send the command to the device
     const sentToDobby = await sendToDobby(deviceId, view.buffer);
 
+    const gpsTimeEpoch = convertToGpsTimeEpoch(new Date());
+
     // Create the event object
     const event: EventSchemaType = {
         event_id: uuidv4(),
@@ -25,6 +28,7 @@ export async function handleCustomerOverride(
         event_data: {
             device_id: deviceId,
             override: override,
+            start_time: gpsTimeEpoch,
             event_sent: sentToDobby
         },
         event_ack: false

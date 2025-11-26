@@ -4,6 +4,7 @@ import { saveEventToDynamoDB } from "../../utils/saveEvent.ts";
 import { EventSchemaType } from "../eventsSchema.ts";
 import { v4 as uuidv4 } from 'uuid';
 import { EventType } from "../eventsSchema.ts";
+import { convertToGpsTimeEpoch } from "../../utils/convertGpsTime.ts";
 
 interface GetUtcTimeData {
     device_id: string;
@@ -21,12 +22,15 @@ export const handleGetUtcTime = async (eventData: GetUtcTimeData): Promise<Event
     // Send the command to the device
     const sentToDobby = await sendToDobby(eventData.device_id, buffer);
 
+    const gpsTimeEpoch = convertToGpsTimeEpoch(new Date());
+
     // Create the event object
     const event: EventSchemaType = {
         event_id: uuidv4(),
         event_type: EventType.GET_UTC_TIME,
         event_data: {
             device_id: eventData.device_id,
+            start_time: gpsTimeEpoch,
             event_sent: sentToDobby
         },
         event_ack: false

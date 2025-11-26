@@ -4,6 +4,7 @@ import { saveEventToDynamoDB } from "../../utils/saveEvent.ts";
 import { EventSchemaType } from "../eventsSchema.ts";
 import { v4 as uuidv4 } from 'uuid';
 import { EventType } from "../eventsSchema.ts";
+import { convertToGpsTimeEpoch } from "../../utils/convertGpsTime.ts";
 
 interface SetBitmapData {
     device_id: string;
@@ -34,6 +35,8 @@ export const handleSetBitmap = async (eventData: SetBitmapData): Promise<EventSc
     // Send the command to the device
     const sentToDobby = await sendToDobby(eventData.device_id, buffer);
 
+    const gpsTimeEpoch = convertToGpsTimeEpoch(new Date());
+
     // Create the event object
     const event: EventSchemaType = {
         event_id: uuidv4(),
@@ -42,6 +45,7 @@ export const handleSetBitmap = async (eventData: SetBitmapData): Promise<EventSc
             device_id: eventData.device_id,
             bit_number: eventData.bit_number,
             set_value: eventData.set_value,
+            start_time: gpsTimeEpoch,
             event_sent: sentToDobby
         },
         event_ack: false

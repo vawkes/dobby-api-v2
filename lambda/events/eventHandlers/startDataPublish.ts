@@ -3,6 +3,7 @@ import { saveEventToDynamoDB } from "../../utils/saveEvent"
 import { EventSchemaType } from "../eventsSchema"
 import { v4 as uuidv4 } from 'uuid'
 import { EventType } from "../eventsSchema"
+import { convertToGpsTimeEpoch } from "../../utils/convertGpsTime"
 
 const handleStartDataPublish = async (device_id: string, interval_minutes: number): Promise<EventSchemaType> => {
     // Construct the payload: 3 bytes
@@ -14,6 +15,7 @@ const handleStartDataPublish = async (device_id: string, interval_minutes: numbe
     view.setUint16(1, interval_minutes, true) // Little endian
 
     const sentToDobby = await sendToDobby(device_id, view.buffer)
+    const gpsTimeEpoch = convertToGpsTimeEpoch(new Date())
 
     const event: EventSchemaType = {
         event_id: uuidv4(),
@@ -21,6 +23,7 @@ const handleStartDataPublish = async (device_id: string, interval_minutes: numbe
         event_data: {
             device_id: device_id,
             interval_minutes: interval_minutes,
+            start_time: gpsTimeEpoch,
             event_sent: sentToDobby
         }
     }
