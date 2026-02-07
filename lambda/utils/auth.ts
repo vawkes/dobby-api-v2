@@ -25,7 +25,7 @@ interface DecodedToken {
     signature: string;
 }
 
-let pems: { [key: string]: string } = {};
+const pems: { [key: string]: string } = {};
 
 function isLocalAuthEnabled(): boolean {
     return process.env.LOCAL_DEV_BYPASS_AUTH === 'true' || process.env.LOCAL_DEV === 'true';

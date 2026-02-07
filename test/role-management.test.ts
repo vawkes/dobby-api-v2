@@ -271,7 +271,7 @@ describe('Role Management Logic', () => {
         }
 
         const requiredFields = ['user_id', 'company_id', 'role'];
-        return requiredFields.every(field => userData.hasOwnProperty(field));
+        return requiredFields.every(field => Object.prototype.hasOwnProperty.call(userData, field));
       };
 
       // Valid user data

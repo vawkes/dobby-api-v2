@@ -1,5 +1,4 @@
 import { Hono } from 'hono';
-import { DynamoDB } from '@aws-sdk/client-dynamodb';
 import { createDynamoDBClient } from '../../shared/database/dynamodb';
 import { marshall, unmarshall } from '@aws-sdk/util-dynamodb';
 import { v4 as uuidv4 } from 'uuid';
@@ -9,42 +8,17 @@ import { requirePermission, requireCompanyPermission, Action, canAssignRole, Use
 import { companySchema, companiesSchema, createCompanySchema, addUserToCompanySchema, addDeviceToCompanySchema, updateUserRoleSchema, UserRole as SchemaUserRole } from './companiesSchema.ts';
 
 const app = new Hono();
-
-// Role hierarchy for permission checking
 const ROLE_HIERARCHY: Record<SchemaUserRole, number> = {
     [SchemaUserRole.SUPER_ADMIN]: 4,
     [SchemaUserRole.COMPANY_ADMIN]: 3,
     [SchemaUserRole.DEVICE_MANAGER]: 2,
     [SchemaUserRole.DEVICE_VIEWER]: 1,
 };
-
-// Helper function to check if user has required role
-async function checkUserRole(dynamodb: DynamoDB, companyId: string, userId: string, requiredRole: SchemaUserRole): Promise<boolean> {
-    try {
-        const result = await dynamodb.getItem({
-            TableName: 'CompanyUsers',
-            Key: {
-                company_id: { S: companyId },
-                user_id: { S: userId },
-            },
-        });
-
-        if (!result.Item) {
-            return false;
-        }
-
-        const user = unmarshall(result.Item);
-        const userRole = user.role as SchemaUserRole;
-        return ROLE_HIERARCHY[userRole] >= ROLE_HIERARCHY[requiredRole];
-    } catch (error) {
-        console.error('Error checking user role:', error);
-        return false;
-    }
-}
+const describeRouteCompat = (options: unknown) => describeRoute(options as never);
 
 // Create a new company (admin only)
 app.post('/',
-    describeRoute({
+    describeRouteCompat({
         tags: ['Companies'],
         summary: 'Create a new company',
         description: 'Creates a new company. This operation requires `WRITE_COMPANIES` permission.',
@@ -122,7 +96,7 @@ app.post('/',
 
 // Get all companies (admin only)
 app.get('/',
-    describeRoute({
+    describeRouteCompat({
         tags: ['Companies'],
         summary: 'Get all companies',
         description: 'Retrieves a list of all companies. This operation requires `WRITE_COMPANIES` permission.',
@@ -175,7 +149,7 @@ app.get('/',
 
 // Get specific company
 app.get('/:companyId',
-    describeRoute({
+    describeRouteCompat({
         tags: ['Companies'],
         summary: 'Get a specific company by ID',
         description: 'Retrieves details for a specific company, identified by its unique ID. This operation requires `WRITE_COMPANIES` permission.',
@@ -237,7 +211,7 @@ app.get('/:companyId',
 
 // Add user to company (admin only)
 app.post('/:companyId/users',
-    describeRoute({
+    describeRouteCompat({
         tags: ['Companies'],
         summary: 'Add a user to a company',
         description: 'Adds an existing user to a specified company with a given role. This operation requires `WRITE_USERS` permission within the company.',
@@ -359,7 +333,7 @@ app.post('/:companyId/users',
 
 // Update user role in company
 app.put('/:companyId/users/:userId',
-    describeRoute({
+    describeRouteCompat({
         tags: ['Companies'],
         summary: 'Update user role in a company',
         description: 'Updates the role of an existing user within a specified company. This operation requires `WRITE_USERS` permission within the company.',
@@ -500,7 +474,7 @@ app.put('/:companyId/users/:userId',
 
 // Remove user from company
 app.delete('/:companyId/users/:userId',
-    describeRoute({
+    describeRouteCompat({
         tags: ['Companies'],
         summary: 'Remove user from company',
         description: 'Removes a user from a specified company. This operation requires `DELETE_USERS` permission within the company.',
@@ -630,7 +604,7 @@ app.delete('/:companyId/users/:userId',
 
 // Get users for a company
 app.get('/:companyId/users',
-    describeRoute({
+    describeRouteCompat({
         description: 'Get all users for a company',
         responses: {
             200: {
@@ -693,7 +667,7 @@ app.get('/:companyId/users',
 
 // Add device to company (admin only)
 app.post('/:companyId/devices',
-    describeRoute({
+    describeRouteCompat({
         description: 'Add a device to a company',
         responses: {
             201: {
@@ -753,7 +727,7 @@ app.post('/:companyId/devices',
 
 // Get devices for a company
 app.get('/:companyId/devices',
-    describeRoute({
+    describeRouteCompat({
         description: 'Get all devices for a company',
         responses: {
             200: {
@@ -815,7 +789,7 @@ app.get('/:companyId/devices',
 
 // Remove device from company (admin only)
 app.delete('/:companyId/devices/:deviceId',
-    describeRoute({
+    describeRouteCompat({
         description: 'Remove a device from a company',
         responses: {
             200: {
@@ -876,7 +850,7 @@ app.delete('/:companyId/devices/:deviceId',
 
 // Delete a company (admin only)
 app.delete('/:companyId',
-    describeRoute({
+    describeRouteCompat({
         tags: ['Companies'],
         summary: 'Delete a company',
         description: 'Deletes a company by its unique identifier. This operation requires `DELETE_COMPANIES` permission.',

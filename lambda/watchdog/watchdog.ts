@@ -19,7 +19,7 @@ interface WatchdogResult {
  * Scans all devices in ProductionLine table and sends connection info requests to feed watchdog timers
  * Runs every ~6 hours to prevent device watchdog timeouts
  */
-export async function handler(event: any): Promise<WatchdogResult> {
+export async function handler(_event: unknown): Promise<WatchdogResult> {
     console.log('Starting watchdog timer feed with connection info requests for all devices')
     
     const startTime = Date.now()

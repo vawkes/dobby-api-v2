@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { jest, describe, it, expect, beforeEach, afterEach } from '@jest/globals';
+import { jest, describe, it, expect } from '@jest/globals';
 
 // Types for API testing
 export interface TestUser {
@@ -55,11 +55,15 @@ export class ApiTestClient {
     });
 
     const responseBody = await response.json().catch(() => ({}));
+    const responseHeaders: Record<string, string> = {};
+    response.headers.forEach((value, key) => {
+      responseHeaders[key] = value;
+    });
 
     return {
       status: response.status,
       body: responseBody,
-      headers: Object.fromEntries(response.headers.entries())
+      headers: responseHeaders
     };
   }
 

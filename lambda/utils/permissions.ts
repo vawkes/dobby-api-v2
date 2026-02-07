@@ -109,7 +109,7 @@ const ROLE_PERMISSION_MATRIX = {
 };
 
 // Legacy permission matrix for backward compatibility
-const PERMISSION_MATRIX = {
+export const PERMISSION_MATRIX = {
     [PermissionLevel.ADMIN]: [
         // Admins can do everything
         Action.READ_DEVICES,

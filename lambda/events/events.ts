@@ -23,9 +23,10 @@ import { requirePermission, requireDevicePermission, Action } from '../utils/per
 import { resolveDeviceIdForCommunication } from '../utils/deviceIdMapping.ts';
 
 const app = new Hono();
+const describeRouteCompat = (options: unknown) => describeRoute(options as never);
 
 app.get("/",
-    describeRoute({
+    describeRouteCompat({
         tags: ['Events'],
         summary: 'Fetch all accessible events',
         description: 'Retrieves a list of all events associated with devices accessible to the authenticated user.',
@@ -106,9 +107,7 @@ app.get("/",
                 }
 
                 // Copy event_ack directly to the top level of the event
-                if (event.event_ack !== undefined) {
-                    event.event_ack = event.event_ack;
-                } else {
+                if (event.event_ack === undefined) {
                     event.event_ack = false;
                 }
 
@@ -128,7 +127,7 @@ app.get("/",
     })
 
 app.get("/device/:deviceId",
-    describeRoute({
+    describeRouteCompat({
         tags: ['Events'],
         summary: 'Fetch events for a specific device',
         description: 'Retrieves a list of events for a given device, identified by its 6-digit ID, if accessible to the authenticated user.',
@@ -233,9 +232,7 @@ app.get("/device/:deviceId",
 
                 // Copy event_ack directly to the top level of the event 
                 // This is for the frontend to have easy access to this field
-                if (event.event_ack !== undefined) {
-                    event.event_ack = event.event_ack;
-                } else {
+                if (event.event_ack === undefined) {
                     event.event_ack = false;
                 }
 
@@ -250,7 +247,7 @@ app.get("/device/:deviceId",
     })
 
 app.get("/:eventId",
-    describeRoute({
+    describeRouteCompat({
         tags: ['Events'],
         summary: 'Fetch a single event by ID',
         description: 'Retrieves details for a specific event, identified by its unique event ID, if accessible to the authenticated user.',
@@ -339,9 +336,7 @@ app.get("/:eventId",
             }
 
             // Copy event_ack directly to the top level of the event
-            if (event.event_ack !== undefined) {
-                event.event_ack = event.event_ack;
-            } else {
+            if (event.event_ack === undefined) {
                 event.event_ack = false;
             }
 
@@ -353,7 +348,7 @@ app.get("/:eventId",
     })
 
 app.post("/",
-    describeRoute({
+    describeRouteCompat({
         tags: ['Events'],
         summary: 'Create one or multiple events',
         description: 'Creates a new event or a batch of events for one or more devices. The `event_data` structure varies based on the `event_type`. The `event_id` is generated on the client-side.',
@@ -541,13 +536,24 @@ app.post("/",
                     );
                 }
                 else if (eventType === EventType.SET_UTC_TIME) {
-                    result = await handleSetUtcTime(eventData);
+                    result = await handleSetUtcTime({
+                        device_id: resolvedDeviceId,
+                        utc_seconds: 'utc_seconds' in eventData ? eventData.utc_seconds : 0,
+                        utc_offset: 'utc_offset' in eventData ? eventData.utc_offset : 0,
+                        dst_offset: 'dst_offset' in eventData ? eventData.dst_offset : 0,
+                    });
                 }
                 else if (eventType === EventType.GET_UTC_TIME) {
-                    result = await handleGetUtcTime(eventData);
+                    result = await handleGetUtcTime({
+                        device_id: resolvedDeviceId,
+                    });
                 }
                 else if (eventType === EventType.SET_BITMAP) {
-                    result = await handleSetBitmap(eventData);
+                    result = await handleSetBitmap({
+                        device_id: resolvedDeviceId,
+                        bit_number: 'bit_number' in eventData ? eventData.bit_number : 0,
+                        set_value: 'set_value' in eventData ? eventData.set_value : false,
+                    });
                 }
                 else if (eventType === EventType.REQUEST_CONNECTION_INFO) {
                     result = await handleRequestConnectionInfo({
@@ -666,13 +672,24 @@ app.post("/",
                             );
                         }
                         else if (eventType === EventType.SET_UTC_TIME) {
-                            result = await handleSetUtcTime(eventData);
+                            result = await handleSetUtcTime({
+                                device_id: resolvedDeviceId,
+                                utc_seconds: 'utc_seconds' in eventData ? eventData.utc_seconds : 0,
+                                utc_offset: 'utc_offset' in eventData ? eventData.utc_offset : 0,
+                                dst_offset: 'dst_offset' in eventData ? eventData.dst_offset : 0,
+                            });
                         }
                         else if (eventType === EventType.GET_UTC_TIME) {
-                            result = await handleGetUtcTime(eventData);
+                            result = await handleGetUtcTime({
+                                device_id: resolvedDeviceId,
+                            });
                         }
                         else if (eventType === EventType.SET_BITMAP) {
-                            result = await handleSetBitmap(eventData);
+                            result = await handleSetBitmap({
+                                device_id: resolvedDeviceId,
+                                bit_number: 'bit_number' in eventData ? eventData.bit_number : 0,
+                                set_value: 'set_value' in eventData ? eventData.set_value : false,
+                            });
                         }
                         else if (eventType === EventType.REQUEST_CONNECTION_INFO) {
                             result = await handleRequestConnectionInfo({
