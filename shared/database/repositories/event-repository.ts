@@ -1,4 +1,4 @@
-import { PutCommand, QueryCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
+import { PutCommand, QueryCommand, ScanCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
 import { docClient, TABLES } from '../client';
 import { 
   EventId,
@@ -216,9 +216,7 @@ export class EventRepository {
     limit: number = 100
   ): Promise<any[]> {
     try {
-      // Note: This would benefit from a GSI on event_type + timestamp
-      // For now, we'll use a filter expression
-      const command = new QueryCommand({
+      const command = new ScanCommand({
         TableName: TABLES.EVENTS,
         FilterExpression: "event_type = :eventType AND #timestamp BETWEEN :startTime AND :endTime",
         ExpressionAttributeNames: {
@@ -228,13 +226,13 @@ export class EventRepository {
           ":eventType": eventType,
           ":startTime": startTime,
           ":endTime": endTime
-        },
-        ScanIndexForward: false,
-        Limit: limit
+        }
       });
 
       const result = await docClient.send(command);
-      return result.Items || [];
+      return (result.Items || [])
+        .sort((a, b) => Number(b.timestamp) - Number(a.timestamp))
+        .slice(0, limit);
       
     } catch (error) {
       console.error("Error getting events by type:", error);

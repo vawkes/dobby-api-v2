@@ -53,3 +53,30 @@ describe('EventRepository.saveEvent', () => {
     expect(command.input.Item.timestamp).toBeGreaterThan(0)
   })
 })
+
+describe('EventRepository.getEventsByType', () => {
+  let repository: EventRepository
+
+  beforeEach(() => {
+    repository = new EventRepository()
+    mockSend.mockReset()
+  })
+
+  it('uses a scan query and returns sorted, limited results', async () => {
+    mockSend.mockResolvedValueOnce({
+      Items: [
+        { event_id: 'event-1', timestamp: 20 },
+        { event_id: 'event-2', timestamp: 30 },
+        { event_id: 'event-3', timestamp: 10 }
+      ]
+    } as never)
+
+    const result = await repository.getEventsByType(EventType.LOAD_UP, 1, 1000, 2)
+
+    const command = mockSend.mock.calls[0][0] as { input: { FilterExpression: string } }
+    expect(command.input.FilterExpression).toContain('event_type = :eventType')
+    expect(result).toHaveLength(2)
+    expect(result[0].timestamp).toBe(30)
+    expect(result[1].timestamp).toBe(20)
+  })
+})
