@@ -20,7 +20,7 @@
     "local:frontend": "cd frontend-react && REACT_APP_ENVIRONMENT=local REACT_APP_API_URL=${REACT_APP_API_URL:-http://localhost:8787} bun run start",
     "local:up": "./scripts/local/up.sh",
     "test": "jest",
-    "test:unit": "jest test/dobby-api-v2.test.ts test/role-management.test.ts test/companies.test.ts",
+    "test:unit": "jest test/dobby-api-v2.test.ts test/role-management.test.ts test/logging.test.ts test/request-connection-info-handler.test.ts test/event-handler-timestamp-defaults.test.ts test/event-repository.test.ts test/event-dispatcher.test.ts test/auth-jwks-cache.test.ts",
     "test:integration": "jest test/role-management.test.ts test/companies.test.ts",
     "test:api": "jest test/api.test.ts",
     "test:performance": "jest test/performance.test.ts",
