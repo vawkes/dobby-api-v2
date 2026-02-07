@@ -7,6 +7,7 @@ import { Hono } from 'hono'
 import { openAPISpecs } from 'hono-openapi'
 import { auth } from './utils/auth'
 import { cors } from 'hono/cors'
+import { sanitizeHeaders } from './utils/logging'
 
 // Create the main app
 const app = new Hono()
@@ -267,7 +268,7 @@ app.route('/public', publicRoutes)
 // Add a middleware that logs all incoming requests for debugging
 app.use('*', async (c, next) => {
     console.log(`Request received: ${c.req.method} ${c.req.path}`);
-    console.log('Headers:', JSON.stringify(c.req.header()));
+    console.log('Headers:', JSON.stringify(sanitizeHeaders(c.req.header())));
     await next();
     console.log(`Response status: ${c.res.status}`);
 })
