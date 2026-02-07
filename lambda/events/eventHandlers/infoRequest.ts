@@ -7,7 +7,7 @@ import { v4 as uuidv4 } from 'uuid'
 import { EventType } from "../eventsSchema"
 
 const handleInfoRequest = async (device_id: string, timestamp?: Date): Promise<EventSchemaType> => {
-    const gpsTimeEpoch = timestamp ? convertToGpsTimeEpoch(timestamp) : 0
+    const gpsTimeEpoch = convertToGpsTimeEpoch(timestamp || new Date())
 
     const buffer = new ArrayBuffer(5)
     const view = new DataView(buffer)

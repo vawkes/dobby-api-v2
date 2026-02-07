@@ -7,8 +7,8 @@ import { v4 as uuidv4 } from 'uuid'
 import { EventType } from "../eventsSchema"
 
 const handleEndShed = async (device_id: string, startTime?: Date): Promise<EventSchemaType> => {
-    // Convert start time to GPS epoch time if provided, otherwise use 0
-    const gpsTimeEpoch = startTime ? convertToGpsTimeEpoch(startTime) : 0
+    // Convert start time to GPS epoch time and default to now when not provided
+    const gpsTimeEpoch = convertToGpsTimeEpoch(startTime || new Date())
 
     // Create binary payload - only need event type and start time for END_SHED
     const buffer = new ArrayBuffer(5) // 1 byte for event type + 4 bytes for time

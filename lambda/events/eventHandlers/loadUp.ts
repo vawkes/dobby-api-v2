@@ -8,7 +8,7 @@ import { EventType } from "../eventsSchema"
 
 const handleLoadUp = async (device_id: string, startTime?: Date, eventDurationSeconds?: number): Promise<EventSchemaType> => {
 
-    const gpsTimeEpoch = startTime ? convertToGpsTimeEpoch(startTime) : 0
+    const gpsTimeEpoch = convertToGpsTimeEpoch(startTime || new Date())
     const duration = eventDurationSeconds ? eventDurationSeconds : 0
 
     const convertedDuration = Math.sqrt(duration / 2)
