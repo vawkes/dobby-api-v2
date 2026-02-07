@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { DynamoDB } from '@aws-sdk/client-dynamodb';
+import { createDynamoDBClient } from '../../shared/database/dynamodb';
 import { marshall, unmarshall } from '@aws-sdk/util-dynamodb';
 import { v4 as uuidv4 } from 'uuid';
 import { describeRoute } from 'hono-openapi';
@@ -97,7 +98,7 @@ app.post('/',
     async (c) => {
         try {
             const { name } = c.req.valid('json');
-            const dynamodb = new DynamoDB({ region: 'us-east-1' });
+            const dynamodb = createDynamoDBClient();
             const now = new Date().toISOString();
             const companyId = uuidv4();
             const company = {
@@ -160,7 +161,7 @@ app.get('/',
     requirePermission(Action.WRITE_COMPANIES), // Using WRITE_COMPANIES since READ_COMPANIES was removed
     async (c) => {
         try {
-            const dynamodb = new DynamoDB({ region: 'us-east-1' });
+            const dynamodb = createDynamoDBClient();
             const result = await dynamodb.scan({
                 TableName: 'Companies',
             });
@@ -216,7 +217,7 @@ app.get('/:companyId',
     async (c) => {
         try {
             const companyId = c.req.param('companyId');
-            const dynamodb = new DynamoDB({ region: 'us-east-1' });
+            const dynamodb = createDynamoDBClient();
 
             const result = await dynamodb.getItem({
                 TableName: 'Companies',
@@ -306,7 +307,7 @@ app.post('/:companyId/users',
         try {
             const companyId = c.req.param('companyId');
             const body = c.req.valid('json');
-            const dynamodb = new DynamoDB({ region: 'us-east-1' });
+            const dynamodb = createDynamoDBClient();
 
             // Check if company exists
             const companyResult = await dynamodb.getItem({
@@ -434,7 +435,7 @@ app.put('/:companyId/users/:userId',
             const companyId = c.req.param('companyId');
             const userId = c.req.param('userId');
             const body = c.req.valid('json');
-            const dynamodb = new DynamoDB({ region: 'us-east-1' });
+            const dynamodb = createDynamoDBClient();
 
             // Check if company exists
             const companyResult = await dynamodb.getItem({
@@ -559,7 +560,7 @@ app.delete('/:companyId/users/:userId',
         try {
             const companyId = c.req.param('companyId');
             const userId = c.req.param('userId');
-            const dynamodb = new DynamoDB({ region: 'us-east-1' });
+            const dynamodb = createDynamoDBClient();
 
             // Check if company exists
             const companyResult = await dynamodb.getItem({
@@ -662,7 +663,7 @@ app.get('/:companyId/users',
     async (c) => {
         try {
             const companyId = c.req.param('companyId');
-            const dynamodb = new DynamoDB({ region: 'us-east-1' });
+            const dynamodb = createDynamoDBClient();
 
             // Check if company exists
             const companyResult = await dynamodb.getItem({
@@ -720,7 +721,7 @@ app.post('/:companyId/devices',
         try {
             const companyId = c.req.param('companyId');
             const body = c.req.valid('json');
-            const dynamodb = new DynamoDB({ region: 'us-east-1' });
+            const dynamodb = createDynamoDBClient();
 
             // Check if company exists
             const companyResult = await dynamodb.getItem({
@@ -784,7 +785,7 @@ app.get('/:companyId/devices',
     async (c) => {
         try {
             const companyId = c.req.param('companyId');
-            const dynamodb = new DynamoDB({ region: 'us-east-1' });
+            const dynamodb = createDynamoDBClient();
 
             // Check if company exists
             const companyResult = await dynamodb.getItem({
@@ -833,7 +834,7 @@ app.delete('/:companyId/devices/:deviceId',
         try {
             const companyId = c.req.param('companyId');
             const deviceId = c.req.param('deviceId');
-            const dynamodb = new DynamoDB({ region: 'us-east-1' });
+            const dynamodb = createDynamoDBClient();
 
             // Check if company exists
             const companyResult = await dynamodb.getItem({
@@ -926,7 +927,7 @@ app.delete('/:companyId',
     async (c) => {
         try {
             const companyId = c.req.param('companyId');
-            const dynamodb = new DynamoDB({ region: 'us-east-1' });
+            const dynamodb = createDynamoDBClient();
 
             // Check if company exists
             const companyResult = await dynamodb.getItem({

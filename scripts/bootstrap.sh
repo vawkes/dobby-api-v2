@@ -37,7 +37,7 @@ bootstrap_cdk() {
     echo "   Region: $region"
     
     # Bootstrap CDK
-    npx cdk bootstrap aws://$account_id/$region --profile $profile
+    bunx cdk bootstrap aws://$account_id/$region --profile $profile
     
     echo "✅ CDK bootstrap completed for $env_name environment"
 }
@@ -45,7 +45,7 @@ bootstrap_cdk() {
 # Check if CDK is installed
 if ! command -v cdk &> /dev/null; then
     echo "⚠️  CDK CLI not found. Installing globally..."
-    npm install -g aws-cdk
+    bun add -g aws-cdk
 fi
 
 echo "📋 CDK Version: $(cdk --version)"
@@ -105,7 +105,7 @@ echo "🎉 CDK bootstrap completed!"
 echo ""
 echo "Next steps:"
 echo "1. Update deployment/config.ts with your specific settings"
-echo "2. Run 'npm run deploy:develop' to deploy to development"
-echo "3. Run 'npm run deploy:production' to deploy to production"
+echo "2. Run 'bun run deploy:develop' to deploy to development"
+echo "3. Run 'bun run deploy:production' to deploy to production"
 echo ""
 echo "For more information, see DEPLOYMENT.md" 

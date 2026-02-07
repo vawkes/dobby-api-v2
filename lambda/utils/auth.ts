@@ -27,6 +27,18 @@ interface DecodedToken {
 
 let pems: { [key: string]: string } = {};
 
+function isLocalAuthEnabled(): boolean {
+    return process.env.LOCAL_DEV_BYPASS_AUTH === 'true' || process.env.LOCAL_DEV === 'true';
+}
+
+function getLocalUser(c: Context): JwtPayload {
+    return {
+        sub: c.req.header('X-Dev-User-Id') || process.env.LOCAL_DEV_USER_ID || 'local-dev-admin',
+        email: c.req.header('X-Dev-User-Email') || process.env.LOCAL_DEV_USER_EMAIL || 'local-dev@example.com',
+        'cognito:username': c.req.header('X-Dev-User-Id') || process.env.LOCAL_DEV_USER_ID || 'local-dev-admin',
+    };
+}
+
 // Fetch the JWT signing keys from Cognito
 async function getPems() {
     if (Object.keys(pems).length > 0) return pems;
@@ -65,6 +77,11 @@ export const auth: MiddlewareHandler = async (c: Context, next: Next) => {
 
     // Skip auth check for OPTIONS requests (CORS preflight)
     if (c.req.method === 'OPTIONS') {
+        return next();
+    }
+
+    if (isLocalAuthEnabled()) {
+        c.set('user', getLocalUser(c));
         return next();
     }
 
@@ -150,4 +167,4 @@ export const auth: MiddlewareHandler = async (c: Context, next: Next) => {
         console.error('Error decoding token:', decodeError);
         return c.json({ message: 'Unauthorized - Invalid token format' }, 401);
     }
-}; 
+};

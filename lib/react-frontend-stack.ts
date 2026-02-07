@@ -40,7 +40,7 @@ export class ReactFrontendStack extends cdk.Stack {
 
             // Install dependencies if needed
             console.log('Installing frontend dependencies...');
-            execSync('npm install --legacy-peer-deps', {
+            execSync('bun install', {
                 cwd: frontendPath,
                 stdio: 'inherit'
             });
@@ -48,8 +48,8 @@ export class ReactFrontendStack extends cdk.Stack {
             // Build the React app for the current environment
             console.log(`Building React app for ${environmentConfig.name} environment...`);
             const buildCommand = environmentConfig.name === 'production'
-                ? 'npm run build:production'
-                : 'npm run build:develop';
+                ? 'bun run build:production'
+                : 'bun run build:develop';
             execSync(buildCommand, {
                 cwd: frontendPath,
                 stdio: 'inherit'

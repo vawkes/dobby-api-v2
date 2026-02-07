@@ -4,12 +4,21 @@
   "bin": {
     "dobby-api-v2": "bin/dobby-api-v2.js"
   },
+  "packageManager": "bun@1.2.2",
   "engines": {
-    "node": ">=20.0.0"
+    "node": ">=20.0.0",
+    "bun": ">=1.1.0"
   },
   "scripts": {
     "build": "tsc",
     "watch": "tsc -w",
+    "local:db:start": "./scripts/local/db-start.sh",
+    "local:db:stop": "./scripts/local/db-stop.sh",
+    "local:db:setup": "DYNAMODB_ENDPOINT=${DYNAMODB_ENDPOINT:-http://localhost:8000} bun run scripts/local/setup-dynamodb.ts",
+    "local:db:seed": "DYNAMODB_ENDPOINT=${DYNAMODB_ENDPOINT:-http://localhost:8000} bun run scripts/local/seed-dynamodb.ts",
+    "local:api": "./scripts/local/start-api.sh",
+    "local:frontend": "cd frontend-react && REACT_APP_ENVIRONMENT=local REACT_APP_API_URL=${REACT_APP_API_URL:-http://localhost:8787} bun run start",
+    "local:up": "./scripts/local/up.sh",
     "test": "jest",
     "test:unit": "jest test/dobby-api-v2.test.ts test/role-management.test.ts test/companies.test.ts",
     "test:integration": "jest test/role-management.test.ts test/companies.test.ts",

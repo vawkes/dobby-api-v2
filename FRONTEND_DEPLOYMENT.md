@@ -35,10 +35,10 @@ Deploy the entire stack (API + Frontend) using CDK:
 
 ```bash
 # Deploy to development
-npx cdk deploy --context environment=develop
+bunx cdk deploy --context environment=develop
 
 # Deploy to production
-npx cdk deploy --context environment=production
+bunx cdk deploy --context environment=production
 ```
 
 ### What Happens During Deployment
@@ -72,7 +72,7 @@ npx cdk deploy --context environment=production
 
 ### Development Frontend Connecting to Production API
 - **Problem**: Development environment using production API URLs
-- **Solution**: Use `npx cdk deploy --context environment=develop` to deploy with development configuration
+- **Solution**: Use `bunx cdk deploy --context environment=develop` to deploy with development configuration
 
 ### Build Failures During Deployment
 - **Problem**: Frontend build fails during CDK deployment
@@ -97,21 +97,21 @@ All configuration is now centralized in:
 
 ## Best Practices
 
-1. **Use CDK for Everything**: Always use `npx cdk deploy` with proper context
+1. **Use CDK for Everything**: Always use `bunx cdk deploy` with proper context
 2. **Check AWS Profiles**: Ensure correct AWS profile is configured for the target environment
 3. **Verify DNS**: Check that custom domains are properly configured in Route53
 4. **Monitor Build Process**: Watch the CDK output for any build failures
-5. **Test Locally First**: Run `npm run build:develop` or `npm run build:production` locally to test builds
+5. **Test Locally First**: Run `bun run build:develop` or `bun run build:production` locally to test builds
 
 ## Deployment Commands Summary
 
 ```bash
 # Deploy entire stack to development
-npx cdk deploy --context environment=develop
+bunx cdk deploy --context environment=develop
 
 # Deploy entire stack to production  
-npx cdk deploy --context environment=production
+bunx cdk deploy --context environment=production
 
 # Deploy specific stack only (if needed)
-npx cdk deploy ReactFrontendStack --context environment=develop
+bunx cdk deploy ReactFrontendStack --context environment=develop
 ``` 

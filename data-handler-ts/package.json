@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "TypeScript version of the data handler Lambda function",
   "main": "dist/index.js",
+  "packageManager": "bun@1.2.2",
   "scripts": {
     "build": "tsc",
     "test": "jest",
@@ -10,7 +11,8 @@
     "lint:fix": "eslint . --ext .ts --fix"
   },
   "engines": {
-    "node": ">=22.0.0"
+    "node": ">=22.0.0",
+    "bun": ">=1.1.0"
   },
   "dependencies": {
     "@aws-sdk/client-timestream-write": "^3.0.0",

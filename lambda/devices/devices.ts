@@ -1,11 +1,10 @@
 import { Hono } from "hono";
-import { DynamoDB } from "@aws-sdk/client-dynamodb";
+import { createDynamoDBClient } from '../../shared/database/dynamodb';
 import { unmarshall } from "@aws-sdk/util-dynamodb";
 import { devicesSchema, deviceSchema, deviceDataSchema, deviceIdSchema } from './devicesSchema.ts';
 import { describeRoute } from 'hono-openapi';
 import { resolver } from 'hono-openapi/zod'
-import { QueryCommand } from "@aws-sdk/client-dynamodb";
-import { getUserFromContext, getUserAccessibleDevices, checkUserDeviceAccess, UserContext } from '../utils/deviceAccess.ts';
+import { getUserFromContext, getUserAccessibleDevices } from '../utils/deviceAccess.ts';
 import { requirePermission, requireDevicePermission, Action } from '../utils/permissions.ts';
 import { resolveDeviceIdForCommunication, resolveDeviceIdForResponse } from '../utils/deviceIdMapping.ts';
 
@@ -93,7 +92,7 @@ app.get('/',
     async (c) => {
         try {
             console.log('Starting device fetch operation');
-            const dynamodb = new DynamoDB({ region: "us-east-1" });
+            const dynamodb = createDynamoDBClient();
 
             // Get user from context (set by auth middleware)
             const user = getUserFromContext(c);
@@ -273,7 +272,7 @@ app.get('/:deviceId',
     async (c) => {
         try {
             const deviceId = c.req.param('deviceId');
-            const dynamodb = new DynamoDB({ "region": "us-east-1" });
+            const dynamodb = createDynamoDBClient();
 
             // Validate device ID format
             const validationResult = deviceIdSchema.safeParse(deviceId);
@@ -425,7 +424,7 @@ app.get('/:deviceId/data',
     async (c) => {
         try {
             const deviceId = c.req.param('deviceId');
-            const dynamodb = new DynamoDB({ "region": "us-east-1" });
+            const dynamodb = createDynamoDBClient();
 
             // Validate device ID format
             const validationResult = deviceIdSchema.safeParse(deviceId);

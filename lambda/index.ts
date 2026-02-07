@@ -283,3 +283,4 @@ app.route('/', protectedRoutes);
 
 // Export the handler
 export const handler = handle(app);
+export { app };

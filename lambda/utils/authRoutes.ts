@@ -5,6 +5,35 @@ import { zValidator } from '@hono/zod-validator';
 import { describeRoute } from 'hono-openapi';
 import {resolver} from "hono-openapi/zod"
 
+function isLocalAuthEnabled(): boolean {
+    return process.env.LOCAL_DEV_BYPASS_AUTH === 'true' || process.env.LOCAL_DEV === 'true';
+}
+
+function encodeBase64Url(value: string): string {
+    return Buffer.from(value).toString('base64url');
+}
+
+function createLocalToken(email: string): string {
+    const header = encodeBase64Url(JSON.stringify({ alg: 'none', typ: 'JWT' }));
+    const payload = encodeBase64Url(JSON.stringify({
+        sub: process.env.LOCAL_DEV_USER_ID || 'local-dev-admin',
+        email,
+        exp: Math.floor(Date.now() / 1000) + 3600,
+        iat: Math.floor(Date.now() / 1000),
+        iss: 'local-dev',
+    }));
+    return `${header}.${payload}.localdev`;
+}
+
+function localAuthResponse(email: string) {
+    return {
+        message: 'Login successful',
+        token: createLocalToken(email),
+        refreshToken: 'local-dev-refresh-token',
+        expiresIn: 3600,
+        name: 'Local Dev User',
+    };
+}
 
 const cognitoClient = new CognitoIdentityProvider({
     region: process.env.USER_POOL_ID?.split('_')[0] || 'us-east-1',
@@ -110,6 +139,13 @@ app.post(
     async (c) => {
         const { email, password, name } = c.req.valid('json');
 
+        if (isLocalAuthEnabled()) {
+            return c.json({
+                message: 'User registration successful. Please check your email for confirmation code.',
+                userId: process.env.LOCAL_DEV_USER_ID || 'local-dev-admin',
+            }, 201);
+        }
+
         try {
             const result = await cognitoClient.signUp({
                 ClientId: process.env.USER_POOL_CLIENT_ID,
@@ -196,6 +232,10 @@ app.post(
     async (c) => {
         const { email, confirmationCode } = c.req.valid('json');
 
+        if (isLocalAuthEnabled()) {
+            return c.json({ message: 'Email confirmed successfully. You can now log in.' }, 200);
+        }
+
         try {
             await cognitoClient.confirmSignUp({
                 ClientId: process.env.USER_POOL_CLIENT_ID,
@@ -278,6 +318,10 @@ app.post(
     async (c) => {
         const { email, password } = c.req.valid('json');
 
+        if (isLocalAuthEnabled()) {
+            return c.json(localAuthResponse(email), 200);
+        }
+
         try {
             const result = await cognitoClient.initiateAuth({
                 ClientId: process.env.USER_POOL_CLIENT_ID,
@@ -358,6 +402,10 @@ app.post(
     async (c) => {
         const { email } = c.req.valid('json');
 
+        if (isLocalAuthEnabled()) {
+            return c.json({ message: 'Password reset code sent to your email' }, 200);
+        }
+
         try {
             await cognitoClient.forgotPassword({
                 ClientId: process.env.USER_POOL_CLIENT_ID,
@@ -436,6 +484,10 @@ app.post(
     async (c) => {
         const { email, confirmationCode, newPassword } = c.req.valid('json');
 
+        if (isLocalAuthEnabled()) {
+            return c.json({ message: 'Password reset successful. You can now log in with your new password.' }, 200);
+        }
+
         try {
             await cognitoClient.confirmForgotPassword({
                 ClientId: process.env.USER_POOL_CLIENT_ID,
@@ -511,6 +563,10 @@ app.post(
     zValidator('json', refreshTokenSchema),
     async (c) => {
         const { refreshToken } = c.req.valid('json');
+
+        if (isLocalAuthEnabled()) {
+            return c.json(localAuthResponse(process.env.LOCAL_DEV_USER_EMAIL || 'local-dev@example.com'), 200);
+        }
 
         try {
             const result = await cognitoClient.initiateAuth({

@@ -1,6 +1,5 @@
 import { Hono } from "hono";
-import { DynamoDB } from "@aws-sdk/client-dynamodb";
-import { IoTWireless } from "@aws-sdk/client-iot-wireless";
+import { createDynamoDBClient } from '../../shared/database/dynamodb';
 import { unmarshall } from "@aws-sdk/util-dynamodb";
 import { eventsSchema, eventSchema, eventRequestSchema, bulkResponseSchema, EventType, EventSchemaType } from './eventsSchema.ts';
 import { describeRoute } from 'hono-openapi';
@@ -19,7 +18,7 @@ import { handleSetUtcTime } from "./eventHandlers/setUtcTime.ts";
 import { handleGetUtcTime } from "./eventHandlers/getUtcTime.ts";
 import { handleStartDataPublish } from "./eventHandlers/startDataPublish.ts";
 import { v4 as uuidv4 } from 'uuid';
-import { getUserFromContext, getUserAccessibleDevices, checkUserDeviceAccess, UserContext } from '../utils/deviceAccess.ts';
+import { getUserFromContext, getUserAccessibleDevices } from '../utils/deviceAccess.ts';
 import { requirePermission, requireDevicePermission, Action } from '../utils/permissions.ts';
 import { resolveDeviceIdForCommunication } from '../utils/deviceIdMapping.ts';
 
@@ -66,7 +65,7 @@ app.get("/",
     requirePermission(Action.READ_EVENTS),
     async (c) => {
         try {
-            const dynamodb = new DynamoDB({ "region": "us-east-1" });
+            const dynamodb = createDynamoDBClient();
 
             // Get user from context (set by auth middleware)
             const user = getUserFromContext(c);
@@ -178,7 +177,7 @@ app.get("/device/:deviceId",
     async (c) => {
         try {
             const deviceId = c.req.param("deviceId");
-            const dynamodb = new DynamoDB({ "region": "us-east-1" });
+            const dynamodb = createDynamoDBClient();
 
             // Resolve the device ID for communication (get wireless device ID if needed)
             let resolvedDeviceId = deviceId;
@@ -303,13 +302,22 @@ app.get("/:eventId",
     requirePermission(Action.READ_EVENTS),
     async (c) => {
         try {
-            const dynamodb = new DynamoDB({ "region": "us-east-1" });
-            const results = await dynamodb.getItem({ TableName: "DobbyEvent", Key: { event_id: { S: c.req.param("eventId") } } });
-            if (!results.Item) {
+            const dynamodb = createDynamoDBClient();
+            const results = await dynamodb.query({
+                TableName: "DobbyEvent",
+                KeyConditionExpression: "event_id = :eventId",
+                ExpressionAttributeValues: {
+                    ":eventId": { S: c.req.param("eventId") }
+                },
+                Limit: 1,
+                ScanIndexForward: false
+            });
+
+            if (!results.Items || results.Items.length === 0) {
                 return c.json({ error: "Event not found" }, 404);
             }
 
-            const event = unmarshall(results.Item);
+            const event = unmarshall(results.Items[0]);
 
             // Make sure event_data exists and has the necessary structure
             if (!event.event_data) {
@@ -460,7 +468,7 @@ app.post("/",
             // If only one device, handle as single operation
             if (deviceIds.length === 1) {
                 const deviceId = deviceIds[0];
-                const dynamodb = new DynamoDB({ "region": "us-east-1" });
+                const dynamodb = createDynamoDBClient();
 
                 // Resolve the device ID for communication (get wireless device ID if needed)
                 const resolvedDeviceId = await resolveDeviceIdForCommunication(dynamodb, deviceId);
@@ -578,7 +586,7 @@ app.post("/",
             }
             // Otherwise, handle as bulk operation
             else {
-                const dynamodb = new DynamoDB({ "region": "us-east-1" });
+                const dynamodb = createDynamoDBClient();
                 const successfulEvents: EventSchemaType[] = [];
                 const failedEvents: { device_id: string, error: string }[] = [];
 

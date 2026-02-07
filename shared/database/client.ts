@@ -1,18 +1,17 @@
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
+import { getDynamoDBConfig } from './dynamodb';
 
 /**
  * Unified DynamoDB client for consistent database access across the application
- * 
+ *
  * This replaces the various client instantiations throughout the codebase
  * with a single, shared DocumentClient instance for better performance
  * and consistency.
  */
 
 // Create the base DynamoDB client
-const client = new DynamoDBClient({ 
-  region: "us-east-1" 
-});
+const client = new DynamoDBClient(getDynamoDBConfig());
 
 // Create the DocumentClient from the base client
 // This handles marshalling/unmarshalling automatically
@@ -26,7 +25,7 @@ export const lowLevelClient = client;
  */
 export const TABLES = {
   DEVICE_INFO: 'DobbyInfo',
-  DEVICE_DATA: 'DobbyData', 
+  DEVICE_DATA: 'DobbyData',
   EVENTS: 'DobbyEvent',
   PRODUCTION_LINE: 'ProductionLine',
   COMPANIES: 'Companies',
@@ -37,4 +36,4 @@ export const TABLES = {
 /**
  * Type for table names to ensure type safety when referencing tables
  */
-export type TableName = typeof TABLES[keyof typeof TABLES];
+export type TableName = (typeof TABLES)[keyof typeof TABLES];
