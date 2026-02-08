@@ -1,0 +1,61 @@
+name: Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Target environment
+        required: true
+        default: develop
+        type: choice
+        options:
+          - develop
+          - production
+      diff_only:
+        description: Run cdk diff only
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.2.2"
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Configure AWS credentials (develop)
+        if: ${{ inputs.environment == 'develop' }}
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME_DEVELOP }}
+          aws-region: ${{ vars.AWS_REGION || 'us-east-1' }}
+
+      - name: Configure AWS credentials (production)
+        if: ${{ inputs.environment == 'production' }}
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME_PRODUCTION }}
+          aws-region: ${{ vars.AWS_REGION || 'us-east-1' }}
+
+      - name: Deploy
+        if: ${{ !inputs.diff_only }}
+        run: bun run deploy --env ${{ inputs.environment }} --ci
+
+      - name: Diff only
+        if: ${{ inputs.diff_only }}
+        run: bun run deploy --env ${{ inputs.environment }} --ci --diff-only

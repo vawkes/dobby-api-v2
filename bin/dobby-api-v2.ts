@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import 'source-map-support/register';
 import * as cdk from 'aws-cdk-lib';
+import path from 'node:path';
 import { DobbyApiV2Stack } from '../lib/dobby-api-v2-stack';
 import { ReactFrontendStack } from '../lib/react-frontend-stack';
 import { CertificateStack } from '../lib/certificate-stack';
@@ -11,6 +12,9 @@ const app = new cdk.App();
 // Get environment from context or default to develop
 const environment = app.node.tryGetContext('environment') || 'develop';
 const environmentConfig = getEnvironmentConfig(environment);
+const frontendBuildPath = path.resolve(
+  app.node.tryGetContext('frontendBuildPath') || 'frontend-react/build'
+);
 
 console.log(`Deploying to environment: ${environment}`);
 console.log(`Using AWS profile: ${environmentConfig.awsProfile}`);
@@ -46,6 +50,7 @@ const frontendStack = new ReactFrontendStack(app, 'ReactFrontendStack', {
   certificate: certificateStack.frontendCertificate,
   dnsAccountId: environmentConfig.dns?.account,
   dnsProfile: environmentConfig.dns?.profile || 'default',
+  frontendBuildPath,
 });
 
 // const dnsStack = new DnsStack(app, 'DnsStack', {
