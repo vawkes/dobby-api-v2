@@ -1,5 +1,5 @@
 {
-  "app": "bun run bin/dobby-api-v2.ts",
+  "app": "bunx tsx bin/dobby-api-v2.ts",
   "watch": {
     "include": [
       "**"
