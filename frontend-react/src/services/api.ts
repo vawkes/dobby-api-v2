@@ -92,6 +92,12 @@ api.interceptors.response.use(
             const isRefreshEndpoint = originalRequest.url?.includes('/refresh-token');
             const refreshToken = localStorage.getItem('refreshToken');
 
+            // Auth endpoints (login/register/etc.) manage their own UX.
+            // Avoid forcing a session-expired flow for expected auth failures.
+            if (isAuthEndpoint) {
+                return Promise.reject(error);
+            }
+
             // Only proceed with token refresh if:
             // 1. Not an auth endpoint itself
             // 2. Not already trying to refresh

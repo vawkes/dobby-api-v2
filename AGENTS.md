@@ -10,6 +10,10 @@ repository.
 - Infrastructure as code with AWS CDK (TypeScript).
 - React frontend for device operations in `frontend-react/`.
 - Shared DynamoDB/repository logic in `shared/`.
+- This app is used as a management platform for the GridCube devices. It
+  contains a frontend and backend API to send actions to the device and
+  retrieve/monitor data. It also contains the data ingestion layer to process
+  incoming data packets from the devices. It is all managed with CDK.
 
 ## High-Level Architecture
 
@@ -35,6 +39,7 @@ repository.
   - Cert/DNS support: `lib/certificate-stack.ts`, `lib/dns-stack.ts`.
 - Environment config:
   - `deployment/config.ts` defines `develop` and `production` accounts/profiles.
+- Incoming d
 
 ## Important Directories
 
@@ -133,3 +138,7 @@ CDK deploy/destroy:
 - Open the PR on github with the changes you made back into main. I will review
   them.
 - This should follow a github flow type workflow.
+
+## Process
+
+- Be very concise. Sacrifice grammer for the sake of concision.

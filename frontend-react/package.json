@@ -40,8 +40,8 @@
   "scripts": {
     "start": "react-scripts start",
     "build": "DISABLE_ESLINT_PLUGIN=true react-scripts build",
-    "build:develop": "REACT_APP_ENVIRONMENT=development DISABLE_ESLINT_PLUGIN=true react-scripts build",
-    "build:production": "REACT_APP_ENVIRONMENT=production DISABLE_ESLINT_PLUGIN=true react-scripts build",
+    "build:develop": "REACT_APP_ENVIRONMENT=development REACT_APP_API_URL=https://api.gridcube.dev.vawkes.com DISABLE_ESLINT_PLUGIN=true react-scripts build",
+    "build:production": "REACT_APP_ENVIRONMENT=production REACT_APP_API_URL=https://api.gridcube.vawkes.com DISABLE_ESLINT_PLUGIN=true react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
     "lint": "eslint . --ext .ts,.tsx",
