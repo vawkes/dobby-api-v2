@@ -155,7 +155,7 @@ export const DeviceChart: React.FC<DeviceChartProps> = ({
                     domain: ['auto', 'auto'] as [string, string],
                 };
         }
-    }, [type, title, description]);
+    }, [data, type, title, description]);
 
     // Format X-axis (time)
     const formatXAxis = (tickItem: number) => {

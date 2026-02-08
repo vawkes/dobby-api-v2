@@ -25,7 +25,6 @@ import { cn } from '../../lib/utils';
 export const ResponsiveNavigation: React.FC = () => {
     const { logout, user } = useAuth();
     const location = useLocation();
-    const { effectiveTheme } = useTheme();
     const isMobile = useMediaQuery('(max-width: 768px)');
 
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);

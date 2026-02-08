@@ -21,6 +21,7 @@ const BulkSchedulePage: React.FC = () => {
                     </div>
 
                     <BulkScheduleEvent
+                        key={eventsKey}
                         onEventsScheduled={handleEventsScheduled}
                     />
                 </div>

@@ -1,7 +1,6 @@
 import React from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/Card';
 import { cn } from '../../lib/utils';
-import { useTheme } from '../../hooks/use-theme';
 
 /**
  * Container for all chart components with consistent styling and features
@@ -54,8 +53,6 @@ export const ChartContainer: React.FC<ChartContainerProps> = ({
     onRetry,
     actions,
 }) => {
-    const { effectiveTheme } = useTheme();
-
     if (loading) {
         return (
             <Card className={cn('w-full', className)}>

@@ -1,5 +1,5 @@
 import React from 'react';
-import { FiAlertTriangle, FiInfo, FiX, FiCheck } from 'react-icons/fi';
+import { FiAlertTriangle, FiInfo, FiCheck } from 'react-icons/fi';
 import Modal from './Modal';
 import ModalHeader from './ModalHeader';
 import ModalBody from './ModalBody';

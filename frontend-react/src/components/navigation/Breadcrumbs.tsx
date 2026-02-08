@@ -1,7 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useMediaQuery } from '../../hooks/use-media-query';
-import { useTheme } from '../../hooks/use-theme';
 import { cn } from '../../lib/utils';
 
 /**
@@ -41,7 +40,6 @@ export const Breadcrumbs: React.FC<BreadcrumbsProps> = ({
     maxItems = 2,
 }) => {
     const isMobile = useMediaQuery('(max-width: 768px)');
-    const { effectiveTheme } = useTheme();
 
     if (!items.length) return null;
 
@@ -133,7 +131,6 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
     className,
 }) => {
     const isMobile = useMediaQuery('(max-width: 768px)');
-    const { effectiveTheme } = useTheme();
 
     const handleBack = () => {
         if (onBack) {
