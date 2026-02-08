@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import Button from '../components/ui/Button';
 import { deviceAPI } from '../services/api';
 import { Device } from '../types';
 import { FiGrid, FiAlertCircle, FiCheckCircle } from 'react-icons/fi';
@@ -27,16 +26,10 @@ const isWithinOneDay = (dateString?: string): boolean => {
 };
 
 const Dashboard: React.FC = () => {
-    const { user, logout } = useAuth();
-    const navigate = useNavigate();
+    const { user } = useAuth();
     const [devices, setDevices] = useState<Device[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-
-    const handleLogout = () => {
-        logout();
-        navigate('/login');
-    };
 
     useEffect(() => {
         const fetchDevices = async () => {

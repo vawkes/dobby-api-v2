@@ -1,7 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { useMediaQuery } from '../../hooks/use-media-query';
 import { useTheme } from '../../hooks/use-theme';
 import { ThemeToggle } from '../ui/ThemeToggle';
 import { Button } from '../ui/Button';
