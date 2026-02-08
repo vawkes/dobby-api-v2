@@ -53,9 +53,9 @@ jobs:
           aws-region: ${{ vars.AWS_REGION || 'us-east-1' }}
 
       - name: Deploy
-        if: ${{ !inputs.diff_only }}
+        if: ${{ inputs.diff_only != 'true' }}
         run: bun run deploy --env ${{ inputs.environment }} --ci
 
       - name: Diff only
-        if: ${{ inputs.diff_only }}
+        if: ${{ inputs.diff_only == 'true' }}
         run: bun run deploy --env ${{ inputs.environment }} --ci --diff-only
