@@ -319,8 +319,14 @@ export const deviceAPI = {
             });
             return response.data;
         } catch (error) {
+            if (axios.isAxiosError(error) && error.response?.status === 404) {
+                const message = String(error.response.data?.error || '').toLowerCase();
+                if (message.includes('no data found')) {
+                    return [];
+                }
+            }
             console.error(`Error fetching data for device with ID ${deviceId}:`, error);
-            throw error; // Simply throw the error instead of returning mock data
+            throw error;
         }
     },
 };

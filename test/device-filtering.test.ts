@@ -4,7 +4,6 @@ import { resolveDeviceIdForCommunication, resolveDeviceIdForResponse } from '../
 
 // Mock DynamoDB
 const mockDynamoDB = {
-    getItem: jest.fn(),
     query: jest.fn()
 } as unknown as DynamoDB;
 
@@ -15,13 +14,13 @@ describe('Device Filtering Logic', () => {
 
     describe('Device ID Resolution', () => {
         it('should resolve 6-digit device ID to wireless device ID for filtering', async () => {
-            const mockItem = {
+            const mockItems = [{
                 device_id: { S: '000066' },
                 wireless_device_id: { S: '558fab41-f090-4675-a7b0-f5060297d4e9' }
-            };
+            }];
 
-            mockDynamoDB.getItem = jest.fn().mockResolvedValue({
-                Item: mockItem
+            mockDynamoDB.query = jest.fn().mockResolvedValue({
+                Items: mockItems
             });
 
             const result = await resolveDeviceIdForCommunication(mockDynamoDB, '000066');
@@ -50,11 +49,11 @@ describe('Device Filtering Logic', () => {
                 '558fab41-f090-4675-a7b0-f5060297d4e7'
             ];
 
-            // Mock the getItem calls for each device ID
-            mockDynamoDB.getItem = jest.fn()
-                .mockResolvedValueOnce({ Item: { device_id: { S: '000066' }, wireless_device_id: { S: wirelessDeviceIds[0] } } })
-                .mockResolvedValueOnce({ Item: { device_id: { S: '000067' }, wireless_device_id: { S: wirelessDeviceIds[1] } } })
-                .mockResolvedValueOnce({ Item: { device_id: { S: '000068' }, wireless_device_id: { S: wirelessDeviceIds[2] } } });
+            // Mock the query calls for each device ID
+            mockDynamoDB.query = jest.fn()
+                .mockResolvedValueOnce({ Items: [{ device_id: { S: '000066' }, wireless_device_id: { S: wirelessDeviceIds[0] } }] })
+                .mockResolvedValueOnce({ Items: [{ device_id: { S: '000067' }, wireless_device_id: { S: wirelessDeviceIds[1] } }] })
+                .mockResolvedValueOnce({ Items: [{ device_id: { S: '000068' }, wireless_device_id: { S: wirelessDeviceIds[2] } }] });
 
             const resolvedIds = await Promise.all(
                 deviceIds.map(id => resolveDeviceIdForCommunication(mockDynamoDB, id))
@@ -75,9 +74,9 @@ describe('Device Filtering Logic', () => {
             ];
 
             // Mock the resolution calls
-            mockDynamoDB.getItem = jest.fn()
-                .mockResolvedValueOnce({ Item: { device_id: { S: '000066' }, wireless_device_id: { S: '558fab41-f090-4675-a7b0-f5060297d4e9' } } })
-                .mockResolvedValueOnce({ Item: { device_id: { S: '000067' }, wireless_device_id: { S: '558fab41-f090-4675-a7b0-f5060297d4e8' } } });
+            mockDynamoDB.query = jest.fn()
+                .mockResolvedValueOnce({ Items: [{ device_id: { S: '000066' }, wireless_device_id: { S: '558fab41-f090-4675-a7b0-f5060297d4e9' } }] })
+                .mockResolvedValueOnce({ Items: [{ device_id: { S: '000067' }, wireless_device_id: { S: '558fab41-f090-4675-a7b0-f5060297d4e8' } }] });
 
             // Resolve 6-digit IDs to wireless IDs
             const accessibleWirelessDeviceIds: string[] = [];
