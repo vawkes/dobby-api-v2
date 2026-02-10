@@ -12,7 +12,7 @@ Welcome to the documentation hub for Dobby API v2. This directory centralizes al
 
 ## Backend
 
-- [Watchdog Timer](../backend/watchdog.md)
+- [Watchdog Timer](./backend/watchdog.md)
 
 ## Data Pipeline
 
@@ -20,32 +20,31 @@ Welcome to the documentation hub for Dobby API v2. This directory centralizes al
 
 ## Frontend
 
-- [API Configuration Fix](../frontend/api-configuration-fix.md)
+- [API Configuration Fix](./frontend/api-configuration-fix.md)
 
 ## Infrastructure & Operations
 
-- [Deployment Guide](../operations/deployment.md)
-- [CI/CD Setup](../operations/ci-cd.md)
+- [Deployment Guide](./operations/deployment.md)
+- [CI/CD Setup](./operations/ci-cd.md)
 
 ## Security
 
-- [Security Practices](../security/security-practices.md)
-- [Customer Security Guide](../security/customer-security-guide.md)
-- [Gridcube Security Whitepaper](../security/gridcube-security-whitepaper.md)
+- [Security Practices](./security/security-practices.md)
+- [Customer Security Guide](./security/customer-security-guide.md)
+- [Gridcube Security Whitepaper](./security/gridcube-security-whitepaper.md)
 
 ## Engineering
 
-- [Linting](../engineering/linting.md)
+- [Linting](./engineering/linting.md)
 
 ## Guides
 
-- [API Testing Guide](../guides/api-testing.md)
-- [Device ID Mapping Implementation](../guides/device-id-mapping.md)
-- [DynamoDB Modernization Guide](../guides/dynamodb-modernization.md)
+- [API Testing Guide](./guides/api-testing.md)
+- [CTA-2045 Events](./guides/cta-2045-events.md)
+- [Device ID Mapping Implementation](./guides/device-id-mapping.md)
+- [DynamoDB Modernization Guide](./guides/dynamodb-modernization.md)
 
 ## Testing
 
-- [Test Status](../testing/test-status.md)
-- [Testing Guide](../testing/testing.md)
-
-
+- [Test Status](./testing/test-status.md)
+- [Testing Guide](./testing/testing.md)

@@ -67,13 +67,67 @@ const infoRequestSchema = z.object({
 const advancedLoadUpSchema = z.object({
     device_id: deviceIdSchema,
     start_time: z.string().datetime(),
-    duration: z.number(),
-    value: z.number(),
-    units: z.number(),
-    suggested_load_up_efficiency: z.number(),
-    event_id: z.string(),
-    start_randomization: z.number(),
-    end_randomization: z.number(),
+    duration: z
+        .number()
+        .int()
+        .min(0)
+        .max(65535)
+        .openapi({
+            description: 'Event duration in minutes (UInt16). Note: LOAD_UP uses seconds; ADVANCED_LOAD_UP uses minutes.',
+            example: 120,
+        }),
+    value: z
+        .number()
+        .int()
+        .min(0)
+        .max(65535)
+        .openapi({
+            description:
+                'CTA-2045 Advanced Load Up Value (UInt16). 0=no-effect (requires units=0xFF). 1..65534=minimum extra energy above normal in Units. 65535=store as much as possible above normal.',
+            example: 3,
+        }),
+    units: z
+        .number()
+        .int()
+        .min(0)
+        .max(255)
+        .refine((u) => u === 0x00 || u === 0x01 || u === 0x02 || u === 0x03 || u === 0xff, {
+            message: 'Invalid units. Allowed: 0,1,2,3,255 (0xFF). Values 0x04..0xFE are reserved.',
+        })
+        .openapi({
+            description:
+                'CTA-2045 Units (UInt8). 0=1Wh, 1=10Wh, 2=100Wh, 3=1000Wh(1kWh), 0xFF=special (no-effect only; also used by GetAdvancedLoadUp to indicate inactive).',
+            example: 3,
+        }),
+    suggested_load_up_efficiency: z
+        .number()
+        .int()
+        .min(0)
+        .max(255)
+        .openapi({
+            description: 'Suggested load up efficiency (UInt8). Set to 0 if unused.',
+            example: 0,
+        }),
+    event_id: z
+        .string()
+        .uuid()
+        .openapi({
+            description:
+                'CTA-2045 Event ID. This is sent to the device (GridCube encodes the first 4 bytes of the UUID). Recommended: reuse the top-level event_id.',
+            example: '8d0b2c2e-2b8d-4d11-9f54-6d8c5d7b2a1f',
+        }),
+    start_randomization: z
+        .number()
+        .int()
+        .min(0)
+        .max(255)
+        .openapi({ description: 'Start randomization in minutes (UInt8).', example: 0 }),
+    end_randomization: z
+        .number()
+        .int()
+        .min(0)
+        .max(255)
+        .openapi({ description: 'End randomization in minutes (UInt8).', example: 0 }),
     event_sent: z.boolean().optional(),
 });
 

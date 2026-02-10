@@ -376,7 +376,12 @@ app.post("/",
     describeRouteCompat({
         tags: ['Events'],
         summary: 'Create one or multiple events',
-        description: 'Creates a new event or a batch of events for one or more devices. The `event_data` structure varies based on the `event_type`. The `event_id` is generated on the client-side.',
+        description: `Creates a new event (command) or a batch of events for one or more devices. The \`event_data\` structure varies by \`event_type\`.
+
+Notes:
+- For CTA-2045 Advanced Load Up, use \`event_type: ADVANCED_LOAD_UP\` and provide CTA fields in \`event_data\` (including \`value\`, \`units\`, and \`event_data.event_id\`).
+- \`LOAD_UP.duration\` is interpreted as seconds, but \`ADVANCED_LOAD_UP.duration\` is interpreted as minutes.
+- Advanced Load Up has two IDs: the top-level \`event_id\` (API request ID) and \`event_data.event_id\` (CTA Event ID sent to the device). Recommended: reuse the same UUID for both.`,
         requestBody: {
             required: true,
             content: {
@@ -415,6 +420,42 @@ app.post("/",
                                 event_data: {
                                     device_id: "000012",
                                     timestamp: "2023-10-27T12:00:00Z"
+                                }
+                            }
+                        },
+                        advancedLoadUpKwh: {
+                            summary: 'CTA-2045 Advanced Load Up (example: minimum +3 kWh above normal)',
+                            value: {
+                                event_id: "8d0b2c2e-2b8d-4d11-9f54-6d8c5d7b2a1f",
+                                event_type: "ADVANCED_LOAD_UP",
+                                event_data: {
+                                    device_id: "000012",
+                                    start_time: "2026-02-10T20:00:00Z",
+                                    duration: 120,
+                                    value: 3,
+                                    units: 3,
+                                    suggested_load_up_efficiency: 0,
+                                    event_id: "8d0b2c2e-2b8d-4d11-9f54-6d8c5d7b2a1f",
+                                    start_randomization: 0,
+                                    end_randomization: 0
+                                }
+                            }
+                        },
+                        advancedLoadUpNoEffect: {
+                            summary: 'CTA-2045 Advanced Load Up (no-effect / capability check)',
+                            value: {
+                                event_id: "9d0b2c2e-2b8d-4d11-9f54-6d8c5d7b2a1f",
+                                event_type: "ADVANCED_LOAD_UP",
+                                event_data: {
+                                    device_id: "000012",
+                                    start_time: "2026-02-10T20:00:00Z",
+                                    duration: 15,
+                                    value: 0,
+                                    units: 255,
+                                    suggested_load_up_efficiency: 0,
+                                    event_id: "9d0b2c2e-2b8d-4d11-9f54-6d8c5d7b2a1f",
+                                    start_randomization: 0,
+                                    end_randomization: 0
                                 }
                             }
                         }

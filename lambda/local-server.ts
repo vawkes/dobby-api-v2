@@ -1,12 +1,9 @@
-import { app } from './index';
+import { serve } from '@hono/node-server'
+import { createApp } from './app'
 
-declare const Bun: any;
+const port = Number(process.env.PORT || 3333)
+const app = createApp()
 
-const port = Number(process.env.PORT || 8787);
+console.log(`Local server listening on http://127.0.0.1:${port}`)
+serve({ fetch: app.fetch, port })
 
-Bun.serve({
-  port,
-  fetch: app.fetch,
-});
-
-console.log(`Local API server listening on http://localhost:${port}`);
