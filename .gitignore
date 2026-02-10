@@ -3,6 +3,10 @@
 *.d.ts
 node_modules
 
+# Playwright
+test-results
+playwright-report
+
 # CDK asset staging directory
 .cdk.staging
 cdk.out

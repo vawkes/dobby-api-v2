@@ -45,7 +45,7 @@
     "destroy:production": "cdk destroy --all --profile dobby_production -c environment=production",
     "bootstrap": "chmod +x scripts/bootstrap.sh && ./scripts/bootstrap.sh"
     ,
-    "dev:server": "TS_NODE_TRANSPILE_ONLY=1 ts-node lambda/local-server.ts",
+    "dev:server": "TS_NODE_TRANSPILE_ONLY=1 ts-node --prefer-ts-exts lambda/local-server.ts",
     "test:playwright": "playwright test"
   },
   "dependencies": {

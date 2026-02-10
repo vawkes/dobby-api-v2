@@ -373,6 +373,10 @@ app.get("/:eventId",
     })
 
 app.post("/",
+    // NOTE: zValidator attaches its own OpenAPI requestBody. We place describeRoute AFTER zValidator
+    // so our requestBody docs (examples + CTA-2045 notes) win in the generated OpenAPI spec.
+    requirePermission(Action.CREATE_EVENTS),
+    zValidator('json', eventRequestSchema),
     describeRouteCompat({
         tags: ['Events'],
         summary: 'Create one or multiple events',
@@ -510,8 +514,6 @@ Notes:
         },
         security: [{ bearerAuth: [] }] // This is a protected endpoint
     }),
-    requirePermission(Action.CREATE_EVENTS),
-    zValidator('json', eventRequestSchema),
     async (c) => {
         try {
             const parsedBody = c.req.valid('json');
