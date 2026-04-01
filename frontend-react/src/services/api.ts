@@ -42,15 +42,9 @@ let pendingRequests: Array<{
     reject: (reason: any) => void;
 }> = [];
 
-const skipToastHeader = 'X-Skip-Error-Toast';
-
-const shouldSkipErrorToast = (headers: any): boolean => {
-    if (!headers) return false;
-    if (typeof headers.get === 'function') {
-        return headers.get(skipToastHeader) === 'true' || headers.get(skipToastHeader.toLowerCase()) === 'true';
-    }
-
-    return headers[skipToastHeader] === 'true' || headers[skipToastHeader.toLowerCase()] === 'true';
+const shouldSkipErrorToast = (config: any): boolean => {
+    if (!config) return false;
+    return config.__skipErrorToast === true;
 };
 
 // Add a request interceptor to include the auth token in requests
@@ -204,7 +198,7 @@ api.interceptors.response.use(
             }
 
             // Show toast with error message
-            if (!shouldSkipErrorToast(error.config?.headers)) {
+            if (!shouldSkipErrorToast(error.config)) {
                 toast.error('Your session has expired. Please log in again.');
             }
         } else if (error.response) {
@@ -215,19 +209,19 @@ api.interceptors.response.use(
 
             // Show toast with error message from API if available
             const errorMessage = error.response.data?.message || error.response.data?.error || 'An error occurred';
-            if (!shouldSkipErrorToast(error.config?.headers)) {
+            if (!shouldSkipErrorToast(error.config)) {
                 toast.error(errorMessage);
             }
         } else if (error.request) {
             // The request was made but no response was received
             console.error('No response received:', error.request);
-            if (!shouldSkipErrorToast(error.config?.headers)) {
+            if (!shouldSkipErrorToast(error.config)) {
                 toast.error('Network error. Please check your connection and try again.');
             }
         } else {
             // Something happened in setting up the request that triggered an Error
             console.error('Request setup error:', error.message);
-            if (!shouldSkipErrorToast(error.config?.headers)) {
+            if (!shouldSkipErrorToast(error.config)) {
                 toast.error('An unexpected error occurred. Please try again.');
             }
         }
@@ -405,10 +399,8 @@ export const eventsAPI = {
     }
 };
 
-const silentRequestConfig = {
-    headers: {
-        [skipToastHeader]: 'true'
-    }
+const silentRequestConfig: any = {
+    __skipErrorToast: true
 };
 
 export const companiesAPI = {
