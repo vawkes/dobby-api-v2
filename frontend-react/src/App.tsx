@@ -13,9 +13,11 @@ import Dashboard from './pages/Dashboard';
 import Devices from './pages/Devices';
 import DeviceDetail from './pages/DeviceDetail';
 import BulkSchedulePage from './pages/BulkSchedulePage';
+import CompanyDeviceManagement from './pages/CompanyDeviceManagement';
 
 // Components
 import ProtectedRoute from './components/ProtectedRoute';
+import InternalOnlyRoute from './components/InternalOnlyRoute';
 
 // Context
 import { AuthProvider } from './context/AuthContext';
@@ -66,6 +68,9 @@ function App() {
               <Route path="/devices" element={<Devices />} />
               <Route path="/devices/:deviceId" element={<DeviceDetail />} />
               <Route path="/bulk-schedule" element={<BulkSchedulePage />} />
+              <Route element={<InternalOnlyRoute />}>
+                <Route path="/internal/company-device-management" element={<CompanyDeviceManagement />} />
+              </Route>
               {/* Add more protected routes here */}
             </Route>
 
