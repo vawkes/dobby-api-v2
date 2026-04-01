@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { cn } from '../../lib/utils';
 import { FiInfo, FiCheckCircle, FiAlertTriangle, FiAlertCircle, FiX } from 'react-icons/fi';
 
@@ -42,7 +42,6 @@ export const Toast: React.FC<ToastProps> = ({
   className,
   action,
 }) => {
-  const [isVisible, setIsVisible] = useState(true);
   const [isLeaving, setIsLeaving] = useState(false);
 
   const variantConfig = {
@@ -79,7 +78,7 @@ export const Toast: React.FC<ToastProps> = ({
   const config = variantConfig[variant];
   const IconComponent = config.icon;
 
-  const handleDismiss = () => {
+  const handleDismiss = useCallback(() => {
     setIsLeaving(true);
     // Wait for animation to complete before calling onDismiss
     setTimeout(() => {
@@ -87,7 +86,7 @@ export const Toast: React.FC<ToastProps> = ({
         onDismiss(id);
       }
     }, 200);
-  };
+  }, [id, onDismiss]);
 
   // Auto-dismiss functionality
   useEffect(() => {
@@ -99,7 +98,7 @@ export const Toast: React.FC<ToastProps> = ({
       return () => clearTimeout(timer);
     }
     return undefined;
-  }, [duration]);
+  }, [duration, handleDismiss]);
 
   const handleActionClick = () => {
     if (action?.onClick) {
@@ -107,8 +106,6 @@ export const Toast: React.FC<ToastProps> = ({
     }
     handleDismiss();
   };
-
-  if (!isVisible) return null;
 
   return (
     <div

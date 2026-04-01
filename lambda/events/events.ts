@@ -1,32 +1,57 @@
 import { Hono } from "hono";
-import { DynamoDB } from "@aws-sdk/client-dynamodb";
-import { IoTWireless } from "@aws-sdk/client-iot-wireless";
+import { createDynamoDBClient } from '../../shared/database/dynamodb';
 import { unmarshall } from "@aws-sdk/util-dynamodb";
 import { eventsSchema, eventSchema, eventRequestSchema, bulkResponseSchema, EventType, EventSchemaType } from './eventsSchema.ts';
 import { describeRoute } from 'hono-openapi';
 import { resolver, validator as zValidator } from "hono-openapi/zod";
-import { handleLoadUp } from "./eventHandlers/loadUp.ts";
-import { handleStartShed } from "./eventHandlers/startShed.ts";
-import { handleEndShed } from "./eventHandlers/endShed.ts";
-import { handleGridEmergency } from "./eventHandlers/gridEmergency.ts";
-import { handleCriticalPeak } from "./eventHandlers/criticalPeak.ts";
-import { handleCustomerOverride } from "./eventHandlers/customerOverride.ts";
-import { handleAdvancedLoadUp } from "./eventHandlers/advancedLoadUp.ts";
-import { handleInfoRequest } from "./eventHandlers/infoRequest.ts";
-import { handleRequestConnectionInfo } from "./eventHandlers/requestConnectionInfo.ts";
-import { handleSetBitmap } from "./eventHandlers/setBitmap.ts";
-import { handleSetUtcTime } from "./eventHandlers/setUtcTime.ts";
-import { handleGetUtcTime } from "./eventHandlers/getUtcTime.ts";
-import { handleStartDataPublish } from "./eventHandlers/startDataPublish.ts";
-import { v4 as uuidv4 } from 'uuid';
-import { getUserFromContext, getUserAccessibleDevices, checkUserDeviceAccess, UserContext } from '../utils/deviceAccess.ts';
+import { getUserFromContext, getUserAccessibleDevices } from '../utils/deviceAccess.ts';
 import { requirePermission, requireDevicePermission, Action } from '../utils/permissions.ts';
 import { resolveDeviceIdForCommunication } from '../utils/deviceIdMapping.ts';
+import { dispatchEventToDevice, EventRequestData } from './eventDispatcher.ts';
 
 const app = new Hono();
+const describeRouteCompat = (options: unknown) => describeRoute(options as never);
+
+interface EventProcessingOutcome {
+    device_id: string;
+    result: EventSchemaType | null;
+    error: string | null;
+}
+
+async function processEventForDevice(
+    dynamodb: ReturnType<typeof createDynamoDBClient>,
+    deviceId: string,
+    eventType: EventType,
+    eventData: EventRequestData
+): Promise<EventProcessingOutcome> {
+    try {
+        const resolvedDeviceId = await resolveDeviceIdForCommunication(dynamodb, deviceId);
+        const result = await dispatchEventToDevice(eventType, eventData, resolvedDeviceId);
+
+        if (!result) {
+            return {
+                device_id: deviceId,
+                result: null,
+                error: 'Failed to process event',
+            };
+        }
+
+        return {
+            device_id: deviceId,
+            result,
+            error: null,
+        };
+    } catch (error) {
+        return {
+            device_id: deviceId,
+            result: null,
+            error: error instanceof Error ? error.message : 'Unknown error',
+        };
+    }
+}
 
 app.get("/",
-    describeRoute({
+    describeRouteCompat({
         tags: ['Events'],
         summary: 'Fetch all accessible events',
         description: 'Retrieves a list of all events associated with devices accessible to the authenticated user.',
@@ -66,7 +91,7 @@ app.get("/",
     requirePermission(Action.READ_EVENTS),
     async (c) => {
         try {
-            const dynamodb = new DynamoDB({ "region": "us-east-1" });
+            const dynamodb = createDynamoDBClient();
 
             // Get user from context (set by auth middleware)
             const user = getUserFromContext(c);
@@ -107,9 +132,7 @@ app.get("/",
                 }
 
                 // Copy event_ack directly to the top level of the event
-                if (event.event_ack !== undefined) {
-                    event.event_ack = event.event_ack;
-                } else {
+                if (event.event_ack === undefined) {
                     event.event_ack = false;
                 }
 
@@ -129,7 +152,7 @@ app.get("/",
     })
 
 app.get("/device/:deviceId",
-    describeRoute({
+    describeRouteCompat({
         tags: ['Events'],
         summary: 'Fetch events for a specific device',
         description: 'Retrieves a list of events for a given device, identified by its 6-digit ID, if accessible to the authenticated user.',
@@ -178,7 +201,7 @@ app.get("/device/:deviceId",
     async (c) => {
         try {
             const deviceId = c.req.param("deviceId");
-            const dynamodb = new DynamoDB({ "region": "us-east-1" });
+            const dynamodb = createDynamoDBClient();
 
             // Resolve the device ID for communication (get wireless device ID if needed)
             let resolvedDeviceId = deviceId;
@@ -234,9 +257,7 @@ app.get("/device/:deviceId",
 
                 // Copy event_ack directly to the top level of the event 
                 // This is for the frontend to have easy access to this field
-                if (event.event_ack !== undefined) {
-                    event.event_ack = event.event_ack;
-                } else {
+                if (event.event_ack === undefined) {
                     event.event_ack = false;
                 }
 
@@ -251,7 +272,7 @@ app.get("/device/:deviceId",
     })
 
 app.get("/:eventId",
-    describeRoute({
+    describeRouteCompat({
         tags: ['Events'],
         summary: 'Fetch a single event by ID',
         description: 'Retrieves details for a specific event, identified by its unique event ID, if accessible to the authenticated user.',
@@ -303,13 +324,22 @@ app.get("/:eventId",
     requirePermission(Action.READ_EVENTS),
     async (c) => {
         try {
-            const dynamodb = new DynamoDB({ "region": "us-east-1" });
-            const results = await dynamodb.getItem({ TableName: "DobbyEvent", Key: { event_id: { S: c.req.param("eventId") } } });
-            if (!results.Item) {
+            const dynamodb = createDynamoDBClient();
+            const results = await dynamodb.query({
+                TableName: "DobbyEvent",
+                KeyConditionExpression: "event_id = :eventId",
+                ExpressionAttributeValues: {
+                    ":eventId": { S: c.req.param("eventId") }
+                },
+                Limit: 1,
+                ScanIndexForward: false
+            });
+
+            if (!results.Items || results.Items.length === 0) {
                 return c.json({ error: "Event not found" }, 404);
             }
 
-            const event = unmarshall(results.Item);
+            const event = unmarshall(results.Items[0]);
 
             // Make sure event_data exists and has the necessary structure
             if (!event.event_data) {
@@ -331,9 +361,7 @@ app.get("/:eventId",
             }
 
             // Copy event_ack directly to the top level of the event
-            if (event.event_ack !== undefined) {
-                event.event_ack = event.event_ack;
-            } else {
+            if (event.event_ack === undefined) {
                 event.event_ack = false;
             }
 
@@ -345,7 +373,7 @@ app.get("/:eventId",
     })
 
 app.post("/",
-    describeRoute({
+    describeRouteCompat({
         tags: ['Events'],
         summary: 'Create one or multiple events',
         description: 'Creates a new event or a batch of events for one or more devices. The `event_data` structure varies based on the `event_type`. The `event_id` is generated on the client-side.',
@@ -445,260 +473,43 @@ app.post("/",
     zValidator('json', eventRequestSchema),
     async (c) => {
         try {
-            const body = await c.req.json();
-            const parsedBody = eventRequestSchema.parse(body);
-
-            let result: EventSchemaType | null = null;
+            const parsedBody = c.req.valid('json');
             const eventType = parsedBody.event_type;
-            const eventData = parsedBody.event_data;
+            const eventData = parsedBody.event_data as EventRequestData;
 
-            // Handle both single device_id and array of device_ids
             const deviceIds = Array.isArray(eventData.device_id)
                 ? eventData.device_id
                 : [eventData.device_id];
+            const dynamodb = createDynamoDBClient();
 
-            // If only one device, handle as single operation
-            if (deviceIds.length === 1) {
-                const deviceId = deviceIds[0];
-                const dynamodb = new DynamoDB({ "region": "us-east-1" });
+            const outcomes = await Promise.all(
+                deviceIds.map(deviceId => processEventForDevice(dynamodb, deviceId, eventType, eventData))
+            );
 
-                // Resolve the device ID for communication (get wireless device ID if needed)
-                const resolvedDeviceId = await resolveDeviceIdForCommunication(dynamodb, deviceId);
-
-                // Create event with appropriate handler based on event type
-                if (eventType === EventType.LOAD_UP) {
-                    result = await handleLoadUp(
-                        resolvedDeviceId,
-                        'start_time' in eventData && eventData.start_time ? new Date(eventData.start_time) : undefined,
-                        'duration' in eventData ? eventData.duration : undefined
-                    );
-                }
-                else if (eventType === EventType.GRID_EMERGENCY) {
-                    result = await handleGridEmergency(
-                        resolvedDeviceId,
-                        'start_time' in eventData && eventData.start_time ? new Date(eventData.start_time) : undefined
-                    );
-                }
-                else if (eventType === EventType.CRITICAL_PEAK) {
-                    result = await handleCriticalPeak(
-                        resolvedDeviceId,
-                        'start_time' in eventData && eventData.start_time ? new Date(eventData.start_time) : undefined
-                    );
-                }
-                else if (eventType === EventType.START_SHED) {
-                    result = await handleStartShed(
-                        resolvedDeviceId,
-                        'start_time' in eventData && eventData.start_time ? new Date(eventData.start_time) : undefined,
-                        'duration' in eventData ? eventData.duration || 0 : 0
-                    );
-                }
-                else if (eventType === EventType.END_SHED) {
-                    result = await handleEndShed(
-                        resolvedDeviceId,
-                        'start_time' in eventData && eventData.start_time ? new Date(eventData.start_time) : undefined
-                    );
-                }
-                else if (eventType === EventType.INFO_REQUEST) {
-                    result = await handleInfoRequest(
-                        resolvedDeviceId,
-                        'timestamp' in eventData && eventData.timestamp ? new Date(eventData.timestamp) : undefined
-                    );
-                }
-                else if (eventType === EventType.ADVANCED_LOAD_UP) {
-                    const startTime = 'start_time' in eventData && eventData.start_time
-                        ? new Date(eventData.start_time)
-                        : new Date();
-                    const duration = 'duration' in eventData ? eventData.duration || 0 : 0;
-                    const value = 'value' in eventData ? eventData.value || 0 : 0;
-                    const units = 'units' in eventData ? eventData.units || 0 : 0;
-                    const suggestedLoadUpEfficiency = 'suggested_load_up_efficiency' in eventData ? eventData.suggested_load_up_efficiency || 0 : 0;
-                    const startRandomization = 'start_randomization' in eventData ? eventData.start_randomization || 0 : 0;
-                    const endRandomization = 'end_randomization' in eventData ? eventData.end_randomization || 0 : 0;
-                    result = await handleAdvancedLoadUp(
-                        resolvedDeviceId,
-                        startTime,
-                        duration,
-                        value,
-                        units,
-                        suggestedLoadUpEfficiency,
-                        'event_id' in eventData ? eventData.event_id : uuidv4(),
-                        startRandomization,
-                        endRandomization
-                    );
-                }
-                else if (eventType === EventType.CUSTOMER_OVERRIDE) {
-                    result = await handleCustomerOverride(
-                        resolvedDeviceId,
-                        'override' in eventData ? eventData.override : false
-                    );
-                }
-                else if (eventType === EventType.SET_UTC_TIME) {
-                    result = await handleSetUtcTime(eventData);
-                }
-                else if (eventType === EventType.GET_UTC_TIME) {
-                    result = await handleGetUtcTime(eventData);
-                }
-                else if (eventType === EventType.SET_BITMAP) {
-                    result = await handleSetBitmap(eventData);
-                }
-                else if (eventType === EventType.REQUEST_CONNECTION_INFO) {
-                    result = await handleRequestConnectionInfo({
-                        device_id: resolvedDeviceId,
-                        event_sent: false
-                    });
-                }
-                else if (eventType === EventType.START_DATA_PUBLISH) {
-                    result = await handleStartDataPublish(
-                        resolvedDeviceId,
-                        'interval_minutes' in eventData ? eventData.interval_minutes : 0
-                    );
-                }
-                else {
-                    // Unsupported event type
-                    return c.json({
-                        statusCode: 400,
-                        body: { reason: `Unsupported event type: ${eventType}` }
-                    }, 400);
-                }
-
-                if (!result) {
-                    return c.json({
-                        statusCode: 500,
-                        body: { reason: "Failed to process event" }
-                    }, 500);
-                }
-
-                return c.json({
-                    statusCode: 200,
-                    body: {
-                        successful_events: [result],
-                        failed_events: []
-                    }
-                }, 200);
-            }
-            // Otherwise, handle as bulk operation
-            else {
-                const dynamodb = new DynamoDB({ "region": "us-east-1" });
-                const successfulEvents: EventSchemaType[] = [];
-                const failedEvents: { device_id: string, error: string }[] = [];
-
-                // Process events for each device in parallel
-                await Promise.all(deviceIds.map(async (deviceId: string) => {
-                    try {
-                        let result: EventSchemaType | null = null;
-
-                        // Resolve the device ID for communication (get wireless device ID if needed)
-                        const resolvedDeviceId = await resolveDeviceIdForCommunication(dynamodb, deviceId);
-
-                        // Create event with appropriate handler based on event type
-                        if (eventType === EventType.LOAD_UP) {
-                            result = await handleLoadUp(
-                                resolvedDeviceId,
-                                'start_time' in eventData && eventData.start_time ? new Date(eventData.start_time) : undefined,
-                                'duration' in eventData ? eventData.duration : undefined
-                            );
-                        }
-                        else if (eventType === EventType.GRID_EMERGENCY) {
-                            result = await handleGridEmergency(
-                                resolvedDeviceId,
-                                'start_time' in eventData && eventData.start_time ? new Date(eventData.start_time) : undefined
-                            );
-                        }
-                        else if (eventType === EventType.CRITICAL_PEAK) {
-                            result = await handleCriticalPeak(
-                                resolvedDeviceId,
-                                'start_time' in eventData && eventData.start_time ? new Date(eventData.start_time) : undefined
-                            );
-                        }
-                        else if (eventType === EventType.START_SHED) {
-                            result = await handleStartShed(
-                                resolvedDeviceId,
-                                'start_time' in eventData && eventData.start_time ? new Date(eventData.start_time) : undefined,
-                                'duration' in eventData ? eventData.duration || 0 : 0
-                            );
-                        }
-                        else if (eventType === EventType.END_SHED) {
-                            result = await handleEndShed(
-                                resolvedDeviceId,
-                                'start_time' in eventData && eventData.start_time ? new Date(eventData.start_time) : undefined
-                            );
-                        }
-                        else if (eventType === EventType.INFO_REQUEST) {
-                            result = await handleInfoRequest(
-                                resolvedDeviceId,
-                                'timestamp' in eventData && eventData.timestamp ? new Date(eventData.timestamp) : undefined
-                            );
-                        }
-                        else if (eventType === EventType.ADVANCED_LOAD_UP) {
-                            const startTime = 'start_time' in eventData && eventData.start_time
-                                ? new Date(eventData.start_time)
-                                : new Date();
-                            const duration = 'duration' in eventData ? eventData.duration || 0 : 0;
-                            const value = 'value' in eventData ? eventData.value || 0 : 0;
-                            const units = 'units' in eventData ? eventData.units || 0 : 0;
-                            const suggestedLoadUpEfficiency = 'suggested_load_up_efficiency' in eventData ? eventData.suggested_load_up_efficiency || 0 : 0;
-                            const startRandomization = 'start_randomization' in eventData ? eventData.start_randomization || 0 : 0;
-                            const endRandomization = 'end_randomization' in eventData ? eventData.end_randomization || 0 : 0;
-                            result = await handleAdvancedLoadUp(
-                                resolvedDeviceId,
-                                startTime,
-                                duration,
-                                value,
-                                units,
-                                suggestedLoadUpEfficiency,
-                                'event_id' in eventData ? eventData.event_id : uuidv4(),
-                                startRandomization,
-                                endRandomization
-                            );
-                        }
-                        else if (eventType === EventType.CUSTOMER_OVERRIDE) {
-                            result = await handleCustomerOverride(
-                                resolvedDeviceId,
-                                'override' in eventData ? eventData.override : false
-                            );
-                        }
-                        else if (eventType === EventType.SET_UTC_TIME) {
-                            result = await handleSetUtcTime(eventData);
-                        }
-                        else if (eventType === EventType.GET_UTC_TIME) {
-                            result = await handleGetUtcTime(eventData);
-                        }
-                        else if (eventType === EventType.SET_BITMAP) {
-                            result = await handleSetBitmap(eventData);
-                        }
-                        else if (eventType === EventType.REQUEST_CONNECTION_INFO) {
-                            result = await handleRequestConnectionInfo({
-                                device_id: resolvedDeviceId,
-                                event_sent: false
-                            });
-                        }
-
-                        if (result) {
-                            successfulEvents.push(result);
-                        } else {
-                            failedEvents.push({
-                                device_id: deviceId,
-                                error: "Failed to process event"
-                            });
-                        }
-                    } catch (error) {
-                        console.error(`Error processing event for device ${deviceId}:`, error);
-                        failedEvents.push({
-                            device_id: deviceId,
-                            error: error instanceof Error ? error.message : "Unknown error"
-                        });
-                    }
+            const successfulEvents = outcomes
+                .filter((outcome): outcome is EventProcessingOutcome & { result: EventSchemaType } => outcome.result !== null)
+                .map(outcome => outcome.result);
+            const failedEvents = outcomes
+                .filter((outcome): outcome is EventProcessingOutcome & { error: string } => outcome.error !== null)
+                .map(outcome => ({
+                    device_id: outcome.device_id,
+                    error: outcome.error
                 }));
 
-                // Return the results
+            if (deviceIds.length === 1 && failedEvents.length > 0) {
                 return c.json({
-                    statusCode: 200,
-                    body: {
-                        successful_events: successfulEvents,
-                        failed_events: failedEvents.length > 0 ? failedEvents : []
-                    }
-                }, 200);
+                    statusCode: 500,
+                    body: { reason: failedEvents[0].error }
+                }, 500);
             }
+
+            return c.json({
+                statusCode: 200,
+                body: {
+                    successful_events: successfulEvents,
+                    failed_events: failedEvents.length > 0 ? failedEvents : []
+                }
+            }, 200);
         } catch (error) {
             console.error("Error processing event:", error);
             return c.json({

@@ -156,8 +156,10 @@ export function formatDeviceType(deviceType: string): string {
   return description;
 }
 
-export default {
+const deviceTypeUtils = {
   DEVICE_TYPE_MAP,
   getDeviceTypeDescription,
   formatDeviceType
 };
+
+export default deviceTypeUtils;

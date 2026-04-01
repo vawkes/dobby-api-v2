@@ -92,6 +92,12 @@ api.interceptors.response.use(
             const isRefreshEndpoint = originalRequest.url?.includes('/refresh-token');
             const refreshToken = localStorage.getItem('refreshToken');
 
+            // Auth endpoints (login/register/etc.) manage their own UX.
+            // Avoid forcing a session-expired flow for expected auth failures.
+            if (isAuthEndpoint) {
+                return Promise.reject(error);
+            }
+
             // Only proceed with token refresh if:
             // 1. Not an auth endpoint itself
             // 2. Not already trying to refresh
@@ -313,8 +319,14 @@ export const deviceAPI = {
             });
             return response.data;
         } catch (error) {
+            if (axios.isAxiosError(error) && error.response?.status === 404) {
+                const message = String(error.response.data?.error || '').toLowerCase();
+                if (message.includes('no data found')) {
+                    return [];
+                }
+            }
             console.error(`Error fetching data for device with ID ${deviceId}:`, error);
-            throw error; // Simply throw the error instead of returning mock data
+            throw error;
         }
     },
 };

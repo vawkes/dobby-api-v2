@@ -25,30 +25,72 @@ interface DecodedToken {
     signature: string;
 }
 
+const JWKS_CACHE_TTL_MS = 60 * 60 * 1000;
 let pems: { [key: string]: string } = {};
+let pemsFetchedAt = 0;
 
-// Fetch the JWT signing keys from Cognito
-async function getPems() {
-    if (Object.keys(pems).length > 0) return pems;
+function isLocalAuthEnabled(): boolean {
+    return process.env.LOCAL_DEV_BYPASS_AUTH === 'true' || process.env.LOCAL_DEV === 'true';
+}
 
+function getLocalUser(c: Context): JwtPayload {
+    return {
+        sub: c.req.header('X-Dev-User-Id') || process.env.LOCAL_DEV_USER_ID || 'local-dev-admin',
+        email: c.req.header('X-Dev-User-Email') || process.env.LOCAL_DEV_USER_EMAIL || 'local-dev@example.com',
+        'cognito:username': c.req.header('X-Dev-User-Id') || process.env.LOCAL_DEV_USER_ID || 'local-dev-admin',
+    };
+}
+
+async function fetchPemsFromCognito(): Promise<{ [key: string]: string }> {
     const userPoolId = process.env.USER_POOL_ID;
+    if (!userPoolId) {
+        throw new Error('Missing USER_POOL_ID environment variable');
+    }
+
     const region = userPoolId?.split('_')[0];
     const jwksUrl = `https://cognito-idp.${region}.amazonaws.com/${userPoolId}/.well-known/jwks.json`;
+    const response = await fetch(jwksUrl);
+
+    if (!response.ok) {
+        throw new Error(`Failed to fetch JWKS. Status: ${response.status}`);
+    }
+
+    const jwks = await response.json() as JWKs;
+    const fetchedPems: { [key: string]: string } = {};
+
+    // Convert each JWK to PEM
+    jwks.keys.forEach(key => {
+        fetchedPems[key.kid] = jwkToPem(key as any);
+    });
+
+    return fetchedPems;
+}
+
+// Fetch the JWT signing keys from Cognito with in-memory cache
+async function getPems(forceRefresh: boolean = false) {
+    const cacheAge = Date.now() - pemsFetchedAt;
+    const hasValidCache = Object.keys(pems).length > 0 && cacheAge < JWKS_CACHE_TTL_MS;
+    if (!forceRefresh && hasValidCache) {
+        return pems;
+    }
 
     try {
-        const response = await fetch(jwksUrl);
-        const jwks = await response.json() as JWKs;
-
-        // Convert each JWK to PEM
-        jwks.keys.forEach(key => {
-            pems[key.kid] = jwkToPem(key as any);
-        });
-
+        pems = await fetchPemsFromCognito();
+        pemsFetchedAt = Date.now();
         return pems;
     } catch (error) {
         console.error('Error fetching JWKs:', error);
         throw error;
     }
+}
+
+export function __resetJwksCacheForTests(): void {
+    pems = {};
+    pemsFetchedAt = 0;
+}
+
+export async function __getPemsForTests(forceRefresh: boolean = false): Promise<{ [key: string]: string }> {
+    return getPems(forceRefresh);
 }
 
 // Authentication middleware
@@ -65,6 +107,11 @@ export const auth: MiddlewareHandler = async (c: Context, next: Next) => {
 
     // Skip auth check for OPTIONS requests (CORS preflight)
     if (c.req.method === 'OPTIONS') {
+        return next();
+    }
+
+    if (isLocalAuthEnabled()) {
+        c.set('user', getLocalUser(c));
         return next();
     }
 
@@ -100,11 +147,17 @@ export const auth: MiddlewareHandler = async (c: Context, next: Next) => {
             const pems = await getPems();
             console.log(`PEMs retrieved in ${Date.now() - startPemTime}ms`);
 
-            const pem = pems[kid];
+            let pem = pems[kid];
 
             if (!pem) {
-                console.log('No matching PEM found for kid:', kid);
-                return c.json({ message: 'Unauthorized - Invalid token' }, 401);
+                console.log('No matching PEM found in cache for kid, refreshing JWKS:', kid);
+                const refreshedPems = await getPems(true);
+                pem = refreshedPems[kid];
+
+                if (!pem) {
+                    console.log('No matching PEM found for kid after JWKS refresh:', kid);
+                    return c.json({ message: 'Unauthorized - Invalid token' }, 401);
+                }
             }
 
             // Verify the token
@@ -150,4 +203,4 @@ export const auth: MiddlewareHandler = async (c: Context, next: Next) => {
         console.error('Error decoding token:', decodeError);
         return c.json({ message: 'Unauthorized - Invalid token format' }, 401);
     }
-}; 
+};

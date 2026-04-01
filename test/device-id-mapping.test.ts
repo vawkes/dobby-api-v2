@@ -4,7 +4,6 @@ import { getWirelessDeviceId, getDeviceId, resolveDeviceIdForCommunication, reso
 
 // Mock DynamoDB
 const mockDynamoDB = {
-    getItem: jest.fn(),
     query: jest.fn()
 } as unknown as DynamoDB;
 
@@ -15,13 +14,13 @@ describe('Device ID Mapping', () => {
 
     describe('getWirelessDeviceId', () => {
         it('should return wireless device ID for valid 6-digit device ID', async () => {
-            const mockItem = {
+            const mockItems = [{
                 device_id: { S: '000012' },
                 wireless_device_id: { S: '558fab41-f090-4675-a7b0-f5060297d4e9' }
-            };
+            }];
 
-            mockDynamoDB.getItem = jest.fn().mockResolvedValue({
-                Item: mockItem
+            mockDynamoDB.query = jest.fn().mockResolvedValue({
+                Items: mockItems
             });
 
             const result = await getWirelessDeviceId(mockDynamoDB, '000012');
@@ -29,8 +28,8 @@ describe('Device ID Mapping', () => {
         });
 
         it('should return null for non-existent device ID', async () => {
-            mockDynamoDB.getItem = jest.fn().mockResolvedValue({
-                Item: undefined
+            mockDynamoDB.query = jest.fn().mockResolvedValue({
+                Items: []
             });
 
             const result = await getWirelessDeviceId(mockDynamoDB, '999999');
@@ -65,13 +64,13 @@ describe('Device ID Mapping', () => {
 
     describe('resolveDeviceIdForCommunication', () => {
         it('should return wireless device ID for 6-digit device ID', async () => {
-            const mockItem = {
+            const mockItems = [{
                 device_id: { S: '000012' },
                 wireless_device_id: { S: '558fab41-f090-4675-a7b0-f5060297d4e9' }
-            };
+            }];
 
-            mockDynamoDB.getItem = jest.fn().mockResolvedValue({
-                Item: mockItem
+            mockDynamoDB.query = jest.fn().mockResolvedValue({
+                Items: mockItems
             });
 
             const result = await resolveDeviceIdForCommunication(mockDynamoDB, '000012');
@@ -89,8 +88,8 @@ describe('Device ID Mapping', () => {
         });
 
         it('should return original ID when wireless device ID not found', async () => {
-            mockDynamoDB.getItem = jest.fn().mockResolvedValue({
-                Item: undefined
+            mockDynamoDB.query = jest.fn().mockResolvedValue({
+                Items: []
             });
 
             const result = await resolveDeviceIdForCommunication(mockDynamoDB, '000012');

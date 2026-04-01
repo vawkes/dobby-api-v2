@@ -20,7 +20,7 @@ export const handleRequestConnectionInfo = async (eventData: RequestConnectionIn
     view.setUint8(0, EventMap.REQUEST_CONNECTION_INFO);
 
     // Send the command to the device
-    await sendToDobby(eventData.device_id, buffer);
+    const sentToDobby = await sendToDobby(eventData.device_id, buffer);
 
     const gpsTimeEpoch = convertToGpsTimeEpoch(new Date());
 
@@ -31,7 +31,7 @@ export const handleRequestConnectionInfo = async (eventData: RequestConnectionIn
         event_data: {
             device_id: eventData.device_id,
             start_time: gpsTimeEpoch,
-            event_sent: true
+            event_sent: sentToDobby
         },
         event_ack: false
     };

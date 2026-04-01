@@ -1,8 +1,4 @@
-import { DynamoDB } from '@aws-sdk/client-dynamodb';
-import { sendAck } from '../utils/ack';
 import { updateEventAsAcknowledged } from '../../../lambda/utils/updateEvent';
-
-const dynamodb = new DynamoDB({ region: 'us-east-1' });
 
 export const handleEventAcknowledgment = async (payload: Buffer, deviceId: string): Promise<void> => {
     console.log(`Event acknowledgment payload:`, Array.from(payload));

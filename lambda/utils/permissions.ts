@@ -1,4 +1,5 @@
 import { DynamoDB } from "@aws-sdk/client-dynamodb";
+import { createDynamoDBClient } from '../../shared/database/dynamodb';
 import { unmarshall } from "@aws-sdk/util-dynamodb";
 import { UserContext } from "./deviceAccess";
 import { Context, Next } from "hono";
@@ -108,7 +109,7 @@ const ROLE_PERMISSION_MATRIX = {
 };
 
 // Legacy permission matrix for backward compatibility
-const PERMISSION_MATRIX = {
+export const PERMISSION_MATRIX = {
     [PermissionLevel.ADMIN]: [
         // Admins can do everything
         Action.READ_DEVICES,
@@ -367,7 +368,7 @@ export function requirePermission(action: Action) {
 
             console.log(`Permission check for user ${user.sub} and action ${action}`);
 
-            const dynamodb = new DynamoDB({ region: "us-east-1" });
+            const dynamodb = createDynamoDBClient();
 
             // Get user's highest role for debugging
             const highestRole = await getUserHighestRole(dynamodb, user.sub);
@@ -405,7 +406,7 @@ export function requireDevicePermission(action: Action) {
                 return c.json({ error: 'Device ID required' }, 400);
             }
 
-            const dynamodb = new DynamoDB({ region: "us-east-1" });
+            const dynamodb = createDynamoDBClient();
             const hasAccess = await hasDevicePermission(dynamodb, user.sub, action, deviceId);
 
             if (!hasAccess) {
@@ -435,7 +436,7 @@ export function requireCompanyPermission(action: Action) {
                 return c.json({ error: 'Company ID required' }, 400);
             }
 
-            const dynamodb = new DynamoDB({ region: "us-east-1" });
+            const dynamodb = createDynamoDBClient();
             const hasAccess = await hasCompanyPermission(dynamodb, user.sub, action, companyId);
 
             if (!hasAccess) {

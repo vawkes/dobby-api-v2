@@ -1,4 +1,4 @@
-import { PutCommand, QueryCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
+import { PutCommand, QueryCommand, ScanCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
 import { docClient, TABLES } from '../client';
 import { 
   EventId,
@@ -7,6 +7,45 @@ import {
   gpsTimestampSchema 
 } from '../../schemas/primitives';
 import { EventSchemaType, EventType } from '../../../lambda/events/eventsSchema';
+
+const GPS_EPOCH_SECONDS = Math.floor(new Date(Date.UTC(1980, 0, 6)).getTime() / 1000);
+const GPS_LEAP_SECONDS = 18;
+
+function toGpsEpochSeconds(date: Date): number {
+  return Math.floor(date.getTime() / 1000) - GPS_EPOCH_SECONDS + GPS_LEAP_SECONDS;
+}
+
+function parseGpsTimestamp(value: unknown): GpsTimestamp | null {
+  if (typeof value === 'number' && Number.isFinite(value) && value > 0) {
+    return gpsTimestampSchema.parse(Math.floor(value));
+  }
+
+  if (typeof value === 'string') {
+    const numericValue = Number(value);
+    if (Number.isFinite(numericValue) && numericValue > 0) {
+      return gpsTimestampSchema.parse(Math.floor(numericValue));
+    }
+
+    const parsedDate = new Date(value);
+    if (!Number.isNaN(parsedDate.getTime())) {
+      return gpsTimestampSchema.parse(toGpsEpochSeconds(parsedDate));
+    }
+  }
+
+  return null;
+}
+
+function getEventTimestamp(event: EventSchemaType): GpsTimestamp {
+  const eventData = event.event_data as Record<string, unknown>;
+  const timestamp = parseGpsTimestamp(eventData.start_time) || parseGpsTimestamp(eventData.timestamp);
+
+  if (timestamp !== null) {
+    return timestamp;
+  }
+
+  // Keep persistence reliable when callers omit optional event times.
+  return gpsTimestampSchema.parse(toGpsEpochSeconds(new Date()));
+}
 
 /**
  * Repository for event operations
@@ -23,8 +62,7 @@ export class EventRepository {
    */
   async saveEvent(event: EventSchemaType): Promise<boolean> {
     try {
-      // Convert start_time to GPS timestamp (validate and convert if needed)
-      const timestamp = gpsTimestampSchema.parse(event.event_data.start_time);
+      const timestamp = getEventTimestamp(event);
 
       // Flatten event for DynamoDB storage
       const flattenedEvent = {
@@ -178,9 +216,7 @@ export class EventRepository {
     limit: number = 100
   ): Promise<any[]> {
     try {
-      // Note: This would benefit from a GSI on event_type + timestamp
-      // For now, we'll use a filter expression
-      const command = new QueryCommand({
+      const command = new ScanCommand({
         TableName: TABLES.EVENTS,
         FilterExpression: "event_type = :eventType AND #timestamp BETWEEN :startTime AND :endTime",
         ExpressionAttributeNames: {
@@ -190,13 +226,13 @@ export class EventRepository {
           ":eventType": eventType,
           ":startTime": startTime,
           ":endTime": endTime
-        },
-        ScanIndexForward: false,
-        Limit: limit
+        }
       });
 
       const result = await docClient.send(command);
-      return result.Items || [];
+      return (result.Items || [])
+        .sort((a, b) => Number(b.timestamp) - Number(a.timestamp))
+        .slice(0, limit);
       
     } catch (error) {
       console.error("Error getting events by type:", error);

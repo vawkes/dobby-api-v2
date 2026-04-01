@@ -2,8 +2,10 @@
   "name": "frontend-react",
   "version": "0.1.0",
   "private": true,
+  "packageManager": "bun@1.2.2",
   "engines": {
-    "node": ">=20.0.0"
+    "node": ">=20.0.0",
+    "bun": ">=1.1.0"
   },
   "dependencies": {
     "@headlessui/react": "^2.2.7",
@@ -38,13 +40,13 @@
   "scripts": {
     "start": "react-scripts start",
     "build": "DISABLE_ESLINT_PLUGIN=true react-scripts build",
-    "build:develop": "REACT_APP_ENVIRONMENT=development DISABLE_ESLINT_PLUGIN=true react-scripts build",
-    "build:production": "REACT_APP_ENVIRONMENT=production DISABLE_ESLINT_PLUGIN=true react-scripts build",
+    "build:develop": "REACT_APP_ENVIRONMENT=development REACT_APP_API_URL=https://api.gridcube.dev.vawkes.com DISABLE_ESLINT_PLUGIN=true react-scripts build",
+    "build:production": "REACT_APP_ENVIRONMENT=production REACT_APP_API_URL=https://api.gridcube.vawkes.com DISABLE_ESLINT_PLUGIN=true react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
-    "lint": "eslint . --ext .ts,.tsx",
-    "lint:fix": "eslint . --ext .ts,.tsx --fix",
-    "lint:check": "eslint . --ext .ts,.tsx --max-warnings 0",
+    "lint": "ESLINT_USE_FLAT_CONFIG=false bunx eslint@8 src --ext .ts,.tsx",
+    "lint:fix": "ESLINT_USE_FLAT_CONFIG=false bunx eslint@8 src --ext .ts,.tsx --fix",
+    "lint:check": "ESLINT_USE_FLAT_CONFIG=false bunx eslint@8 src --ext .ts,.tsx --max-warnings 0",
     "format": "prettier --write \"src/**/*.{ts,tsx,js,jsx,json,md}\"",
     "format:check": "prettier --check \"src/**/*.{ts,tsx,js,jsx,json,md}\""
   },

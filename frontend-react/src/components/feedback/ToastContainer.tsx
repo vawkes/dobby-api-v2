@@ -48,6 +48,10 @@ export const ToastProvider: React.FC<ToastContainerProps> = ({
 }) => {
   const [toasts, setToasts] = useState<ToastItem[]>([]);
 
+  const removeToast = useCallback((id: string) => {
+    setToasts(prevToasts => prevToasts.filter(toast => toast.id !== id));
+  }, []);
+
   const addToast = useCallback((toast: Omit<ToastProps, 'id' | 'onDismiss'>) => {
     const id = Math.random().toString(36).substr(2, 9);
     const newToast: ToastItem = {
@@ -63,11 +67,7 @@ export const ToastProvider: React.FC<ToastContainerProps> = ({
     });
 
     return id;
-  }, [maxToasts]);
-
-  const removeToast = useCallback((id: string) => {
-    setToasts(prevToasts => prevToasts.filter(toast => toast.id !== id));
-  }, []);
+  }, [maxToasts, removeToast]);
 
   const removeAllToasts = useCallback(() => {
     setToasts([]);

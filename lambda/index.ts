@@ -5,9 +5,9 @@ import companies from './companies/companies.ts'
 import authRoutes from './utils/authRoutes'
 import { Hono } from 'hono'
 import { openAPISpecs } from 'hono-openapi'
-import { apiReference } from '@scalar/hono-api-reference'
 import { auth } from './utils/auth'
 import { cors } from 'hono/cors'
+import { sanitizeHeaders } from './utils/logging'
 
 // Create the main app
 const app = new Hono()
@@ -242,21 +242,24 @@ For technical support or questions about this API, please contact our developmen
 // Add API reference documentation
 publicRoutes.get(
     '/docs',
-    apiReference({
-        theme: 'saturn',
-        spec: { url: '/public/openapi' },
-        configuration: {
-            title: 'Vawkes GridCube API Documentation',
-            description: 'Comprehensive API documentation for Vawkes GridCube device management and monitoring',
-            theme: {
-                primaryColor: '#2563eb',
-                sidebar: {
-                    backgroundColor: '#f8fafc',
-                    textColor: '#1e293b'
+    async (c, next) => {
+        const { apiReference } = await import('@scalar/hono-api-reference');
+        return apiReference({
+            theme: 'saturn',
+            spec: { url: '/public/openapi' },
+            configuration: {
+                title: 'Vawkes GridCube API Documentation',
+                description: 'Comprehensive API documentation for Vawkes GridCube device management and monitoring',
+                theme: {
+                    primaryColor: '#2563eb',
+                    sidebar: {
+                        backgroundColor: '#f8fafc',
+                        textColor: '#1e293b'
+                    }
                 }
             }
-        }
-    })
+        })(c, next);
+    }
 )
 
 // Mount the public routes at /public
@@ -265,7 +268,7 @@ app.route('/public', publicRoutes)
 // Add a middleware that logs all incoming requests for debugging
 app.use('*', async (c, next) => {
     console.log(`Request received: ${c.req.method} ${c.req.path}`);
-    console.log('Headers:', JSON.stringify(c.req.header()));
+    console.log('Headers:', JSON.stringify(sanitizeHeaders(c.req.header())));
     await next();
     console.log(`Response status: ${c.res.status}`);
 })
@@ -283,3 +286,4 @@ app.route('/', protectedRoutes);
 
 // Export the handler
 export const handler = handle(app);
+export { app };

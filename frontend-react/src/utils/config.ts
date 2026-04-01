@@ -12,6 +12,12 @@ interface EnvConfig {
 
 // Environment-specific configurations
 const environmentConfigs: Record<string, EnvConfig> = {
+    local: {
+        API_URL: 'http://localhost:8787',
+        ENVIRONMENT: 'local',
+        VERSION: '1.0.0',
+        ALLOW_MOCK_AUTH: true,
+    },
     development: {
         API_URL: 'https://api.gridcube.dev.vawkes.com',
         ENVIRONMENT: 'development',
@@ -28,15 +34,14 @@ const environmentConfigs: Record<string, EnvConfig> = {
 
 // Determine current environment
 const getCurrentEnvironment = (): string => {
-    // In development (npm start), use development config
-    if (process.env.NODE_ENV === 'development') {
-        return 'development';
-    }
-
-    // In production build, check for environment override
     const envOverride = process.env.REACT_APP_ENVIRONMENT;
     if (envOverride) {
         return envOverride;
+    }
+
+    // In development (npm start), use development config
+    if (process.env.NODE_ENV === 'development') {
+        return 'development';
     }
 
     // Default to production for built apps
@@ -46,6 +51,9 @@ const getCurrentEnvironment = (): string => {
 // Get the current configuration
 const currentEnv = getCurrentEnvironment();
 const config: EnvConfig = environmentConfigs[currentEnv] || environmentConfigs.production;
+if (process.env.REACT_APP_API_URL) {
+    config.API_URL = process.env.REACT_APP_API_URL;
+}
 
 console.log(`Using ${currentEnv} configuration:`, config);
 

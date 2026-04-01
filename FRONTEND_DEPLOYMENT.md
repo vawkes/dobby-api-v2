@@ -4,11 +4,11 @@ This guide explains the simplified frontend deployment process for the Dobby API
 
 ## Overview
 
-The frontend deployment is now fully integrated into the main CDK deployment process. When you deploy the entire stack, the frontend is automatically built and deployed as part of the process.
+The frontend deployment is integrated into the unified deploy command. The command builds frontend first, then deploys all stacks.
 
 ## Architecture
 
-- **Integrated Build**: Frontend build process is part of the CDK deployment
+- **Integrated Build**: Frontend build process is part of `bun run deploy`
 - **Environment Configuration**: Managed in `deployment/config.ts`
 - **Single Deployment**: One command deploys everything (API + Frontend)
 - **Environment-Specific URLs**: Development connects to development API, production to production API
@@ -31,19 +31,19 @@ The frontend deployment is now fully integrated into the main CDK deployment pro
 
 ### Single Command Deployment
 
-Deploy the entire stack (API + Frontend) using CDK:
+Deploy the entire stack (API + Frontend + data layer):
 
 ```bash
 # Deploy to development
-npx cdk deploy --context environment=develop
+bun run deploy --env develop
 
 # Deploy to production
-npx cdk deploy --context environment=production
+bun run deploy --env production
 ```
 
 ### What Happens During Deployment
 
-1. **Frontend Build**: CDK automatically builds the frontend for the target environment
+1. **Frontend Build**: deploy command builds the frontend for the target environment
 2. **Infrastructure Creation**: Creates S3 bucket, CloudFront distribution, and DNS configuration
 3. **Frontend Deployment**: Uploads the built frontend to S3 and configures CloudFront
 4. **API Deployment**: Deploys the backend API infrastructure
@@ -62,7 +62,7 @@ npx cdk deploy --context environment=production
 
 ## Key Improvements
 
-1. **Single Command**: One `cdk deploy` command deploys everything
+1. **Single Command**: One `bun run deploy` command deploys everything
 2. **Environment-Specific API URLs**: Development frontend connects to development API
 3. **Integrated Build**: No separate build step required
 4. **CDK-Only Deployment**: No standalone deployment scripts
@@ -72,7 +72,7 @@ npx cdk deploy --context environment=production
 
 ### Development Frontend Connecting to Production API
 - **Problem**: Development environment using production API URLs
-- **Solution**: Use `npx cdk deploy --context environment=develop` to deploy with development configuration
+- **Solution**: Use `bun run deploy --env develop` to deploy with development configuration
 
 ### Build Failures During Deployment
 - **Problem**: Frontend build fails during CDK deployment
@@ -80,7 +80,7 @@ npx cdk deploy --context environment=production
 
 ### Environment Configuration Issues
 - **Problem**: Wrong environment being used
-- **Solution**: Check the `--context environment=` parameter in your CDK deploy command
+- **Solution**: Check the `--env` parameter in your deploy command
 
 ## Migration from Old System
 
@@ -97,21 +97,21 @@ All configuration is now centralized in:
 
 ## Best Practices
 
-1. **Use CDK for Everything**: Always use `npx cdk deploy` with proper context
+1. **Use Single Entry Point**: Always use `bun run deploy --env <env>`
 2. **Check AWS Profiles**: Ensure correct AWS profile is configured for the target environment
 3. **Verify DNS**: Check that custom domains are properly configured in Route53
 4. **Monitor Build Process**: Watch the CDK output for any build failures
-5. **Test Locally First**: Run `npm run build:develop` or `npm run build:production` locally to test builds
+5. **Test Locally First**: Run `bun run build:develop` or `bun run build:production` locally to test builds
 
 ## Deployment Commands Summary
 
 ```bash
 # Deploy entire stack to development
-npx cdk deploy --context environment=develop
+bun run deploy --env develop
 
 # Deploy entire stack to production  
-npx cdk deploy --context environment=production
+bun run deploy --env production
 
-# Deploy specific stack only (if needed)
-npx cdk deploy ReactFrontendStack --context environment=develop
-``` 
+# CI mode
+bun run deploy --env develop --ci
+```

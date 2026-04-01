@@ -2,19 +2,11 @@ import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { deviceAPI } from '../services/api.ts';
 import { Device, DeviceDataPoint } from '../types/index.ts';
-import { FiAlertCircle, FiArrowLeft, FiBattery, FiCpu, FiWifi, FiActivity } from 'react-icons/fi';
+import { FiAlertCircle, FiArrowLeft, FiCpu, FiWifi, FiActivity } from 'react-icons/fi';
 import { InstantPowerChart, CumulativeEnergyChart, OperationalStateChart } from '../components/charts/index.ts';
 import DeviceEvents from '../components/DeviceEvents.tsx';
 import ScheduleEvent from '../components/ScheduleEvent.tsx';
 import DeviceTypeDisplay from '../components/ui/DeviceTypeDisplay.tsx';
-
-// Extend the DeviceDataPoint type with our custom field
-interface FormattedDataPoint extends DeviceDataPoint {
-    timeMs: number;
-    formattedTime: string;
-    formattedDate: string;
-    isVirtual?: boolean; // Add isVirtual as an optional property
-}
 
 // Helper function to get link type name
 const getLinkTypeName = (linkType?: number): string => {
@@ -352,27 +344,4 @@ const DeviceDetail: React.FC = () => {
     );
 };
 
-// Helper functions for chart display
-function getMetricLabel(metric: string): string {
-    switch (metric) {
-        case 'instant_power': return 'Instant Power';
-        case 'cumulative_energy': return 'Cumulative Energy';
-        case 'operational_state': return 'Operational State';
-        default: return metric;
-    }
-}
-
-function getUnitForMetric(metric: string): string {
-    switch (metric) {
-        case 'instant_power': return 'W';
-        case 'cumulative_energy': return 'kWh';
-        case 'operational_state': return '';
-        default: return '';
-    }
-}
-
-function getAxisLabel(metric: string): string {
-    return `${getMetricLabel(metric)}${getUnitForMetric(metric) ? ` (${getUnitForMetric(metric)})` : ''}`;
-}
-
-export default DeviceDetail; 
+export default DeviceDetail;

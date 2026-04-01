@@ -1,5 +1,5 @@
 {
-  "app": "npx ts-node --prefer-ts-exts bin/dobby-api-v2.ts",
+  "app": "bunx tsx bin/dobby-api-v2.ts",
   "watch": {
     "include": [
       "**"
@@ -11,6 +11,8 @@
       "**/*.js",
       "tsconfig.json",
       "package*.json",
+      "bun.lock",
+      "bun.lockb",
       "yarn.lock",
       "node_modules",
       "test"

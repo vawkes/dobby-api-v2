@@ -18,7 +18,7 @@ This is a React-based frontend for the Dobby API, written in TypeScript. It's de
 ### Prerequisites
 
 - Node.js 16+
-- npm or yarn
+- Bun 1.1+
 - AWS CLI configured with appropriate credentials
 - AWS CDK installed globally (optional)
 
@@ -26,12 +26,12 @@ This is a React-based frontend for the Dobby API, written in TypeScript. It's de
 
 1. Install dependencies:
 ```bash
-npm install
+bun install
 ```
 
 2. Start the development server:
 ```bash
-npm start
+bun run start
 ```
 
 3. Open [http://localhost:3000](http://localhost:3000) to view the app in your browser.
@@ -50,7 +50,7 @@ The application is designed to be deployed to AWS using the CDK stack defined in
 
 ```bash
 # From the frontend-react directory
-npm run deploy
+bun run deploy
 ```
 
 This will:

@@ -22,7 +22,6 @@ import { AuthProvider } from './context/AuthContext';
 import { NavigationProvider } from './components/navigation';
 
 // Utils
-import { getApiUrl } from './utils/config';
 import { updateBaseUrl } from './services/api';
 import { testApiConfiguration } from './utils/api-test';
 

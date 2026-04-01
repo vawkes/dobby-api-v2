@@ -10,7 +10,7 @@ import { useTheme, type Theme } from '../../hooks/use-theme';
  * <ThemeToggle />
  */
 export const ThemeToggle: React.FC<{ className?: string }> = ({ className }) => {
-    const { theme, setTheme, effectiveTheme } = useTheme();
+    const { setTheme, effectiveTheme } = useTheme();
 
     const handleToggle = () => {
         // Simple toggle between light and dark

@@ -1,11 +1,10 @@
 import { Hono } from "hono";
-import { DynamoDB } from "@aws-sdk/client-dynamodb";
+import { createDynamoDBClient } from '../../shared/database/dynamodb';
 import { unmarshall } from "@aws-sdk/util-dynamodb";
 import { devicesSchema, deviceSchema, deviceDataSchema, deviceIdSchema } from './devicesSchema.ts';
 import { describeRoute } from 'hono-openapi';
 import { resolver } from 'hono-openapi/zod'
-import { QueryCommand } from "@aws-sdk/client-dynamodb";
-import { getUserFromContext, getUserAccessibleDevices, checkUserDeviceAccess, UserContext } from '../utils/deviceAccess.ts';
+import { getUserFromContext, getUserAccessibleDevices } from '../utils/deviceAccess.ts';
 import { requirePermission, requireDevicePermission, Action } from '../utils/permissions.ts';
 import { resolveDeviceIdForCommunication, resolveDeviceIdForResponse } from '../utils/deviceIdMapping.ts';
 
@@ -18,6 +17,7 @@ interface ValidationIssue {
 }
 
 const app = new Hono()
+const describeRouteCompat = (options: unknown) => describeRoute(options as never);
 
 // Transform DynamoDB fields to API schema fields
 const transformDeviceData = (device: any) => {
@@ -47,7 +47,7 @@ const transformDeviceData = (device: any) => {
 
 
 app.get('/',
-    describeRoute({
+    describeRouteCompat({
         tags: ['Devices'],
         summary: 'Fetch all accessible devices',
         description: 'Retrieves a list of all devices that the authenticated user has access to.',
@@ -93,7 +93,7 @@ app.get('/',
     async (c) => {
         try {
             console.log('Starting device fetch operation');
-            const dynamodb = new DynamoDB({ region: "us-east-1" });
+            const dynamodb = createDynamoDBClient();
 
             // Get user from context (set by auth middleware)
             const user = getUserFromContext(c);
@@ -211,7 +211,7 @@ app.get('/',
     })
 
 app.get('/:deviceId',
-    describeRoute({
+    describeRouteCompat({
         tags: ['Devices'],
         summary: 'Fetch a single accessible device',
         description: 'Retrieves details for a specific device, identified by its 6-digit ID, if accessible to the authenticated user.',
@@ -273,7 +273,7 @@ app.get('/:deviceId',
     async (c) => {
         try {
             const deviceId = c.req.param('deviceId');
-            const dynamodb = new DynamoDB({ "region": "us-east-1" });
+            const dynamodb = createDynamoDBClient();
 
             // Validate device ID format
             const validationResult = deviceIdSchema.safeParse(deviceId);
@@ -326,33 +326,6 @@ app.get('/:deviceId',
             }
 
             return c.json(singleDeviceParseResult.data);
-
-            // Use safeParse for more resilient validation
-            const parseResult = deviceSchema.safeParse(device);
-
-            if (!parseResult.success) {
-                console.error('Device schema validation failed:', parseResult.error);
-                console.error('Device data that failed validation:', device);
-
-                // Log details about the validation errors
-                parseResult.error.issues.forEach((issue: ValidationIssue, index: number) => {
-                    console.error(`Validation issue ${index + 1}:`, {
-                        path: issue.path,
-                        message: issue.message,
-                        received: issue.received,
-                        expected: issue.expected
-                    });
-                });
-
-                // Return the device data anyway but with a warning
-                console.warn('Returning device data despite validation errors');
-                return c.json({
-                    ...device,
-                    _validation_warnings: parseResult.error.issues.map((issue: ValidationIssue) => issue.message)
-                });
-            }
-
-            return c.json(parseResult.data);
         } catch (error) {
             console.error('Error fetching device:', error);
             const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
@@ -361,7 +334,7 @@ app.get('/:deviceId',
     })
 
 app.get('/:deviceId/data',
-    describeRoute({
+    describeRouteCompat({
         tags: ['Devices'],
         summary: 'Get device time series data',
         description: 'Fetch historical data points for a specific device with optional time range filtering.',
@@ -425,7 +398,7 @@ app.get('/:deviceId/data',
     async (c) => {
         try {
             const deviceId = c.req.param('deviceId');
-            const dynamodb = new DynamoDB({ "region": "us-east-1" });
+            const dynamodb = createDynamoDBClient();
 
             // Validate device ID format
             const validationResult = deviceIdSchema.safeParse(deviceId);
