@@ -240,7 +240,23 @@
   }
 }
 
+@keyframes statusPulse {
+  0% {
+    box-shadow: 0 0 0 0 rgb(239 68 68 / 0.35);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgb(239 68 68 / 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgb(239 68 68 / 0);
+  }
+}
+
 /* Progress bar utility class */
 .progress-indeterminate {
   animation: progress-indeterminate 1.5s infinite linear;
+}
+
+.status-pulse {
+  animation: statusPulse 2s infinite;
 }

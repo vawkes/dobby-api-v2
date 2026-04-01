@@ -1,184 +1,326 @@
-import React, { useEffect, useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import {
+  FiAlertCircle,
+  FiCheckCircle,
+  FiClock,
+  FiRefreshCw,
+  FiSearch,
+  FiWifiOff,
+} from 'react-icons/fi';
 import { deviceAPI } from '../services/api.ts';
 import { Device } from '../types/index.ts';
-import { FiAlertCircle, FiCheckCircle, FiSearch } from 'react-icons/fi';
 import { DataTable, deviceColumns } from '../components/data/index.ts';
 import { Button } from '../components/ui/Button.tsx';
 import { getDeviceTypeDescription } from '../utils/deviceTypes.ts';
 
-// Helper function to check if a date is within 1 day of now (kept for filtering logic)
-const isWithinOneDay = (dateString?: string): boolean => {
-    if (!dateString) return false;
-    try {
-        const date = new Date(dateString);
-        const now = new Date();
-        const oneDayMs = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
-        return (now.getTime() - date.getTime()) < oneDayMs;
-    } catch (e) {
-        return false;
-    }
+type DeviceStatus = 'online' | 'degraded' | 'offline' | 'no_data';
+
+const hoursSince = (dateString?: string): number | null => {
+  if (!dateString) return null;
+  try {
+    const date = new Date(dateString);
+    const now = new Date();
+    return (now.getTime() - date.getTime()) / (1000 * 60 * 60);
+  } catch (e) {
+    return null;
+  }
 };
+
+const getDeviceStatus = (device: Device): DeviceStatus => {
+  const ageHours = hoursSince(device.updated_at);
+  if (ageHours === null) return 'no_data';
+  if (ageHours > 24) return 'offline';
+  if (ageHours > 4) return 'degraded';
+  if (device.last_rx_rssi !== undefined && device.last_rx_rssi <= -85) return 'degraded';
+  return 'online';
+};
+
+const statusPriority: Record<DeviceStatus, number> = {
+  offline: 0,
+  no_data: 1,
+  degraded: 2,
+  online: 3,
+};
+
+const isAttentionStatus = (status: DeviceStatus): boolean =>
+  status === 'offline' || status === 'degraded' || status === 'no_data';
 
 const Devices: React.FC = () => {
-    const navigate = useNavigate();
-    const [devices, setDevices] = useState<Device[]>([]);
-    const [filteredDevices, setFilteredDevices] = useState<Device[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
-    const [searchTerm, setSearchTerm] = useState('');
+  const navigate = useNavigate();
+  const [devices, setDevices] = useState<Device[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [lastRefreshAt, setLastRefreshAt] = useState<Date | null>(null);
 
-    // Get URL search parameters
-    const location = useLocation();
-    const searchParams = new URLSearchParams(location.search);
-    const filterParam = searchParams.get('filter');
+  const location = useLocation();
+  const searchParams = new URLSearchParams(location.search);
+  const filterParam = searchParams.get('filter') || 'all';
 
-    useEffect(() => {
-        const fetchDevices = async () => {
-            try {
-                setIsLoading(true);
-                const data = await deviceAPI.getAllDevices();
-                console.log("Device data:", data);
-                setDevices(data);
-                setFilteredDevices(data);
-            } catch (err) {
-                console.error('Error fetching devices:', err);
-                setError('Failed to fetch devices. Please try again later.');
-            } finally {
-                setIsLoading(false);
-            }
-        };
+  const fetchDevices = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      const data = await deviceAPI.getAllDevices();
+      setDevices(data);
+      setLastRefreshAt(new Date());
+    } catch (err) {
+      console.error('Error fetching devices:', err);
+      setError('Failed to fetch devices. Please try again later.');
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
-        fetchDevices();
-    }, []);
+  useEffect(() => {
+    fetchDevices();
+  }, [fetchDevices]);
 
-    useEffect(() => {
-        // Apply filters based on URL parameters and search term
-        let result = [...devices];
+  const statusSummary = useMemo(() => {
+    const summary = {
+      online: 0,
+      degraded: 0,
+      offline: 0,
+      no_data: 0,
+      weakSignal: 0,
+    };
 
-        // Apply filter parameter
-        if (filterParam === 'attention') {
-            // Filter for devices that need attention (updated_at is null or older than 1 day)
-            result = result.filter(device => !device.updated_at || !isWithinOneDay(device.updated_at));
-        } else if (filterParam === 'healthy') {
-            // Filter for healthy devices (updated_at is within 1 day)
-            result = result.filter(device => device.updated_at && isWithinOneDay(device.updated_at));
-        }
+    for (const device of devices) {
+      const status = getDeviceStatus(device);
+      summary[status] += 1;
+      if (device.last_rx_rssi !== undefined && device.last_rx_rssi <= -85) {
+        summary.weakSignal += 1;
+      }
+    }
 
-        // Apply search term
-        if (searchTerm) {
-            const term = searchTerm.toLowerCase();
-            result = result.filter(
-                device => {
-                    // Get the device type description for searching
-                    const deviceTypeInfo = getDeviceTypeDescription(device.device_type);
-                    const deviceTypeText = deviceTypeInfo.hexCode
-                        ? `${deviceTypeInfo.description.toLowerCase()} ${deviceTypeInfo.hexCode.toLowerCase()}`
-                        : deviceTypeInfo.description.toLowerCase();
-                    
-                    return (
-                        device.model_number.toLowerCase().includes(term) ||
-                        device.serial_number.toLowerCase().includes(term) ||
-                        deviceTypeText.includes(term) ||
-                        device.firmware_version.toLowerCase().includes(term) ||
-                        device.device_id.toLowerCase().includes(term)
-                    );
-                }
-            );
-        }
+    return summary;
+  }, [devices]);
 
-        setFilteredDevices(result);
-    }, [devices, filterParam, searchTerm]);
+  const filteredDevices = useMemo(() => {
+    let result = devices.filter(device => {
+      const status = getDeviceStatus(device);
+      if (filterParam === 'attention') return isAttentionStatus(status);
+      if (filterParam === 'healthy' || filterParam === 'online') return status === 'online';
+      if (filterParam === 'degraded') return status === 'degraded';
+      if (filterParam === 'offline') return status === 'offline';
+      if (filterParam === 'no_data') return status === 'no_data';
+      if (filterParam === 'weak_signal') return (device.last_rx_rssi ?? 0) <= -85;
+      return true;
+    });
 
-    return (
-        <div className="min-h-screen bg-background">
-            <main>
-                <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-                    {isLoading ? (
-                        <div className="flex justify-center items-center h-64">
-                            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-600"></div>
-                        </div>
-                    ) : error ? (
-                        <div className="bg-red-50 border-l-4 border-red-600 p-4 mb-4 dark:bg-red-900/20 dark:border-red-500">
-                            <div className="flex">
-                                <div className="flex-shrink-0">
-                                    <FiAlertCircle className="h-5 w-5 text-red-600 dark:text-red-400" />
-                                </div>
-                                <div className="ml-3">
-                                    <p className="text-sm text-red-800 dark:text-red-200">{error}</p>
-                                </div>
-                            </div>
-                        </div>
-                    ) : (
-                        <>
-                            <div className="mb-8">
-                                <h2 className="text-3xl font-bold text-foreground">Devices</h2>
-                                <p className="mt-2 text-muted-foreground">
-                                    Manage and monitor all your connected devices.
-                                </p>
-                            </div>
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      result = result.filter(device => {
+        const deviceTypeInfo = getDeviceTypeDescription(device.device_type);
+        const deviceTypeText = deviceTypeInfo.hexCode
+          ? `${deviceTypeInfo.description.toLowerCase()} ${deviceTypeInfo.hexCode.toLowerCase()}`
+          : deviceTypeInfo.description.toLowerCase();
 
-                            <div className="mb-6">
-                                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                                    <div className="relative rounded-md shadow-sm max-w-md">
-                                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                            <FiSearch className="h-5 w-5 text-muted-foreground" />
-                                        </div>
-                                        <input
-                                            type="text"
-                                            className="focus:ring-blue-600 focus:border-blue-600 dark:focus:ring-blue-400 dark:focus:border-blue-400 block w-full pl-10 pr-12 py-2 sm:text-sm border-border rounded-md bg-background text-foreground placeholder:text-muted-foreground"
-                                            placeholder="Search devices..."
-                                            value={searchTerm}
-                                            onChange={(e) => setSearchTerm(e.target.value)}
-                                        />
-                                    </div>
+        return (
+          device.model_number.toLowerCase().includes(term) ||
+          device.serial_number.toLowerCase().includes(term) ||
+          deviceTypeText.includes(term) ||
+          device.firmware_version.toLowerCase().includes(term) ||
+          device.device_id.toLowerCase().includes(term)
+        );
+      });
+    }
 
-                                    <div className="flex space-x-2">
-                                        <Button
-                                            variant={!filterParam ? "primary" : "outline"}
-                                            size="sm"
-                                            onClick={() => navigate('/devices')}
-                                        >
-                                            All
-                                        </Button>
-                                        <Button
-                                            variant={filterParam === 'attention' ? "danger" : "outline"}
-                                            size="sm"
-                                            onClick={() => navigate('/devices?filter=attention')}
-                                            icon={<FiAlertCircle className="h-4 w-4" />}
-                                        >
-                                            Needs Attention
-                                        </Button>
-                                        <Button
-                                            variant={filterParam === 'healthy' ? "primary" : "outline"}
-                                            size="sm"
-                                            onClick={() => navigate('/devices?filter=healthy')}
-                                            icon={<FiCheckCircle className="h-4 w-4" />}
-                                            className={filterParam === 'healthy' ? "bg-green-600 hover:bg-green-700 focus:ring-green-600" : ""}
-                                        >
-                                            Healthy
-                                        </Button>
-                                    </div>
-                                </div>
-                            </div>
+    return result.sort((a, b) => {
+      const statusA = getDeviceStatus(a);
+      const statusB = getDeviceStatus(b);
+      const bySeverity = statusPriority[statusA] - statusPriority[statusB];
+      if (bySeverity !== 0) return bySeverity;
 
-                            <DataTable
-                                data={filteredDevices}
-                                columns={deviceColumns}
-                                loading={isLoading}
-                                error={error || undefined}
-                                globalFilter={searchTerm}
-                                onGlobalFilterChange={setSearchTerm}
-                                onRowClick={(device) => navigate(`/devices/${device.device_id}`)}
-                                emptyMessage="No devices found matching your criteria."
-                                pageSize={25}
-                            />
-                        </>
-                    )}
-                </div>
-            </main>
+      const ageA = hoursSince(a.updated_at);
+      const ageB = hoursSince(b.updated_at);
+      if (ageA === null && ageB === null) return 0;
+      if (ageA === null) return -1;
+      if (ageB === null) return 1;
+      return ageB - ageA;
+    });
+  }, [devices, filterParam, searchTerm]);
+
+  const attentionCount = statusSummary.offline + statusSummary.degraded + statusSummary.no_data;
+  const attentionPct = devices.length > 0 ? Math.round((attentionCount / devices.length) * 100) : 0;
+
+  return (
+    <section aria-labelledby='devices-heading'>
+      {isLoading ? (
+        <div className='flex justify-center items-center h-64' role='status' aria-live='polite'>
+          <div className='animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-600' />
+          <span className='sr-only'>Loading devices</span>
         </div>
-    );
+      ) : error ? (
+        <div className='bg-red-50 border-l-4 border-red-600 p-4 mb-4 dark:bg-red-900/20 dark:border-red-500'>
+          <div className='flex'>
+            <div className='flex-shrink-0'>
+              <FiAlertCircle className='h-5 w-5 text-red-600 dark:text-red-400' />
+            </div>
+            <div className='ml-3'>
+              <p className='text-sm text-red-800 dark:text-red-200'>{error}</p>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <>
+          <div className='mb-8'>
+            <h1 id='devices-heading' className='text-3xl font-bold text-foreground'>
+              Fleet Devices
+            </h1>
+            <p className='mt-2 text-muted-foreground'>
+              Severity-sorted device list for utility operations triage.
+            </p>
+          </div>
+
+          <div className='mb-6 rounded-xl border border-border bg-card p-4 md:p-5'>
+            <div className='flex flex-col gap-4 md:flex-row md:items-center md:justify-between'>
+              <div className='relative rounded-md max-w-md w-full' role='search'>
+                <label htmlFor='devices-search' className='sr-only'>
+                  Search devices by model, serial, type, firmware, or device ID
+                </label>
+                <div className='absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none'>
+                  <FiSearch className='h-5 w-5 text-muted-foreground' />
+                </div>
+                <input
+                  id='devices-search'
+                  type='search'
+                  className='focus:ring-blue-600 focus:border-blue-600 dark:focus:ring-blue-400 dark:focus:border-blue-400 block w-full pl-10 pr-12 py-2 sm:text-sm border-border rounded-md bg-background text-foreground placeholder:text-muted-foreground'
+                  placeholder='Search device ID, serial, model, type...'
+                  value={searchTerm}
+                  onChange={e => setSearchTerm(e.target.value)}
+                  spellCheck={false}
+                  autoComplete='off'
+                  aria-describedby='devices-results-summary'
+                />
+              </div>
+
+              <div className='flex items-center gap-3'>
+                <p className='text-xs text-muted-foreground flex items-center gap-1 whitespace-nowrap'>
+                  <FiClock className='h-3.5 w-3.5' />
+                  Last refresh: {lastRefreshAt ? lastRefreshAt.toLocaleTimeString() : 'Pending'}
+                </p>
+                <Button
+                  variant='outline'
+                  size='sm'
+                  onClick={fetchDevices}
+                  icon={<FiRefreshCw className='h-4 w-4' />}
+                >
+                  Refresh
+                </Button>
+              </div>
+            </div>
+
+            <div className='mt-4 grid grid-cols-2 md:grid-cols-5 gap-3'>
+              <div className='rounded-lg border border-red-200/60 dark:border-red-900/60 p-3'>
+                <p className='text-xs uppercase tracking-wide text-muted-foreground'>Attention</p>
+                <p className='mt-1 text-xl font-semibold text-foreground'>{attentionCount}</p>
+                <p className='text-xs text-muted-foreground'>{attentionPct}% of fleet</p>
+              </div>
+              <div className='rounded-lg border border-emerald-200/60 dark:border-emerald-900/60 p-3'>
+                <p className='text-xs uppercase tracking-wide text-muted-foreground'>Online</p>
+                <p className='mt-1 text-xl font-semibold text-foreground'>{statusSummary.online}</p>
+              </div>
+              <div className='rounded-lg border border-amber-200/60 dark:border-amber-900/60 p-3'>
+                <p className='text-xs uppercase tracking-wide text-muted-foreground'>Degraded</p>
+                <p className='mt-1 text-xl font-semibold text-foreground'>{statusSummary.degraded}</p>
+              </div>
+              <div className='rounded-lg border border-red-200/60 dark:border-red-900/60 p-3'>
+                <p className='text-xs uppercase tracking-wide text-muted-foreground'>Offline</p>
+                <p className='mt-1 text-xl font-semibold text-foreground'>{statusSummary.offline}</p>
+              </div>
+              <div className='rounded-lg border border-border p-3'>
+                <p className='text-xs uppercase tracking-wide text-muted-foreground'>Weak RSSI</p>
+                <p className='mt-1 text-xl font-semibold text-foreground'>{statusSummary.weakSignal}</p>
+                <p className='text-xs text-muted-foreground'>≤ -85 dBm</p>
+              </div>
+            </div>
+
+            <div className='mt-4 flex flex-wrap gap-2'>
+              <Button
+                variant={filterParam === 'all' ? 'primary' : 'outline'}
+                size='sm'
+                onClick={() => navigate('/devices')}
+              >
+                All
+              </Button>
+              <Button
+                variant={filterParam === 'attention' ? 'danger' : 'outline'}
+                size='sm'
+                onClick={() => navigate('/devices?filter=attention')}
+                icon={<FiAlertCircle className='h-4 w-4' />}
+              >
+                Attention
+              </Button>
+              <Button
+                variant={filterParam === 'online' || filterParam === 'healthy' ? 'primary' : 'outline'}
+                size='sm'
+                onClick={() => navigate('/devices?filter=online')}
+                icon={<FiCheckCircle className='h-4 w-4' />}
+                className={
+                  filterParam === 'online' || filterParam === 'healthy'
+                    ? 'bg-green-600 hover:bg-green-700 focus:ring-green-600'
+                    : ''
+                }
+              >
+                Online
+              </Button>
+              <Button
+                variant={filterParam === 'degraded' ? 'danger' : 'outline'}
+                size='sm'
+                onClick={() => navigate('/devices?filter=degraded')}
+              >
+                Degraded
+              </Button>
+              <Button
+                variant={filterParam === 'offline' ? 'danger' : 'outline'}
+                size='sm'
+                onClick={() => navigate('/devices?filter=offline')}
+                icon={<FiWifiOff className='h-4 w-4' />}
+              >
+                Offline
+              </Button>
+              <Button
+                variant={filterParam === 'no_data' ? 'danger' : 'outline'}
+                size='sm'
+                onClick={() => navigate('/devices?filter=no_data')}
+              >
+                No Data
+              </Button>
+              <Button
+                variant={filterParam === 'weak_signal' ? 'danger' : 'outline'}
+                size='sm'
+                onClick={() => navigate('/devices?filter=weak_signal')}
+              >
+                Weak Signal
+              </Button>
+            </div>
+
+            <p
+              id='devices-results-summary'
+              className='mt-3 text-sm text-muted-foreground'
+              aria-live='polite'
+            >
+              Showing {filteredDevices.length} of {devices.length} devices. Sorted by severity first.
+            </p>
+          </div>
+
+          <DataTable
+            data={filteredDevices}
+            columns={deviceColumns}
+            loading={isLoading}
+            error={error || undefined}
+            globalFilter={searchTerm}
+            onGlobalFilterChange={setSearchTerm}
+            onRowClick={device => navigate(`/devices/${device.device_id}`)}
+            emptyMessage='No devices found matching your criteria.'
+            pageSize={25}
+          />
+        </>
+      )}
+    </section>
+  );
 };
 
-export default Devices; 
+export default Devices;
