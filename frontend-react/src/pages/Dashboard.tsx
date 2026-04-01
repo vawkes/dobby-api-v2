@@ -1,261 +1,371 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { deviceAPI } from '../services/api';
 import { Device } from '../types';
-import { FiGrid, FiAlertCircle, FiCheckCircle } from 'react-icons/fi';
+import {
+  FiActivity,
+  FiAlertCircle,
+  FiCheckCircle,
+  FiClock,
+  FiRadio,
+  FiRefreshCw,
+  FiWifi,
+  FiXCircle,
+} from 'react-icons/fi';
 
-// Helper function to get link type name
 const getLinkTypeName = (linkType?: number): string => {
-    if (linkType === 1) return 'BLE';
-    if (linkType === 4) return 'LoRA';
-    return 'Unknown';
+  if (linkType === 1) return 'BLE';
+  if (linkType === 4) return 'LoRA';
+  return 'Unknown';
 };
 
-// Helper function to check if a date is within 1 day of now
-const isWithinOneDay = (dateString?: string): boolean => {
-    if (!dateString) return false;
-    try {
-        const date = new Date(dateString);
-        const now = new Date();
-        const oneDayMs = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
-        return (now.getTime() - date.getTime()) < oneDayMs;
-    } catch (e) {
-        return false;
-    }
+const hoursSince = (dateString?: string): number | null => {
+  if (!dateString) return null;
+  try {
+    const date = new Date(dateString);
+    const now = new Date();
+    return (now.getTime() - date.getTime()) / (1000 * 60 * 60);
+  } catch (e) {
+    return null;
+  }
+};
+
+type DeviceStatus = 'online' | 'degraded' | 'offline' | 'no_data';
+
+const getDeviceStatus = (device: Device): DeviceStatus => {
+  const ageHours = hoursSince(device.updated_at);
+
+  if (ageHours === null) return 'no_data';
+  if (ageHours > 24) return 'offline';
+  if (ageHours > 4) return 'degraded';
+  if (device.last_rx_rssi !== undefined && device.last_rx_rssi <= -85) return 'degraded';
+  return 'online';
+};
+
+const statusLabel: Record<DeviceStatus, string> = {
+  online: 'Online',
+  degraded: 'Degraded',
+  offline: 'Offline',
+  no_data: 'No Data',
+};
+
+const statusBadgeClass: Record<DeviceStatus, string> = {
+  online: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300',
+  degraded: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300',
+  offline: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300',
+  no_data: 'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200',
+};
+
+const statusPriority: Record<DeviceStatus, number> = {
+  offline: 0,
+  no_data: 1,
+  degraded: 2,
+  online: 3,
+};
+
+const formatTimeAgo = (dateString?: string): string => {
+  if (!dateString) return 'No check-ins';
+  const ageHours = hoursSince(dateString);
+  if (ageHours === null) return 'Unknown';
+  if (ageHours < 1) return `${Math.max(1, Math.round(ageHours * 60))}m ago`;
+  if (ageHours < 24) return `${Math.round(ageHours)}h ago`;
+  return `${Math.round(ageHours / 24)}d ago`;
 };
 
 const Dashboard: React.FC = () => {
-    const { user } = useAuth();
-    const [devices, setDevices] = useState<Device[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
+  const { user } = useAuth();
+  const [devices, setDevices] = useState<Device[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [lastRefreshAt, setLastRefreshAt] = useState<Date | null>(null);
 
-    useEffect(() => {
-        const fetchDevices = async () => {
-            try {
-                setIsLoading(true);
-                const data = await deviceAPI.getAllDevices();
-                console.log("Dashboard device data:", data);
-                setDevices(data);
-            } catch (err) {
-                console.error('Error fetching devices:', err);
-                setError('Failed to fetch devices. Please try again later.');
-            } finally {
-                setIsLoading(false);
-            }
-        };
+  const fetchDevices = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      const data = await deviceAPI.getAllDevices();
+      setDevices(data);
+      setLastRefreshAt(new Date());
+    } catch (err) {
+      console.error('Error fetching devices:', err);
+      setError('Failed to fetch devices. Please try again later.');
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
-        fetchDevices();
-    }, []);
+  useEffect(() => {
+    fetchDevices();
+  }, [fetchDevices]);
 
-    // Update health status logic based on updated_at time
-    const devicesNeedingAttention = devices.filter(device => !device.updated_at || !isWithinOneDay(device.updated_at));
-    const healthyDevices = devices.filter(device => device.updated_at && isWithinOneDay(device.updated_at));
+  const statusSummary = useMemo(() => {
+    const summary = {
+      online: 0,
+      degraded: 0,
+      offline: 0,
+      no_data: 0,
+      weakSignal: 0,
+      lora: 0,
+      ble: 0,
+      unknownLink: 0,
+    };
 
-    // Calculate percentages
-    const needsAttentionCount = devicesNeedingAttention.length;
-    const healthyCount = healthyDevices.length;
-    const needsAttentionPercentage = devices.length > 0
-        ? Math.round((needsAttentionCount / devices.length) * 100)
-        : 0;
-    const healthyPercentage = devices.length > 0
-        ? Math.round((healthyCount / devices.length) * 100)
-        : 0;
+    for (const device of devices) {
+      const status = getDeviceStatus(device);
+      summary[status] += 1;
 
-    return (
-        <div className="min-h-screen bg-background">
-            <main>
-                <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-                    {isLoading ? (
-                        <div className="flex justify-center items-center h-64">
-                            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-600"></div>
-                        </div>
-                    ) : error ? (
-                        <div className="bg-red-50 border-l-4 border-red-600 p-4 mb-4 dark:bg-red-900/20 dark:border-red-500">
-                            <div className="flex">
-                                <div className="flex-shrink-0">
-                                    <FiAlertCircle className="h-5 w-5 text-red-600 dark:text-red-400" />
-                                </div>
-                                <div className="ml-3">
-                                    <p className="text-sm text-red-800 dark:text-red-200">{error}</p>
-                                </div>
-                            </div>
-                        </div>
-                    ) : (
-                        <>
-                            <div className="mb-8">
-                                <h2 className="text-3xl font-bold text-foreground">Dashboard</h2>
-                                <p className="mt-2 text-muted-foreground">
-                                    Welcome back{user?.name ? `, ${user.name}` : ''}! Here's an overview of your devices.
-                                </p>
-                            </div>
+      if (device.last_rx_rssi !== undefined && device.last_rx_rssi <= -85) {
+        summary.weakSignal += 1;
+      }
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-                                <div className="bg-card overflow-hidden shadow rounded-lg">
-                                    <div className="px-4 py-5 sm:p-6">
-                                        <div className="flex items-center">
-                                            <div className="flex-shrink-0 bg-blue-600 rounded-md p-3">
-                                                <FiGrid className="h-6 w-6 text-white" />
-                                            </div>
-                                            <div className="ml-5 w-0 flex-1">
-                                                <dl>
-                                                    <dt className="text-sm font-medium text-card-foreground truncate">
-                                                        Total Devices
-                                                    </dt>
-                                                    <dd className="flex items-baseline">
-                                                        <div className="text-2xl font-semibold text-card-foreground">
-                                                            {devices.length}
-                                                        </div>
-                                                    </dd>
-                                                </dl>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div className="bg-muted px-4 py-4 sm:px-6">
-                                        <div className="text-sm">
-                                            <Link
-                                                to="/devices"
-                                                className="font-medium text-blue-700 hover:text-blue-800"
-                                            >
-                                                View all devices
-                                            </Link>
-                                        </div>
-                                    </div>
-                                </div>
+      if (device.last_link_type === 4) summary.lora += 1;
+      else if (device.last_link_type === 1) summary.ble += 1;
+      else summary.unknownLink += 1;
+    }
 
-                                <div className="bg-card overflow-hidden shadow rounded-lg">
-                                    <div className="px-4 py-5 sm:p-6">
-                                        <div className="flex items-center">
-                                            <div className="flex-shrink-0 bg-red-600 rounded-md p-3">
-                                                <FiAlertCircle className="h-6 w-6 text-white" />
-                                            </div>
-                                            <div className="ml-5 w-0 flex-1">
-                                                <dl>
-                                                    <dt className="text-sm font-medium text-card-foreground truncate">
-                                                        Needs Attention
-                                                    </dt>
-                                                    <dd className="flex items-baseline">
-                                                        <div className="text-2xl font-semibold text-card-foreground">
-                                                            {devicesNeedingAttention.length}
-                                                        </div>
-                                                        <div className="ml-2 text-sm font-medium text-red-600">
-                                                            {needsAttentionPercentage}% of total
-                                                        </div>
-                                                    </dd>
-                                                </dl>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div className="bg-muted px-4 py-4 sm:px-6">
-                                        <div className="text-sm">
-                                            <Link
-                                                to="/devices?filter=attention"
-                                                className="font-medium text-red-700 hover:text-red-800"
-                                            >
-                                                View devices needing attention
-                                            </Link>
-                                        </div>
-                                    </div>
-                                </div>
+    return summary;
+  }, [devices]);
 
-                                <div className="bg-card overflow-hidden shadow rounded-lg">
-                                    <div className="px-4 py-5 sm:p-6">
-                                        <div className="flex items-center">
-                                            <div className="flex-shrink-0 bg-green-600 rounded-md p-3">
-                                                <FiCheckCircle className="h-6 w-6 text-white" />
-                                            </div>
-                                            <div className="ml-5 w-0 flex-1">
-                                                <dl>
-                                                    <dt className="text-sm font-medium text-card-foreground truncate">
-                                                        Healthy Devices
-                                                    </dt>
-                                                    <dd className="flex items-baseline">
-                                                        <div className="text-2xl font-semibold text-card-foreground">
-                                                            {healthyDevices.length}
-                                                        </div>
-                                                        <div className="ml-2 text-sm font-medium text-green-600">
-                                                            {healthyPercentage}% of total
-                                                        </div>
-                                                    </dd>
-                                                </dl>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div className="bg-muted px-4 py-4 sm:px-6">
-                                        <div className="text-sm">
-                                            <Link
-                                                to="/devices?filter=healthy"
-                                                className="font-medium text-green-700 hover:text-green-800"
-                                            >
-                                                View healthy devices
-                                            </Link>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+  const attentionQueue = useMemo(
+    () =>
+      devices
+        .map(device => ({
+          ...device,
+          status: getDeviceStatus(device),
+          ageHours: hoursSince(device.updated_at),
+        }))
+        .filter(device => device.status !== 'online')
+        .sort((a, b) => {
+          const byStatus = statusPriority[a.status] - statusPriority[b.status];
+          if (byStatus !== 0) return byStatus;
+          return (b.ageHours ?? 0) - (a.ageHours ?? 0);
+        }),
+    [devices],
+  );
 
-                            <div className="mb-8">
-                                <h2 className="text-xl font-bold text-foreground mb-4">Recent Activity</h2>
-                                <div className="bg-card shadow overflow-hidden sm:rounded-md">
-                                    <ul className="divide-y divide-border">
-                                        {devices.slice(0, 5).map((device) => {
-                                            // Determine health status based on updated_at time
-                                            const isHealthy = device.updated_at ? isWithinOneDay(device.updated_at) : false;
+  const onlinePercent =
+    devices.length > 0 ? Math.round((statusSummary.online / devices.length) * 100) : 0;
+  const attentionPercent =
+    devices.length > 0
+      ? Math.round(((statusSummary.offline + statusSummary.degraded + statusSummary.no_data) / devices.length) * 100)
+      : 0;
 
-                                            return (
-                                                <li key={device.device_id}>
-                                                    <Link
-                                                        to={`/devices/${device.device_id}`}
-                                                        className="block hover:bg-muted/50"
-                                                    >
-                                                        <div className="px-4 py-4 sm:px-6">
-                                                            <div className="flex items-center justify-between">
-                                                                <p className="text-sm font-medium text-blue-700 truncate">
-                                                                    {device.device_id}
-                                                                </p>
-                                                                <div className="ml-2 flex-shrink-0 flex">
-                                                                    <p className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${!isHealthy ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'
-                                                                        }`}>
-                                                                        {!isHealthy ? 'Needs Attention' : 'Healthy'}
-                                                                    </p>
-                                                                </div>
-                                                            </div>
-                                                            <div className="mt-2 sm:flex sm:justify-between">
-                                                                <div className="sm:flex flex-col">
-                                                                    {device.last_rx_rssi !== undefined && (
-                                                                        <p className="flex items-center text-sm text-card-foreground">
-                                                                            RSSI: {device.last_rx_rssi} dBm
-                                                                        </p>
-                                                                    )}
-                                                                </div>
-                                                                <div className="mt-2 flex flex-col items-end text-sm text-card-foreground sm:mt-0">
-                                                                    {device.last_link_type !== undefined && (
-                                                                        <p>
-                                                                            Link Type: {getLinkTypeName(device.last_link_type)}
-                                                                        </p>
-                                                                    )}
-                                                                    {device.updated_at && (
-                                                                        <p className="mt-1 text-xs">
-                                                                            Updated: {new Date(device.updated_at).toLocaleString()}
-                                                                        </p>
-                                                                    )}
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    </Link>
-                                                </li>
-                                            );
-                                        })}
-                                    </ul>
-                                </div>
-                            </div>
-                        </>
-                    )}
+  return (
+    <section aria-labelledby='dashboard-heading'>
+      <div className='py-2 space-y-6'>
+        {isLoading ? (
+          <div className='flex justify-center items-center h-64'>
+            <div className='animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-600'></div>
+          </div>
+        ) : error ? (
+          <div className='bg-red-50 border-l-4 border-red-600 p-4 mb-4 dark:bg-red-900/20 dark:border-red-500'>
+            <div className='flex'>
+              <div className='flex-shrink-0'>
+                <FiAlertCircle className='h-5 w-5 text-red-600 dark:text-red-400' />
+              </div>
+              <div className='ml-3'>
+                <p className='text-sm text-red-800 dark:text-red-200'>{error}</p>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className='space-y-6'>
+            <div className='flex flex-col gap-4 md:flex-row md:items-end md:justify-between'>
+              <div>
+                <h1 id='dashboard-heading' className='text-3xl font-bold text-foreground tracking-tight'>
+                  Fleet Operations
+                </h1>
+                <p className='mt-1 text-sm text-muted-foreground'>
+                  Utility device status, connectivity, and intervention queue
+                  {user?.name ? ` for ${user.name}` : ''}.
+                </p>
+              </div>
+              <div className='flex items-center gap-3'>
+                <p className='text-xs text-muted-foreground flex items-center gap-1'>
+                  <FiClock className='h-3.5 w-3.5' />
+                  Last refresh: {lastRefreshAt ? lastRefreshAt.toLocaleTimeString() : 'Pending'}
+                </p>
+                <button
+                  type='button'
+                  onClick={fetchDevices}
+                  className='inline-flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm font-medium text-foreground hover:bg-muted transition-colors'
+                >
+                  <FiRefreshCw className='h-4 w-4' />
+                  Refresh
+                </button>
+              </div>
+            </div>
+
+            <div className='rounded-xl border border-border bg-card p-4 md:p-6'>
+              <div className='grid grid-cols-2 gap-3 md:grid-cols-5'>
+                <div className='rounded-lg border border-emerald-200/60 dark:border-emerald-900/60 p-3'>
+                  <p className='text-xs uppercase tracking-wide text-muted-foreground'>Online</p>
+                  <p className='mt-1 text-2xl font-semibold text-foreground'>{statusSummary.online}</p>
+                  <p className='text-xs text-muted-foreground'>{onlinePercent}% of fleet</p>
                 </div>
-            </main>
-        </div>
-    );
+                <div className='rounded-lg border border-amber-200/60 dark:border-amber-900/60 p-3'>
+                  <p className='text-xs uppercase tracking-wide text-muted-foreground'>Degraded</p>
+                  <p className='mt-1 text-2xl font-semibold text-foreground'>{statusSummary.degraded}</p>
+                  <p className='text-xs text-muted-foreground'>Intermittent health</p>
+                </div>
+                <div className='rounded-lg border border-red-200/60 dark:border-red-900/60 p-3'>
+                  <p className='text-xs uppercase tracking-wide text-muted-foreground'>Offline</p>
+                  <p className='mt-1 text-2xl font-semibold text-foreground'>{statusSummary.offline}</p>
+                  <p className='text-xs text-muted-foreground'>No check-in {'>'} 24h</p>
+                </div>
+                <div className='rounded-lg border border-slate-300/70 dark:border-slate-600 p-3'>
+                  <p className='text-xs uppercase tracking-wide text-muted-foreground'>No Data</p>
+                  <p className='mt-1 text-2xl font-semibold text-foreground'>{statusSummary.no_data}</p>
+                  <p className='text-xs text-muted-foreground'>Never reported</p>
+                </div>
+                <div className='rounded-lg border border-border p-3'>
+                  <p className='text-xs uppercase tracking-wide text-muted-foreground'>Attention Load</p>
+                  <p className='mt-1 text-2xl font-semibold text-foreground'>{attentionPercent}%</p>
+                  <p className='text-xs text-muted-foreground'>
+                    {statusSummary.offline + statusSummary.degraded + statusSummary.no_data} devices
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className='grid grid-cols-1 xl:grid-cols-12 gap-6'>
+              <div className='xl:col-span-8 rounded-xl border border-border bg-card overflow-hidden'>
+                <div className='flex items-center justify-between px-4 py-3 border-b border-border'>
+                  <h2 className='text-base font-semibold text-foreground'>Attention Queue</h2>
+                  <Link
+                    to='/devices?filter=attention'
+                    className='text-sm font-medium text-blue-700 hover:text-blue-800'
+                  >
+                    Open full triage
+                  </Link>
+                </div>
+                {attentionQueue.length === 0 ? (
+                  <div className='p-8 text-center text-muted-foreground'>
+                    <FiCheckCircle className='mx-auto h-8 w-8 text-emerald-600' />
+                    <p className='mt-2'>No active attention items.</p>
+                  </div>
+                ) : (
+                  <ul className='divide-y divide-border'>
+                    {attentionQueue.slice(0, 8).map(device => (
+                      <li key={device.device_id}>
+                        <Link
+                          to={`/devices/${device.device_id}`}
+                          className='grid grid-cols-[1.2fr_auto_auto_auto] gap-3 items-center px-4 py-3 hover:bg-muted/50 transition-colors'
+                        >
+                          <div>
+                            <p className='text-sm font-semibold text-foreground'>{device.device_id}</p>
+                            <p className='text-xs text-muted-foreground'>
+                              {device.model_number} • {device.serial_number}
+                            </p>
+                          </div>
+                          <span
+                            className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-semibold ${
+                              statusBadgeClass[device.status]
+                            } ${device.status === 'offline' ? 'status-pulse' : ''}`}
+                          >
+                            {statusLabel[device.status]}
+                          </span>
+                          <span className='text-xs text-muted-foreground whitespace-nowrap'>
+                            {formatTimeAgo(device.updated_at)}
+                          </span>
+                          <span className='text-xs text-muted-foreground whitespace-nowrap'>
+                            {device.last_rx_rssi !== undefined ? `${device.last_rx_rssi} dBm` : 'No RSSI'}
+                          </span>
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+
+              <div className='xl:col-span-4 space-y-6'>
+                <div className='rounded-xl border border-border bg-card p-4'>
+                  <h2 className='text-base font-semibold text-foreground'>Connectivity Mix</h2>
+                  <div className='mt-4 space-y-3'>
+                    <div className='flex items-center justify-between text-sm'>
+                      <span className='inline-flex items-center gap-2 text-muted-foreground'>
+                        <FiWifi className='h-4 w-4 text-emerald-600' />
+                        LoRA
+                      </span>
+                      <span className='font-semibold text-foreground'>{statusSummary.lora}</span>
+                    </div>
+                    <div className='flex items-center justify-between text-sm'>
+                      <span className='inline-flex items-center gap-2 text-muted-foreground'>
+                        <FiRadio className='h-4 w-4 text-blue-600' />
+                        BLE
+                      </span>
+                      <span className='font-semibold text-foreground'>{statusSummary.ble}</span>
+                    </div>
+                    <div className='flex items-center justify-between text-sm'>
+                      <span className='inline-flex items-center gap-2 text-muted-foreground'>
+                        <FiAlertCircle className='h-4 w-4 text-slate-500' />
+                        Unknown
+                      </span>
+                      <span className='font-semibold text-foreground'>{statusSummary.unknownLink}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className='rounded-xl border border-border bg-card p-4'>
+                  <h2 className='text-base font-semibold text-foreground'>Signal Health</h2>
+                  <div className='mt-3 flex items-center justify-between text-sm'>
+                    <span className='inline-flex items-center gap-2 text-muted-foreground'>
+                      <FiXCircle className='h-4 w-4 text-amber-600' />
+                      Weak RSSI (≤ -85 dBm)
+                    </span>
+                    <span className='font-semibold text-foreground'>{statusSummary.weakSignal}</span>
+                  </div>
+                  <p className='mt-2 text-xs text-muted-foreground'>
+                    Use this to prioritize on-site investigation and communication channel shifts.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className='rounded-xl border border-border bg-card overflow-hidden'>
+              <div className='flex items-center justify-between px-4 py-3 border-b border-border'>
+                <h2 className='text-base font-semibold text-foreground'>Recent Check-ins</h2>
+                <Link to='/devices' className='text-sm font-medium text-blue-700 hover:text-blue-800'>
+                  View fleet
+                </Link>
+              </div>
+              <ul className='divide-y divide-border'>
+                {devices.slice(0, 6).map(device => {
+                  const status = getDeviceStatus(device);
+                  return (
+                    <li key={device.device_id}>
+                      <Link
+                        to={`/devices/${device.device_id}`}
+                        className='grid grid-cols-[1.2fr_auto_auto_auto] gap-3 items-center px-4 py-3 hover:bg-muted/50 transition-colors'
+                      >
+                        <div>
+                          <p className='text-sm font-semibold text-foreground'>{device.device_id}</p>
+                          <p className='text-xs text-muted-foreground'>{device.model_number}</p>
+                        </div>
+                        <span
+                          className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-semibold ${statusBadgeClass[status]}`}
+                        >
+                          {statusLabel[status]}
+                        </span>
+                        <span className='text-xs text-muted-foreground whitespace-nowrap'>
+                          {formatTimeAgo(device.updated_at)}
+                        </span>
+                        <span className='text-xs text-muted-foreground whitespace-nowrap flex items-center gap-1'>
+                          <FiActivity className='h-3.5 w-3.5' />
+                          {getLinkTypeName(device.last_link_type)}
+                        </span>
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          </div>
+        )}
+      </div>
+    </section>
+  );
 };
 
-export default Dashboard; 
+export default Dashboard;
