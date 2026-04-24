@@ -1,0 +1,7 @@
+interface:
+  display_name: "Internal: Dobby Build Reviewer"
+  short_description: "Internal read-only review role"
+  default_prompt: "Use $dobby-build-reviewer to review dobby-build changes without editing files."
+
+policy:
+  allow_implicit_invocation: false

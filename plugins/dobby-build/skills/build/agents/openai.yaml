@@ -1,0 +1,8 @@
+interface:
+  display_name: "Build"
+  short_description: "Spec-first repo workflow"
+  brand_color: "#0F766E"
+  default_prompt: "Use $build to implement a dobby-api-v2 feature from a pasted ticket."
+
+policy:
+  allow_implicit_invocation: false
