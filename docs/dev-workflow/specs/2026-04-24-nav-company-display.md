@@ -19,26 +19,27 @@ Show the active company name in the authenticated frontend navigation.
 - Mobile drawer shows the same company label in the user section.
 - Long company names truncate without breaking the navbar or drawer layout.
 - If no company name is available, navigation shows a neutral fallback instead of failing.
-- The change does not alter backend routes, auth enforcement, DynamoDB schema, or CDK resources.
+- The change adds a tenant-scoped authenticated endpoint for the current user's company summary.
+- The change does not alter existing auth enforcement, DynamoDB schema, or CDK resources.
 
 ## Constraints
 
 - Keep the implementation in `frontend-react/`.
 - Prefer existing auth context and navigation patterns.
 - Do not introduce a new company selector or tenant-switching behavior.
-- Do not broaden API permissions to retrieve companies.
+- Do not broaden API permissions to retrieve all companies.
+- New company lookup must be restricted to the authenticated user's own `CompanyUsers` rows.
 
 ## Non-Goals
 
-- No backend API contract change.
 - No company switching UX.
 - No changes to device/event behavior.
 - No CDK/deployment changes.
 
 ## Adversarial Review
 
-- API contract drift: avoid changing auth or companies route responses unless existing data is insufficient.
-- Auth / tenant boundaries: only display the company name already associated with the authenticated user context; do not scan all companies for ordinary users.
+- API contract drift: add a narrow `GET /companies/me` response instead of changing existing auth or companies route responses.
+- Auth / tenant boundaries: only return companies linked to the authenticated user's `sub`; do not scan all companies for ordinary users.
 - Device / event side effects: none expected because this is display-only frontend work.
 - DynamoDB impact: none expected.
 - CDK / deploy blast radius: none expected.
@@ -48,8 +49,9 @@ Show the active company name in the authenticated frontend navigation.
 
 ## Implementation Plan
 
-1. Add optional company fields to the frontend user type and auth context localStorage parsing.
-2. Map available auth/login response company fields onto `user`.
-3. Render a compact company label in desktop `ResponsiveNavigation`.
-4. Render the same label in `MobileNavigation`.
-5. Verify with frontend build and targeted tests where practical.
+1. Add `GET /companies/me` to return the authenticated user's active company summary and accessible companies.
+2. Add frontend company API access and optional company fields to the frontend user type.
+3. Populate auth context company fields from login token/response when available, then from `GET /companies/me`.
+4. Render a compact company label in desktop `ResponsiveNavigation`.
+5. Render the same label in `MobileNavigation`.
+6. Verify with frontend build, backend unit coverage, and targeted frontend tests where practical.

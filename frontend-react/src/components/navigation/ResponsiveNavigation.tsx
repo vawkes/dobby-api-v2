@@ -6,6 +6,7 @@ import { useTheme } from '../../hooks/use-theme';
 import { ThemeToggle } from '../ui/ThemeToggle';
 import { Button } from '../ui/Button';
 import { MobileNavigation } from './MobileNavigation';
+import { CompanyDisplay } from './CompanyDisplay';
 import { cn } from '../../lib/utils';
 
 /**
@@ -93,6 +94,7 @@ export const ResponsiveNavigation: React.FC = () => {
                             <>
                                 {user && (
                                     <div className="hidden md:flex md:items-center md:space-x-4">
+                                        <CompanyDisplay companyName={user.companyName} />
                                         <div className="text-sm">
                                             <span className="text-muted-foreground">
                                                 {user.email}

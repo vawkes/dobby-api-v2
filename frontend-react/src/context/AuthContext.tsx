@@ -1,7 +1,17 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
-import { authAPI } from '../services/api';
+import { authAPI, companiesAPI } from '../services/api';
 import { User, LoginCredentials, RegistrationData } from '../types/auth';
 import { toast } from 'react-toastify';
+
+interface AuthResponseUserFields {
+    companyId?: string;
+    company_id?: string;
+    companyName?: string;
+    company_name?: string;
+    'custom:company_id'?: string;
+    'custom:company_name'?: string;
+    name?: string;
+}
 
 interface AuthContextType {
     user: User | null;
@@ -16,10 +26,76 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const decodeBase64Url = (value: string): string => {
+    const base64 = value.replace(/-/g, '+').replace(/_/g, '/');
+    const paddedBase64 = base64.padEnd(base64.length + ((4 - (base64.length % 4)) % 4), '=');
+    return atob(paddedBase64);
+};
+
+const decodeJwtPayload = (token: string): AuthResponseUserFields => {
+    try {
+        const payload = token.replace(/^Bearer\s+/i, '').split('.')[1];
+        if (!payload) {
+            return {};
+        }
+
+        return JSON.parse(decodeBase64Url(payload));
+    } catch (error) {
+        console.error('Error parsing JWT user fields:', error);
+        return {};
+    }
+};
+
+const buildUserFromAuthResponse = (email: string, response: AuthResponseUserFields & { token?: string }): User => {
+    const tokenFields = response.token ? decodeJwtPayload(response.token) : {};
+
+    return {
+        email,
+        name: response.name || tokenFields.name || '',
+        companyId:
+            response.companyId ||
+            response.company_id ||
+            response['custom:company_id'] ||
+            tokenFields.companyId ||
+            tokenFields.company_id ||
+            tokenFields['custom:company_id'],
+        companyName:
+            response.companyName ||
+            response.company_name ||
+            response['custom:company_name'] ||
+            tokenFields.companyName ||
+            tokenFields.company_name ||
+            tokenFields['custom:company_name'],
+    };
+};
+
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
     const [user, setUser] = useState<User | null>(null);
     const [token, setToken] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+
+    const enrichUserWithCompany = useCallback(async (baseUser: User): Promise<User> => {
+        if (baseUser.companyName) {
+            return baseUser;
+        }
+
+        try {
+            const companySummary = await companiesAPI.getMyCompanies();
+            const activeCompany = companySummary.activeCompany;
+            if (!activeCompany) {
+                return baseUser;
+            }
+
+            return {
+                ...baseUser,
+                companyId: activeCompany.id,
+                companyName: activeCompany.name,
+            };
+        } catch (error) {
+            console.error('Failed to load current user company:', error);
+            return baseUser;
+        }
+    }, []);
 
     // Create a memoized version of the refreshTokenIfNeeded function to avoid useEffect dependency issues
     const refreshTokenIfNeeded = useCallback(async (): Promise<boolean> => {
@@ -71,7 +147,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                     // Token format: header.payload.signature
                     const payload = storedToken.split('.')[1];
                     if (payload) {
-                        const decodedPayload = JSON.parse(atob(payload));
+                        const decodedPayload = JSON.parse(decodeBase64Url(payload));
                         const expirationTime = decodedPayload.exp * 1000; // Convert to milliseconds
                         const currentTime = Date.now();
 
@@ -101,11 +177,24 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                         setIsLoading(false);
                         return;
                     }
+
+                    try {
+                        const parsedUser = JSON.parse(storedUser);
+                        const enrichedUser = await enrichUserWithCompany(parsedUser);
+                        setUser(enrichedUser);
+                        localStorage.setItem('user', JSON.stringify(enrichedUser));
+                    } catch (error) {
+                        console.error('Error parsing stored user:', error);
+                        localStorage.removeItem('user');
+                    }
                 } else {
                     // Token is still valid
                     setToken(storedToken);
                     try {
-                        setUser(JSON.parse(storedUser));
+                        const parsedUser = JSON.parse(storedUser);
+                        const enrichedUser = await enrichUserWithCompany(parsedUser);
+                        setUser(enrichedUser);
+                        localStorage.setItem('user', JSON.stringify(enrichedUser));
                     } catch (error) {
                         console.error('Error parsing stored user:', error);
                         localStorage.removeItem('user');
@@ -117,7 +206,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         };
 
         initializeAuth();
-    }, [refreshTokenIfNeeded]);
+    }, [enrichUserWithCompany, refreshTokenIfNeeded]);
 
     const login = async (credentials: LoginCredentials) => {
         try {
@@ -145,10 +234,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             }
 
             // Create user object
-            const userObj: User = {
-                email: credentials.email,
-                name: response.name || '', // Use name from response if available
-            };
+            const userObj = await enrichUserWithCompany(buildUserFromAuthResponse(credentials.email, response));
 
             setUser(userObj);
             localStorage.setItem('user', JSON.stringify(userObj));

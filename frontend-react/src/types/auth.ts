@@ -36,4 +36,6 @@ export interface User {
     email: string;
     name: string;
     id?: string;
+    companyId?: string;
+    companyName?: string;
 } 
