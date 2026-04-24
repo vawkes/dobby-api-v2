@@ -64,4 +64,54 @@ describe('GET /companies/me', () => {
         });
         expect(body.companies).toHaveLength(2);
     });
+
+    it('returns 401 when the current user is missing from context', async () => {
+        const app = new Hono();
+        app.route('/companies', companies);
+
+        const response = await app.request('/companies/me');
+        const body = await response.json();
+
+        expect(response.status).toBe(401);
+        expect(body).toEqual({ error: 'User not authenticated' });
+        expect(createDynamoDBClient).not.toHaveBeenCalled();
+    });
+});
+
+describe('GET /companies/:companyId membership boundary', () => {
+    const dynamodb = {
+        query: jest.fn(),
+        getItem: jest.fn(),
+    };
+
+    beforeEach(() => {
+        jest.clearAllMocks();
+        (createDynamoDBClient as jest.Mock).mockReturnValue(dynamodb);
+    });
+
+    it('denies access when the user has general permission but not target company membership', async () => {
+        dynamodb.query.mockResolvedValue({
+            Items: [
+                marshall({
+                    company_id: 'company-1',
+                    user_id: 'user-1',
+                    role: 'COMPANY_ADMIN',
+                }),
+            ],
+        } as never);
+        dynamodb.getItem.mockResolvedValue({ Item: undefined } as never);
+
+        const response = await createTestApp().request('/companies/company-2');
+        const body = await response.json();
+
+        expect(response.status).toBe(403);
+        expect(body).toEqual({ error: 'Access denied to this company' });
+        expect(dynamodb.getItem).toHaveBeenCalledWith({
+            TableName: 'CompanyUsers',
+            Key: {
+                company_id: { S: 'company-2' },
+                user_id: { S: 'user-1' },
+            },
+        });
+    });
 });
