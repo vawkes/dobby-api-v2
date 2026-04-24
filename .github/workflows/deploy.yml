@@ -53,9 +53,9 @@ jobs:
           aws-region: ${{ vars.AWS_REGION || 'us-east-1' }}
 
       - name: Deploy
-        if: ${{ inputs.diff_only != 'true' }}
-        run: bun run deploy --env ${{ inputs.environment }} --ci
+        if: ${{ !inputs.diff_only }}
+        run: bun run cdk deploy --all --context environment=${{ inputs.environment }} --require-approval never
 
       - name: Diff only
-        if: ${{ inputs.diff_only == 'true' }}
-        run: bun run deploy --env ${{ inputs.environment }} --ci --diff-only
+        if: ${{ inputs.diff_only }}
+        run: bun run cdk diff --all --context environment=${{ inputs.environment }}
