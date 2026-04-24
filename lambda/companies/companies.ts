@@ -16,6 +16,113 @@ const ROLE_HIERARCHY: Record<SchemaUserRole, number> = {
 };
 const describeRouteCompat = (options: unknown) => describeRoute(options as never);
 
+// Get current user's company summary
+app.get('/me',
+    describeRouteCompat({
+        tags: ['Companies'],
+        summary: 'Get current user companies',
+        description: 'Returns the authenticated user\'s accessible companies and default active company.',
+        responses: {
+            200: {
+                description: 'Current user company summary',
+                content: {
+                    'application/json': {
+                        schema: {
+                            type: 'object',
+                            properties: {
+                                activeCompany: {
+                                    type: 'object',
+                                    nullable: true,
+                                    properties: {
+                                        id: { type: 'string' },
+                                        name: { type: 'string' },
+                                        role: { type: 'string' }
+                                    }
+                                },
+                                companies: {
+                                    type: 'array',
+                                    items: {
+                                        type: 'object',
+                                        properties: {
+                                            id: { type: 'string' },
+                                            name: { type: 'string' },
+                                            role: { type: 'string' }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            401: {
+                description: 'User not authenticated',
+                content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } }
+            },
+            500: {
+                description: 'Internal server error',
+                content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } }
+            }
+        },
+        security: [{ bearerAuth: [] }]
+    }),
+    async (c) => {
+        try {
+            const user = (c as unknown as { get: (key: string) => { sub?: string } | undefined }).get('user');
+            if (!user || !user.sub) {
+                return c.json({ error: 'User not authenticated' }, 401);
+            }
+
+            const dynamodb = createDynamoDBClient();
+            const userCompaniesResult = await dynamodb.query({
+                TableName: 'CompanyUsers',
+                IndexName: 'user_id-index',
+                KeyConditionExpression: 'user_id = :userId',
+                ExpressionAttributeValues: {
+                    ':userId': { S: user.sub }
+                }
+            });
+
+            const companyUsers = userCompaniesResult.Items?.map(item => unmarshall(item)) || [];
+            const companies = [];
+
+            for (const userCompany of companyUsers) {
+                const companyResult = await dynamodb.getItem({
+                    TableName: 'Companies',
+                    Key: { id: { S: userCompany.company_id } }
+                });
+
+                if (!companyResult.Item) {
+                    continue;
+                }
+
+                const company = unmarshall(companyResult.Item);
+                companies.push({
+                    id: company.id,
+                    name: company.name,
+                    role: userCompany.role
+                });
+            }
+
+            companies.sort((a, b) => {
+                const roleDelta = (ROLE_HIERARCHY[b.role as SchemaUserRole] || 0) - (ROLE_HIERARCHY[a.role as SchemaUserRole] || 0);
+                if (roleDelta !== 0) {
+                    return roleDelta;
+                }
+
+                return a.name.localeCompare(b.name);
+            });
+
+            return c.json({
+                activeCompany: companies[0] || null,
+                companies
+            });
+        } catch (error) {
+            console.error('Error fetching current user companies:', error);
+            return c.json({ error: 'Failed to fetch current user companies' }, 500);
+        }
+    });
+
 // Create a new company (admin only)
 app.post('/',
     describeRouteCompat({

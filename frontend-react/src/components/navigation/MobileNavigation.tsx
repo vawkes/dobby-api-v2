@@ -4,6 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../hooks/use-theme';
 import { ThemeToggle } from '../ui/ThemeToggle';
 import { Button } from '../ui/Button';
+import { CompanyDisplay } from './CompanyDisplay';
 import { cn } from '../../lib/utils';
 
 /**
@@ -175,7 +176,8 @@ export const MobileNavigation: React.FC<MobileNavigationProps> = ({
                 {/* User Section */}
                 <div className="border-t border-gray-200 dark:border-gray-700 p-4">
                     {user && (
-                        <div className="mb-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                        <div className="mb-4 space-y-3 rounded-lg bg-gray-50 p-3 dark:bg-gray-800">
+                            <CompanyDisplay companyName={user.companyName} />
                             <div className="flex items-center">
                                 <div className="flex-shrink-0">
                                     <UserIcon className="h-8 w-8 text-gray-400" />

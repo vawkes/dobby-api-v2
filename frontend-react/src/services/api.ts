@@ -290,6 +290,30 @@ export const authAPI = {
     },
 };
 
+export interface CompanySummary {
+    id: string;
+    name: string;
+    role: string;
+}
+
+export interface MyCompaniesResponse {
+    activeCompany: CompanySummary | null;
+    companies: CompanySummary[];
+}
+
+// Company API calls
+export const companiesAPI = {
+    getMyCompanies: async (): Promise<MyCompaniesResponse> => {
+        try {
+            const response = await api.get('/companies/me');
+            return response.data;
+        } catch (error) {
+            console.error('Error fetching current user companies:', error);
+            throw error;
+        }
+    },
+};
+
 // Device API calls
 export const deviceAPI = {
     getAllDevices: async () => {
