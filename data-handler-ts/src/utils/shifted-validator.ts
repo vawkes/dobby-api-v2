@@ -1,5 +1,10 @@
 import { SSMClient, GetParameterCommand, PutParameterCommand } from '@aws-sdk/client-ssm';
-import { DynamoDBClient, GetItemCommand, QueryCommand } from '@aws-sdk/client-dynamodb';
+import {
+  AttributeValue,
+  DynamoDBClient,
+  GetItemCommand,
+  QueryCommand,
+} from '@aws-sdk/client-dynamodb';
 import axios from 'axios';
 import { DeviceData } from '../../../shared/schemas/device-data';
 
@@ -66,7 +71,7 @@ async function getDeviceIdFromWireless(wirelessDeviceId: string): Promise<string
     const response = await dynamoClient.send(command);
     
     if (response.Items && response.Items.length > 0) {
-      const item = response.Items[0] as any;
+      const item = response.Items[0] as Record<string, AttributeValue>;
       return item.device_id?.S || null;
     }
     

@@ -10,7 +10,12 @@ import { handleConnectionInfo } from './packet-handlers/connection-info';
 import { handleGridcubeFwVersion } from './packet-handlers/gridcube-fw-version';
 import { handleEventAcknowledgment } from './packet-handlers/event-acknowledgment';
 
-export const handler = async (event: any): Promise<APIGatewayProxyResult> => {
+interface DobbyDataHandlerEvent {
+  WirelessDeviceId: string;
+  PayloadData: string;
+}
+
+export const handler = async (event: DobbyDataHandlerEvent): Promise<APIGatewayProxyResult> => {
   try {
     console.log('Event:', JSON.stringify(event));
 
