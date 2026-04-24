@@ -35,10 +35,6 @@ function App() {
 
         // Update API base URL with the current configuration
         updateBaseUrl();
-
-        // Test again after configuration is loaded
-        console.log('🔧 Final API configuration test:');
-        testApiConfiguration();
       } catch (error) {
         console.error('Failed to load app configuration:', error);
       }

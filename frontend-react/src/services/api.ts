@@ -1,12 +1,14 @@
 import axios from 'axios';
 import { toast } from 'react-toastify';
-import { getApiUrl } from '../utils/config';
+import { getApiUrl, isDebugLoggingEnabled } from '../utils/config';
 import { v4 as uuidv4 } from 'uuid';
 
 // Define the base URL for the API 
 const getBaseUrl = () => {
     const baseUrl = getApiUrl();
-    console.log('📡 API base URL:', baseUrl);
+    if (isDebugLoggingEnabled()) {
+        console.log('API base URL:', baseUrl);
+    }
     return baseUrl;
 };
 
@@ -20,17 +22,21 @@ const api = axios.create({
     timeout: 15000,
 });
 
-// Log the initial configuration
-console.log('🔧 API Configuration:');
-console.log('  - NODE_ENV:', process.env.NODE_ENV);
-console.log('  - REACT_APP_API_URL:', process.env.REACT_APP_API_URL);
-console.log('  - Base URL:', api.defaults.baseURL);
+if (isDebugLoggingEnabled()) {
+    console.log('API Configuration:', {
+        nodeEnv: process.env.NODE_ENV,
+        reactAppApiUrl: process.env.REACT_APP_API_URL,
+        baseUrl: api.defaults.baseURL,
+    });
+}
 
 // Update the base URL when the config is loaded
 const updateBaseUrl = () => {
     const baseUrl = getApiUrl();
     api.defaults.baseURL = baseUrl;
-    console.log('🔧 API base URL updated to:', baseUrl);
+    if (isDebugLoggingEnabled()) {
+        console.log('API base URL updated to:', baseUrl);
+    }
 };
 
 // Store a flag to avoid multiple concurrent refresh attempts
@@ -54,14 +60,18 @@ api.interceptors.request.use(
             const tokenValue = token.startsWith('Bearer ') ? token : `Bearer ${token}`;
             config.headers.Authorization = tokenValue;
 
-            // Debug log (avoid logging full token in production)
-            const tokenPreview = tokenValue.substring(0, 15) + '...' + tokenValue.substring(tokenValue.length - 5);
-            console.log(`Adding authorization token: ${tokenPreview}`);
+            if (isDebugLoggingEnabled()) {
+                console.log('Adding authorization token to request headers');
+            }
         } else {
-            console.warn('No authorization token available for request');
+            if (isDebugLoggingEnabled()) {
+                console.warn('No authorization token available for request');
+            }
         }
 
-        console.log(`Making ${config.method?.toUpperCase()} request to: ${config.baseURL}${config.url}`);
+        if (isDebugLoggingEnabled()) {
+            console.log(`Making ${config.method?.toUpperCase()} request to: ${config.baseURL}${config.url}`);
+        }
         return config;
     },
     (error) => {
@@ -125,7 +135,9 @@ api.interceptors.response.use(
                 isRefreshing = true;
 
                 try {
-                    console.log('Attempting to refresh the auth token');
+                    if (isDebugLoggingEnabled()) {
+                        console.log('Attempting to refresh the auth token');
+                    }
 
                     // Try to refresh the token
                     const refreshResult = await authAPI.refreshToken(refreshToken);
@@ -144,7 +156,9 @@ api.interceptors.response.use(
                             localStorage.setItem('refreshToken', refreshResult.refreshToken);
                         }
 
-                        console.log('Token refresh successful, retrying original request');
+                        if (isDebugLoggingEnabled()) {
+                            console.log('Token refresh successful, retrying original request');
+                        }
 
                         // Update the original request with the new token
                         originalRequest.headers.Authorization = tokenWithBearer;
@@ -185,7 +199,9 @@ api.interceptors.response.use(
 
             // Only redirect if we're not already on the login page
             if (!window.location.pathname.includes('/login')) {
-                console.log('Redirecting to login page due to authentication error');
+                if (isDebugLoggingEnabled()) {
+                    console.log('Redirecting to login page due to authentication error');
+                }
                 // Use a slight delay to allow the console messages to be logged
                 setTimeout(() => {
                     window.location.href = '/login';

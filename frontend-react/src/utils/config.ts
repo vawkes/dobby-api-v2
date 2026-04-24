@@ -55,7 +55,13 @@ if (process.env.REACT_APP_API_URL) {
     config.API_URL = process.env.REACT_APP_API_URL;
 }
 
-console.log(`Using ${currentEnv} configuration:`, config);
+export const isDebugLoggingEnabled = (): boolean => {
+    return process.env.NODE_ENV === 'development' || process.env.REACT_APP_DEBUG_LOGS === 'true';
+};
+
+if (isDebugLoggingEnabled()) {
+    console.log(`Using ${currentEnv} configuration:`, config);
+}
 
 // Get a configuration value
 export const getConfig = (key: keyof EnvConfig): string | boolean => {

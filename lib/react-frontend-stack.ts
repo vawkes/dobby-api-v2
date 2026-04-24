@@ -21,6 +21,37 @@ export interface ReactFrontendStackProps extends cdk.StackProps {
     frontendBuildPath: string;
 }
 
+function hasFileWithExtension(directoryPath: string, extension: string): boolean {
+    if (!fs.existsSync(directoryPath)) {
+        return false;
+    }
+
+    return fs.readdirSync(directoryPath).some((fileName) => fileName.endsWith(extension));
+}
+
+export function validateFrontendBuildPath(frontendBuildPath: string): void {
+    if (!fs.existsSync(frontendBuildPath)) {
+        throw new Error(
+            `Frontend build path does not exist: ${frontendBuildPath}. Run the matching frontend build before deploy.`
+        );
+    }
+
+    const indexPath = `${frontendBuildPath}/index.html`;
+    if (!fs.existsSync(indexPath)) {
+        throw new Error(
+            `Frontend build is missing index.html at ${indexPath}. Run the matching frontend build before deploy.`
+        );
+    }
+
+    const jsPath = `${frontendBuildPath}/static/js`;
+    const cssPath = `${frontendBuildPath}/static/css`;
+    if (!hasFileWithExtension(jsPath, '.js') || !hasFileWithExtension(cssPath, '.css')) {
+        throw new Error(
+            `Frontend build is missing a static bundle under ${frontendBuildPath}/static. Run the matching frontend build before deploy.`
+        );
+    }
+}
+
 export class ReactFrontendStack extends cdk.Stack {
     public readonly bucketName: string;
     public readonly distributionId: string;
@@ -32,11 +63,7 @@ export class ReactFrontendStack extends cdk.Stack {
         const { environmentConfig } = props;
         const envSuffix = environmentConfig.name === 'production' ? '' : `-${environmentConfig.name}`;
 
-        if (!fs.existsSync(props.frontendBuildPath)) {
-            throw new Error(
-                `Frontend build path does not exist: ${props.frontendBuildPath}. Run bun run deploy --env ${environmentConfig.name}`
-            );
-        }
+        validateFrontendBuildPath(props.frontendBuildPath);
 
         // Create an S3 bucket for the website content with environment-specific naming
         const siteBucket = new s3.Bucket(this, 'ReactSiteBucket', {
