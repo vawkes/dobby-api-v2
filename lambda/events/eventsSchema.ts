@@ -207,4 +207,5 @@ const bulkResponseSchema = z.object({
 
 type EventSchemaType = z.infer<typeof eventSchema>;
 
-export { eventsSchema, eventSchema, eventRequestSchema, bulkResponseSchema, EventType, EventSchemaType };
+export type { EventSchemaType };
+export { eventsSchema, eventSchema, eventRequestSchema, bulkResponseSchema, EventType };

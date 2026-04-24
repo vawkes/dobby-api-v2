@@ -2,7 +2,7 @@
   "name": "data-handler-ts",
   "version": "1.0.0",
   "description": "TypeScript version of the data handler Lambda function",
-  "main": "dist/index.js",
+  "main": "dist/data-handler-ts/src/index.js",
   "packageManager": "bun@1.2.2",
   "scripts": {
     "build": "tsc",
