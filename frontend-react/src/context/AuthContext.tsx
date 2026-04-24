@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode, useCa
 import { authAPI, companiesAPI } from '../services/api';
 import { User, LoginCredentials, RegistrationData } from '../types/auth';
 import { toast } from 'react-toastify';
+import { isDebugLoggingEnabled } from '../utils/config';
 
 interface AuthResponseUserFields {
     companyId?: string;
@@ -155,7 +156,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                         const fifteenMinutes = 15 * 60 * 1000;
                         needsRefresh = (expirationTime - currentTime) < fifteenMinutes;
 
-                        console.log(`Token expires in ${Math.round((expirationTime - currentTime) / 1000 / 60)} minutes.`);
+                        if (isDebugLoggingEnabled()) {
+                            console.log(`Token expires in ${Math.round((expirationTime - currentTime) / 1000 / 60)} minutes.`);
+                        }
                     }
                 } catch (error) {
                     console.error('Error parsing JWT token:', error);
@@ -163,7 +166,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 }
 
                 if (needsRefresh && refreshToken) {
-                    console.log('Token is nearing expiration or expired, attempting refresh');
+                    if (isDebugLoggingEnabled()) {
+                        console.log('Token is nearing expiration or expired, attempting refresh');
+                    }
                     const refreshed = await refreshTokenIfNeeded();
 
                     if (!refreshed) {
@@ -213,7 +218,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             setIsLoading(true);
             const response = await authAPI.login(credentials.email, credentials.password);
 
-            console.log('Login successful, token received, length:', response.token ? response.token.length : 'no token');
+            if (isDebugLoggingEnabled()) {
+                console.log('Login successful, token received:', response.token ? 'yes' : 'no');
+            }
 
             // Save token and user info
             if (!response.token) {
