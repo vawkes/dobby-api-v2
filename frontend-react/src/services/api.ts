@@ -42,6 +42,11 @@ let pendingRequests: Array<{
     reject: (reason: any) => void;
 }> = [];
 
+const shouldSkipErrorToast = (config: any): boolean => {
+    if (!config) return false;
+    return config.__skipErrorToast === true;
+};
+
 // Add a request interceptor to include the auth token in requests
 api.interceptors.request.use(
     (config) => {
@@ -193,7 +198,9 @@ api.interceptors.response.use(
             }
 
             // Show toast with error message
-            toast.error('Your session has expired. Please log in again.');
+            if (!shouldSkipErrorToast(error.config)) {
+                toast.error('Your session has expired. Please log in again.');
+            }
         } else if (error.response) {
             // The request was made and the server responded with a status code
             // that falls out of the range of 2xx
@@ -202,15 +209,21 @@ api.interceptors.response.use(
 
             // Show toast with error message from API if available
             const errorMessage = error.response.data?.message || error.response.data?.error || 'An error occurred';
-            toast.error(errorMessage);
+            if (!shouldSkipErrorToast(error.config)) {
+                toast.error(errorMessage);
+            }
         } else if (error.request) {
             // The request was made but no response was received
             console.error('No response received:', error.request);
-            toast.error('Network error. Please check your connection and try again.');
+            if (!shouldSkipErrorToast(error.config)) {
+                toast.error('Network error. Please check your connection and try again.');
+            }
         } else {
             // Something happened in setting up the request that triggered an Error
             console.error('Request setup error:', error.message);
-            toast.error('An unexpected error occurred. Please try again.');
+            if (!shouldSkipErrorToast(error.config)) {
+                toast.error('An unexpected error occurred. Please try again.');
+            }
         }
 
         return Promise.reject(error);
@@ -384,6 +397,52 @@ export const eventsAPI = {
             throw error;
         }
     }
+};
+
+const silentRequestConfig: any = {
+    __skipErrorToast: true
+};
+
+export const companiesAPI = {
+    getCompanies: async (silent: boolean = false) => {
+        try {
+            const response = await api.get('/companies', silent ? silentRequestConfig : undefined);
+            return response.data;
+        } catch (error) {
+            console.error('Error fetching companies:', error);
+            throw error;
+        }
+    },
+
+    getCompanyDevices: async (companyId: string) => {
+        try {
+            const response = await api.get(`/companies/${companyId}/devices`);
+            return response.data;
+        } catch (error) {
+            console.error(`Error fetching devices for company ${companyId}:`, error);
+            throw error;
+        }
+    },
+
+    addDeviceToCompany: async (companyId: string, payload: { device_id: string; location?: string }) => {
+        try {
+            const response = await api.post(`/companies/${companyId}/devices`, payload);
+            return response.data;
+        } catch (error) {
+            console.error(`Error adding device to company ${companyId}:`, error);
+            throw error;
+        }
+    },
+
+    removeDeviceFromCompany: async (companyId: string, deviceId: string) => {
+        try {
+            const response = await api.delete(`/companies/${companyId}/devices/${deviceId}`);
+            return response.data;
+        } catch (error) {
+            console.error(`Error removing device ${deviceId} from company ${companyId}:`, error);
+            throw error;
+        }
+    },
 };
 
 // Export updateBaseUrl to be called after config is loaded

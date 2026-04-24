@@ -1,17 +1,22 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
-import { authAPI } from '../services/api';
+import axios from 'axios';
+import { authAPI, companiesAPI } from '../services/api';
 import { User, LoginCredentials, RegistrationData } from '../types/auth';
 import { toast } from 'react-toastify';
+import { getInternalAccessFromTokenClaims } from '../utils/internalAccess';
 
 interface AuthContextType {
     user: User | null;
     token: string | null;
     isAuthenticated: boolean;
     isLoading: boolean;
+    isInternalUser: boolean;
+    isInternalLoading: boolean;
     login: (credentials: LoginCredentials) => Promise<void>;
     register: (data: RegistrationData) => Promise<void>;
     logout: () => void;
     refreshTokenIfNeeded: () => Promise<boolean>;
+    refreshInternalAccess: () => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -20,6 +25,57 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const [user, setUser] = useState<User | null>(null);
     const [token, setToken] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [isInternalUser, setIsInternalUser] = useState(false);
+    const [isInternalLoading, setIsInternalLoading] = useState(false);
+
+    const refreshInternalAccess = useCallback(async (): Promise<boolean> => {
+        const syncUserInternalFlag = (value: boolean) => {
+            setUser((previous) => {
+                if (!previous) return previous;
+                const updated = { ...previous, isInternal: value };
+                localStorage.setItem('user', JSON.stringify(updated));
+                return updated;
+            });
+        };
+
+        const storedToken = localStorage.getItem('token');
+        if (!storedToken) {
+            setIsInternalUser(false);
+            syncUserInternalFlag(false);
+            return false;
+        }
+
+        const claimDecision = getInternalAccessFromTokenClaims(storedToken);
+        if (claimDecision !== null) {
+            setIsInternalUser(claimDecision);
+            syncUserInternalFlag(claimDecision);
+            return claimDecision;
+        }
+
+        setIsInternalLoading(true);
+        try {
+            await companiesAPI.getCompanies(true);
+            setIsInternalUser(true);
+            syncUserInternalFlag(true);
+            return true;
+        } catch (error) {
+            if (axios.isAxiosError(error)) {
+                const status = error.response?.status;
+                if (status === 401 || status === 403) {
+                    setIsInternalUser(false);
+                    syncUserInternalFlag(false);
+                    return false;
+                }
+            }
+
+            // Unknown/network failure: fail closed.
+            setIsInternalUser(false);
+            syncUserInternalFlag(false);
+            return false;
+        } finally {
+            setIsInternalLoading(false);
+        }
+    }, []);
 
     // Create a memoized version of the refreshTokenIfNeeded function to avoid useEffect dependency issues
     const refreshTokenIfNeeded = useCallback(async (): Promise<boolean> => {
@@ -45,6 +101,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                     localStorage.setItem('refreshToken', response.refreshToken);
                 }
 
+                await refreshInternalAccess();
                 return true;
             }
 
@@ -53,7 +110,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             console.error('Failed to refresh token:', error);
             return false;
         }
-    }, []);
+    }, [refreshInternalAccess]);
 
     // Initialize auth state from localStorage on mount
     useEffect(() => {
@@ -98,6 +155,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                         localStorage.removeItem('user');
                         setToken(null);
                         setUser(null);
+                        setIsInternalUser(false);
                         setIsLoading(false);
                         return;
                     }
@@ -105,19 +163,22 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                     // Token is still valid
                     setToken(storedToken);
                     try {
-                        setUser(JSON.parse(storedUser));
+                        const parsedUser = JSON.parse(storedUser);
+                        setUser(parsedUser);
                     } catch (error) {
                         console.error('Error parsing stored user:', error);
                         localStorage.removeItem('user');
                     }
                 }
+
+                await refreshInternalAccess();
             }
 
             setIsLoading(false);
         };
 
         initializeAuth();
-    }, [refreshTokenIfNeeded]);
+    }, [refreshTokenIfNeeded, refreshInternalAccess]);
 
     const login = async (credentials: LoginCredentials) => {
         try {
@@ -150,8 +211,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 name: response.name || '', // Use name from response if available
             };
 
-            setUser(userObj);
-            localStorage.setItem('user', JSON.stringify(userObj));
+            const hasInternalAccess = await refreshInternalAccess();
+            const userWithAccess: User = {
+                ...userObj,
+                isInternal: hasInternalAccess,
+            };
+
+            setUser(userWithAccess);
+            localStorage.setItem('user', JSON.stringify(userWithAccess));
 
             toast.success('Login successful');
             // Navigation will be handled by the calling component or React Router
@@ -184,6 +251,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         // Clear auth state and localStorage
         setToken(null);
         setUser(null);
+        setIsInternalUser(false);
         localStorage.removeItem('token');
         localStorage.removeItem('refreshToken');
         localStorage.removeItem('user');
@@ -200,10 +268,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 token,
                 isAuthenticated: !!token,
                 isLoading,
+                isInternalUser,
+                isInternalLoading,
                 login,
                 register,
                 logout,
                 refreshTokenIfNeeded,
+                refreshInternalAccess,
             }}
         >
             {children}

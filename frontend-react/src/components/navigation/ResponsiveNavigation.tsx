@@ -23,7 +23,7 @@ import { cn } from '../../lib/utils';
  * <ResponsiveNavigation />
  */
 export const ResponsiveNavigation: React.FC = () => {
-    const { logout, user } = useAuth();
+    const { logout, user, isInternalUser } = useAuth();
     const location = useLocation();
     const isMobile = useMediaQuery('(max-width: 768px)');
 
@@ -34,6 +34,7 @@ export const ResponsiveNavigation: React.FC = () => {
         { name: 'Dashboard', href: '/dashboard' },
         { name: 'Devices', href: '/devices' },
         { name: 'Bulk Schedule', href: '/bulk-schedule' },
+        ...(isInternalUser ? [{ name: 'Company Devices', href: '/internal/company-device-management' }] : []),
     ];
 
     const isActive = (path: string) => {

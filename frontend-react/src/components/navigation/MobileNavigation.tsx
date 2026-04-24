@@ -36,7 +36,7 @@ export const MobileNavigation: React.FC<MobileNavigationProps> = ({
     onToggle,
     onClose,
 }) => {
-    const { logout, user } = useAuth();
+    const { logout, user, isInternalUser } = useAuth();
     const location = useLocation();
     const { effectiveTheme } = useTheme();
 
@@ -75,6 +75,15 @@ export const MobileNavigation: React.FC<MobileNavigationProps> = ({
             href: '/bulk-schedule',
             icon: <ScheduleIcon className="h-5 w-5" />,
         },
+        ...(isInternalUser
+            ? [
+                {
+                    name: 'Company Devices',
+                    href: '/internal/company-device-management',
+                    icon: <DevicesIcon className="h-5 w-5" />,
+                },
+            ]
+            : []),
     ];
 
     const isActive = (path: string) => {
