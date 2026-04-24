@@ -1,0 +1,7 @@
+interface:
+  display_name: "Internal: Dobby Build QA"
+  short_description: "Internal verification role"
+  default_prompt: "Use $dobby-build-qa to validate dobby-build work against the approved spec."
+
+policy:
+  allow_implicit_invocation: false

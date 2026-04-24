@@ -1,0 +1,36 @@
+{
+  "name": "dobby-build",
+  "version": "0.1.0",
+  "description": "Repo-local development workflow for dobby-api-v2.",
+  "author": {
+    "name": "Evan Biskey",
+    "url": "https://github.com/biskeyevan"
+  },
+  "homepage": "https://github.com/biskeyevan/dobby-api-v2",
+  "repository": "https://github.com/biskeyevan/dobby-api-v2",
+  "license": "UNLICENSED",
+  "keywords": [
+    "dobby",
+    "workflow",
+    "codex",
+    "development"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Build",
+    "shortDescription": "Spec-first repo workflow",
+    "longDescription": "Runs a spec-first development workflow for dobby-api-v2 with orchestrated engineering, review, and QA roles.",
+    "developerName": "Evan Biskey",
+    "category": "Productivity",
+    "capabilities": [
+      "Interactive",
+      "Write"
+    ],
+    "defaultPrompt": [
+      "Build this dobby-api-v2 feature from this pasted ticket.",
+      "Help me build this new dobby-api-v2 feature.",
+      "Look at this requirement and implement it with Build."
+    ],
+    "brandColor": "#0F766E"
+  }
+}

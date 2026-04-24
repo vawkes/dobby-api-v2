@@ -1,0 +1,7 @@
+interface:
+  display_name: "Internal: Dobby Build Engineer"
+  short_description: "Internal code-writing role"
+  default_prompt: "Use $dobby-build-engineer to implement code from the committed dobby-build spec."
+
+policy:
+  allow_implicit_invocation: false

@@ -4,7 +4,7 @@ branch: chore/dobby-build-design
 base_commit: ad257534fe0b37b1f409d9867d58048f23028db2
 source_artifact_type: chat-brief
 source_artifact_snapshot: "Design a repo-local Build plugin for dobby-api-v2 with a non-coding orchestrator, autonomous engineer/reviewer/qa subagents, committed spec-first workflow, draft PR lifecycle, local-first QA, controlled develop access, and no production access."
-stage: spec-drafting
+stage: spec-approved
 ---
 
 # Dobby Build Plugin Design

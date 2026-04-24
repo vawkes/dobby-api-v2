@@ -1,0 +1,7 @@
+interface:
+  display_name: "Internal: Dobby Build Orchestrator"
+  short_description: "Internal stage-control role"
+  default_prompt: "Use $dobby-build-orchestrator to control intake, design, and arbitration for dobby-build."
+
+policy:
+  allow_implicit_invocation: false

@@ -1,3 +1,5 @@
+import { describe, expect, it } from '@jest/globals';
+
 // Simple test for role management logic
 describe('Role Management Logic', () => {
   // Test role hierarchy
