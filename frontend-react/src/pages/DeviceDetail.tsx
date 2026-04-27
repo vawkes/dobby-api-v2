@@ -17,8 +17,7 @@ import {
 import DeviceEvents from '../components/DeviceEvents.tsx';
 import ScheduleEvent from '../components/ScheduleEvent.tsx';
 import DeviceTypeDisplay from '../components/ui/DeviceTypeDisplay.tsx';
-
-type DeviceStatus = 'online' | 'degraded' | 'offline' | 'no_data';
+import { DeviceStatus, getDeviceStatus, hoursSince } from '../utils/deviceStatus.ts';
 
 const getLinkTypeName = (linkType?: number): string => {
   if (linkType === 1) return 'BLE';
@@ -35,17 +34,6 @@ const formatDate = (dateString?: string): string => {
   }
 };
 
-const hoursSince = (dateString?: string): number | null => {
-  if (!dateString) return null;
-  try {
-    const date = new Date(dateString);
-    const now = new Date();
-    return (now.getTime() - date.getTime()) / (1000 * 60 * 60);
-  } catch (e) {
-    return null;
-  }
-};
-
 const formatTimeAgo = (dateString?: string): string => {
   if (!dateString) return 'No check-ins';
   const ageHours = hoursSince(dateString);
@@ -53,15 +41,6 @@ const formatTimeAgo = (dateString?: string): string => {
   if (ageHours < 1) return `${Math.max(1, Math.round(ageHours * 60))}m ago`;
   if (ageHours < 24) return `${Math.round(ageHours)}h ago`;
   return `${Math.round(ageHours / 24)}d ago`;
-};
-
-const getDeviceStatus = (device: Device): DeviceStatus => {
-  const ageHours = hoursSince(device.updated_at);
-  if (ageHours === null) return 'no_data';
-  if (ageHours > 24) return 'offline';
-  if (ageHours > 4) return 'degraded';
-  if (device.last_rx_rssi !== undefined && device.last_rx_rssi <= -85) return 'degraded';
-  return 'online';
 };
 
 const statusLabel: Record<DeviceStatus, string> = {
