@@ -31,8 +31,9 @@ export function DataTablePagination<T>({
     className,
     pageSizeOptions = [10, 25, 50, 100],
 }: DataTablePaginationProps<T>) {
-    const currentPage = table.getState().pagination.pageIndex + 1;
     const totalPages = table.getPageCount();
+    const hasPages = totalPages > 0;
+    const currentPage = hasPages ? table.getState().pagination.pageIndex + 1 : 0;
     const pageSize = table.getState().pagination.pageSize;
     const totalRows = table.getFilteredRowModel().rows.length;
 
@@ -131,7 +132,7 @@ export function DataTablePagination<T>({
                     <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => table.setPageIndex(table.getPageCount() - 1)}
+                        onClick={() => table.setPageIndex(Math.max(table.getPageCount() - 1, 0))}
                         disabled={!table.getCanNextPage()}
                         className="h-8 w-8 p-0"
                         aria-label="Go to last page"
@@ -145,9 +146,10 @@ export function DataTablePagination<T>({
                     <span className="text-sm text-card-foreground">Go to page:</span>
                     <input
                         type="number"
-                        min={1}
+                        min={hasPages ? 1 : 0}
                         max={totalPages}
                         value={currentPage}
+                        disabled={!hasPages}
                         onChange={(e) => {
                             const page = e.target.value ? Number(e.target.value) - 1 : 0;
                             if (page >= 0 && page < totalPages) {

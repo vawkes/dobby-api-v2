@@ -17,19 +17,19 @@ describe('frontend deploy safety', () => {
     expect(packageJson.scripts['deploy:develop']).toContain('scripts/require-node20.ts');
     expect(packageJson.scripts['deploy:production']).toContain('scripts/require-node20.ts');
     expect(packageJson.scripts['deploy:develop']).toContain(
-      'bun --cwd frontend-react run build:develop'
+      'bun run --cwd frontend-react build:develop'
     );
     expect(packageJson.scripts['deploy:production']).toContain(
-      'bun --cwd frontend-react run build:production'
+      'bun run --cwd frontend-react build:production'
     );
     expect(packageJson.scripts['deploy:develop'].indexOf('scripts/require-node20.ts')).toBeLessThan(
-      packageJson.scripts['deploy:develop'].indexOf('bun --cwd frontend-react run build:develop')
+      packageJson.scripts['deploy:develop'].indexOf('bun run --cwd frontend-react build:develop')
     );
     expect(
       packageJson.scripts['deploy:production'].indexOf('scripts/require-node20.ts')
     ).toBeLessThan(
       packageJson.scripts['deploy:production'].indexOf(
-        'bun --cwd frontend-react run build:production'
+        'bun run --cwd frontend-react build:production'
       )
     );
   });
