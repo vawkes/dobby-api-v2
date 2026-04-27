@@ -1,6 +1,10 @@
 describe('API configuration test result', () => {
     const originalEnv = process.env;
 
+    const replaceEnv = (overrides: Partial<NodeJS.ProcessEnv>) => {
+        process.env = { ...process.env, ...overrides };
+    };
+
     beforeEach(() => {
         jest.resetModules();
         process.env = { ...originalEnv };
@@ -11,9 +15,11 @@ describe('API configuration test result', () => {
     });
 
     test('reports develop API for optimized development-environment builds', () => {
-        process.env.NODE_ENV = 'production';
-        process.env.REACT_APP_ENVIRONMENT = 'development';
-        process.env.REACT_APP_API_URL = 'https://api.gridcube.dev.vawkes.com';
+        replaceEnv({
+            NODE_ENV: 'production',
+            REACT_APP_ENVIRONMENT: 'development',
+            REACT_APP_API_URL: 'https://api.gridcube.dev.vawkes.com',
+        });
 
         const { getApiConfigurationTestResult } = require('./api-test');
 
@@ -26,9 +32,11 @@ describe('API configuration test result', () => {
     });
 
     test('reports production API for production builds', () => {
-        process.env.NODE_ENV = 'production';
-        process.env.REACT_APP_ENVIRONMENT = 'production';
-        process.env.REACT_APP_API_URL = 'https://api.gridcube.vawkes.com';
+        replaceEnv({
+            NODE_ENV: 'production',
+            REACT_APP_ENVIRONMENT: 'production',
+            REACT_APP_API_URL: 'https://api.gridcube.vawkes.com',
+        });
 
         const { getApiConfigurationTestResult } = require('./api-test');
 
