@@ -53,14 +53,15 @@ flowchart LR
 
 - Events and Device Commands:
   - Routes in `lambda/events/events.ts` validate requests (Zod) and dispatch to event handlers.
-  - Event handlers build binary payloads and send via IoT Wireless (`lambda/utils/sendToDobby.ts`).
+  - Event handlers build GridCube CTA-2045 command payloads and send via IoT Wireless (`lambda/utils/sendToDobby.ts`).
+  - Protocol reference: `docs/protocols/gridcube-cta-2045-sidewalk.md`.
   - Events are flattened and stored in DynamoDB via repositories in `shared/database/repositories/`.
   - Device ID mapping supports human 6-digit IDs and IoT UUIDs (`lambda/utils/deviceIdMapping.ts`).
 
 - Data Ingestion (Uplink):
   - `data-handler-ts` Lambda processes uplinks from devices, decodes payloads by type, writes device data (`DobbyData`), and acknowledges events.
   - Uses a shared DynamoDB DocumentClient (`shared/database/client.ts`) and schemas in `shared/schemas/`.
-  - Payload sizes: standard; no special handling required. Detailed message content docs can be linked here when available.
+  - Payload parsing and response type mappings are documented in `docs/protocols/gridcube-cta-2045-sidewalk.md`.
 
 - Watchdog Timer:
   - `lambda/watchdog/watchdog.ts` periodically pings devices (info-request) to prevent watchdog timeouts.
@@ -114,5 +115,4 @@ Repositories provide access patterns:
 - Secrets management strategy (SSM, Secrets Manager) and rotation?
 - Multi-tenant boundaries: how are companies isolated and audited?
 - Deployment environments and promotion strategy (develop → production)?
-
 

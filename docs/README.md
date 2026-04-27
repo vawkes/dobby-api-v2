@@ -5,6 +5,7 @@ Welcome to the documentation hub for Dobby API v2. This directory centralizes al
 ## Start Here
 
 - [Architecture Overview](./architecture/overview.md)
+- [GridCube CTA-2045 over Sidewalk Protocol](./protocols/gridcube-cta-2045-sidewalk.md)
 
 ## Architecture
 
@@ -12,11 +13,15 @@ Welcome to the documentation hub for Dobby API v2. This directory centralizes al
 
 ## Backend
 
-- [Watchdog Timer](./backend/watchdog.md)
+- [Watchdog Timer](./architecture/overview.md#key-components)
 
 ## Data Pipeline
 
 - See [Architecture Overview](./architecture/overview.md) for end-to-end data flow
+
+## Protocols
+
+- [GridCube CTA-2045 over Sidewalk Protocol](./protocols/gridcube-cta-2045-sidewalk.md)
 
 ## Frontend
 

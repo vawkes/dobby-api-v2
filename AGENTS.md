@@ -5,8 +5,9 @@ repository.
 
 ## Purpose
 
-- Backend API for GridCube/Dobby devices (AWS Lambda + Hono + API
-  Gateway/Function URL).
+- Backend API for GridCube/Dobby devices, including the GridCube CTA-2045 UCM
+  cloud pipe over Amazon Sidewalk (AWS Lambda + Hono + API Gateway/Function
+  URL).
 - Infrastructure as code with AWS CDK (TypeScript).
 - React frontend for device operations in `frontend-react/`.
 - Shared DynamoDB/repository logic in `shared/`.
@@ -26,6 +27,7 @@ repository.
   - `lambda/events/events.ts` validates and dispatches event handlers.
   - Event handlers in `lambda/events/eventHandlers/` send commands to IoT
     Wireless.
+  - Protocol reference: `docs/protocols/gridcube-cta-2045-sidewalk.md`.
 - Watchdog:
   - `lambda/watchdog/watchdog.ts` periodically scans devices and sends
     connection-info requests.
@@ -125,6 +127,8 @@ CDK deploy/destroy:
 ## Documentation Pointers
 
 - Architecture summary: `docs/architecture/overview.md`
+- GridCube CTA-2045/Sidewalk protocol:
+  `docs/protocols/gridcube-cta-2045-sidewalk.md`
 - Deployment runbook: `docs/operations/deployment.md`
 - Testing docs: `docs/testing/testing.md`, `docs/testing/test-status.md`
 - API/OpenAPI notes: `docs/backend/*`
