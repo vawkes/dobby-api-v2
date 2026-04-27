@@ -2,6 +2,10 @@
 
 This guide documents how GridCube API event types map to CTA-2045 commands, with a focus on **Advanced Load Up**.
 
+For the full cloud-to-firmware byte protocol, response packet map, and
+implementation caveats, see
+[`docs/protocols/gridcube-cta-2045-sidewalk.md`](../protocols/gridcube-cta-2045-sidewalk.md).
+
 ## Where To Send Commands
 
 Use `POST /events` with an authenticated JWT bearer token. Choose the `event_type` and supply the matching `event_data`.
@@ -77,4 +81,3 @@ Send:
 - Advanced Load Up requires `units` to be one of `0,1,2,3,255`; `4..254` are reserved.
 - When `value=0`, `units` must be `255 (0xFF)`.
 - The API request has a top-level `event_id`, but Advanced Load Up also has `event_data.event_id` for the CTA Event ID.
-
