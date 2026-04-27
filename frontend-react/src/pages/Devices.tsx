@@ -13,28 +13,7 @@ import { Device } from '../types/index.ts';
 import { DataTable, deviceColumns } from '../components/data/index.ts';
 import { Button } from '../components/ui/Button.tsx';
 import { getDeviceTypeDescription } from '../utils/deviceTypes.ts';
-
-type DeviceStatus = 'online' | 'degraded' | 'offline' | 'no_data';
-
-const hoursSince = (dateString?: string): number | null => {
-  if (!dateString) return null;
-  try {
-    const date = new Date(dateString);
-    const now = new Date();
-    return (now.getTime() - date.getTime()) / (1000 * 60 * 60);
-  } catch (e) {
-    return null;
-  }
-};
-
-const getDeviceStatus = (device: Device): DeviceStatus => {
-  const ageHours = hoursSince(device.updated_at);
-  if (ageHours === null) return 'no_data';
-  if (ageHours > 24) return 'offline';
-  if (ageHours > 4) return 'degraded';
-  if (device.last_rx_rssi !== undefined && device.last_rx_rssi <= -85) return 'degraded';
-  return 'online';
-};
+import { DeviceStatus, getDeviceStatus, hoursSince } from '../utils/deviceStatus.ts';
 
 const statusPriority: Record<DeviceStatus, number> = {
   offline: 0,

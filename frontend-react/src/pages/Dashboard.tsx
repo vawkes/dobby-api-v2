@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { deviceAPI } from '../services/api';
 import { Device } from '../types';
+import { DeviceStatus, getDeviceStatus, hoursSince } from '../utils/deviceStatus.ts';
 import {
   FiActivity,
   FiAlertCircle,
@@ -18,29 +19,6 @@ const getLinkTypeName = (linkType?: number): string => {
   if (linkType === 1) return 'BLE';
   if (linkType === 4) return 'LoRA';
   return 'Unknown';
-};
-
-const hoursSince = (dateString?: string): number | null => {
-  if (!dateString) return null;
-  try {
-    const date = new Date(dateString);
-    const now = new Date();
-    return (now.getTime() - date.getTime()) / (1000 * 60 * 60);
-  } catch (e) {
-    return null;
-  }
-};
-
-type DeviceStatus = 'online' | 'degraded' | 'offline' | 'no_data';
-
-const getDeviceStatus = (device: Device): DeviceStatus => {
-  const ageHours = hoursSince(device.updated_at);
-
-  if (ageHours === null) return 'no_data';
-  if (ageHours > 24) return 'offline';
-  if (ageHours > 4) return 'degraded';
-  if (device.last_rx_rssi !== undefined && device.last_rx_rssi <= -85) return 'degraded';
-  return 'online';
 };
 
 const statusLabel: Record<DeviceStatus, string> = {
