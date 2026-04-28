@@ -1,4 +1,5 @@
 import { z } from '@hono/zod-openapi';
+import { ASSIGNMENT_STATUSES } from '../utils/deviceLifecycle.ts';
 
 // Company schema
 export const companySchema = z.object({
@@ -18,6 +19,8 @@ export const UserRole = {
 
 export type UserRole = typeof UserRole[keyof typeof UserRole];
 
+const assignmentStatusSchema = z.enum(ASSIGNMENT_STATUSES);
+
 // Company user schema
 export const companyUserSchema = z.object({
     company_id: z.string().uuid(),
@@ -31,7 +34,7 @@ export const companyUserSchema = z.object({
 export const companyDeviceSchema = z.object({
     company_id: z.string().uuid(),
     device_id: z.string().regex(/^\d{6}$/, "Device ID must be a 6-digit number"),
-    status: z.enum(['ACTIVE', 'INACTIVE', 'MAINTENANCE', 'OFFLINE']),
+    status: assignmentStatusSchema,
     location: z.string().optional(),
     installedAt: z.string().datetime().optional(),
     lastSeenAt: z.string().datetime().optional(),
@@ -60,14 +63,17 @@ export const updateUserRoleSchema = z.object({
 export const addDeviceToCompanySchema = z.object({
     device_id: z.string().regex(/^\d{6}$/, "Device ID must be a 6-digit number"),
     location: z.string().optional(),
-});
+}).transform(data => ({
+    ...data,
+    status: 'PENDING_INSTALL' as const,
+}));
 
 export const updateDeviceSchema = z.object({
-    status: z.enum(['ACTIVE', 'INACTIVE', 'MAINTENANCE', 'OFFLINE']).optional(),
+    status: assignmentStatusSchema.optional(),
     location: z.string().optional(),
 });
 
 // Response schemas
 export const companiesSchema = z.array(companySchema);
 export const companyUsersSchema = z.array(companyUserSchema);
-export const companyDevicesSchema = z.array(companyDeviceSchema); 
+export const companyDevicesSchema = z.array(companyDeviceSchema);

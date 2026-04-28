@@ -1,5 +1,6 @@
 import { DynamoDB } from "@aws-sdk/client-dynamodb";
 import { unmarshall } from "@aws-sdk/util-dynamodb";
+import { AssignmentStatus } from './deviceLifecycle.ts';
 
 // Type declaration for user context from JWT payload
 export interface UserContext {
@@ -19,8 +20,14 @@ export function getUserFromContext(c: any): UserContext | null {
     return null;
 }
 
-// Helper function to get user's accessible device IDs
-export async function getUserAccessibleDevices(dynamodb: DynamoDB, userId: string): Promise<string[]> {
+export interface DeviceAssignment {
+    company_id: string;
+    device_id: string;
+    status?: AssignmentStatus;
+}
+
+// Helper function to get user's accessible device assignment rows
+export async function getUserAccessibleDeviceAssignments(dynamodb: DynamoDB, userId: string): Promise<DeviceAssignment[]> {
     try {
         // Query CompanyUsers table to get all companies the user belongs to
         const userCompaniesResult = await dynamodb.query({
@@ -37,10 +44,10 @@ export async function getUserAccessibleDevices(dynamodb: DynamoDB, userId: strin
         }
 
         const companyIds = userCompaniesResult.Items.map(item => unmarshall(item).company_id);
+        const assignments: DeviceAssignment[] = [];
+        const seenDeviceIds = new Set<string>();
 
         // Query CompanyDevices table to get all devices for these companies
-        const accessibleDevices: string[] = [];
-        
         for (const companyId of companyIds) {
             const companyDevicesResult = await dynamodb.query({
                 TableName: "CompanyDevices",
@@ -51,16 +58,37 @@ export async function getUserAccessibleDevices(dynamodb: DynamoDB, userId: strin
             });
 
             if (companyDevicesResult.Items) {
-                const deviceIds = companyDevicesResult.Items.map(item => unmarshall(item).device_id);
-                accessibleDevices.push(...deviceIds);
+                for (const item of companyDevicesResult.Items) {
+                    const assignment = unmarshall(item) as DeviceAssignment;
+                    if (!seenDeviceIds.has(assignment.device_id)) {
+                        assignments.push(assignment);
+                        seenDeviceIds.add(assignment.device_id);
+                    }
+                }
             }
         }
 
-        return accessibleDevices;
+        return assignments;
     } catch (error) {
-        console.error('Error getting user accessible devices:', error);
+        console.error('Error getting user accessible device assignments:', error);
         return [];
     }
+}
+
+// Helper function to get user's accessible device IDs
+export async function getUserAccessibleDevices(dynamodb: DynamoDB, userId: string): Promise<string[]> {
+    const assignments = await getUserAccessibleDeviceAssignments(dynamodb, userId);
+    return assignments.map(assignment => assignment.device_id);
+}
+
+// Helper function to get a user's assignment metadata for a specific device
+export async function getUserDeviceAssignment(
+    dynamodb: DynamoDB,
+    userId: string,
+    deviceId: string
+): Promise<DeviceAssignment | null> {
+    const assignments = await getUserAccessibleDeviceAssignments(dynamodb, userId);
+    return assignments.find(assignment => assignment.device_id === deviceId) || null;
 }
 
 // Helper function to check if user has access to a specific device
@@ -102,4 +130,4 @@ export async function checkUserDeviceAccess(dynamodb: DynamoDB, userId: string, 
         console.error('Error checking user device access:', error);
         return false;
     }
-} 
+}

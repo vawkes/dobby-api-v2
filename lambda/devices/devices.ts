@@ -4,9 +4,10 @@ import { unmarshall } from "@aws-sdk/util-dynamodb";
 import { devicesSchema, deviceSchema, deviceDataSchema, deviceIdSchema } from './devicesSchema.ts';
 import { describeRoute } from 'hono-openapi';
 import { resolver } from 'hono-openapi/zod'
-import { getUserFromContext, getUserAccessibleDevices } from '../utils/deviceAccess.ts';
+import { getUserFromContext, getUserAccessibleDeviceAssignments, getUserDeviceAssignment } from '../utils/deviceAccess.ts';
 import { requirePermission, requireDevicePermission, Action } from '../utils/permissions.ts';
-import { resolveDeviceIdForCommunication, resolveDeviceIdForResponse } from '../utils/deviceIdMapping.ts';
+import { resolveDeviceIdForCommunication } from '../utils/deviceIdMapping.ts';
+import { buildPendingInstallDevice, resolveEffectiveAssignmentStatus } from '../utils/deviceLifecycle.ts';
 
 // Type for validation error issues
 interface ValidationIssue {
@@ -101,26 +102,24 @@ app.get('/',
                 return c.json({ error: 'User not authenticated' }, 401);
             }
 
-            // Get user's accessible devices (6-digit device IDs)
-            const accessibleDeviceIds = await getUserAccessibleDevices(dynamodb, user.sub);
+            // Get user's accessible device assignments (6-digit device IDs)
+            const accessibleAssignments = await getUserAccessibleDeviceAssignments(dynamodb, user.sub);
 
-            if (accessibleDeviceIds.length === 0) {
+            if (accessibleAssignments.length === 0) {
                 return c.json([]);
             }
 
-            console.log(`User has access to ${accessibleDeviceIds.length} devices:`, accessibleDeviceIds);
+            console.log(`User has access to ${accessibleAssignments.length} devices:`, accessibleAssignments.map(assignment => assignment.device_id));
 
             // Resolve 6-digit device IDs to wireless device IDs for database lookup
             const accessibleWirelessDeviceIds: string[] = [];
-            for (const deviceId of accessibleDeviceIds) {
-                const wirelessDeviceId = await resolveDeviceIdForCommunication(dynamodb, deviceId);
+            const assignmentByWirelessDeviceId = new Map<string, typeof accessibleAssignments[number]>();
+            for (const assignment of accessibleAssignments) {
+                const wirelessDeviceId = await resolveDeviceIdForCommunication(dynamodb, assignment.device_id);
                 if (wirelessDeviceId) {
                     accessibleWirelessDeviceIds.push(wirelessDeviceId);
+                    assignmentByWirelessDeviceId.set(wirelessDeviceId, assignment);
                 }
-            }
-
-            if (accessibleWirelessDeviceIds.length === 0) {
-                return c.json([]);
             }
 
             console.log(`Resolved to ${accessibleWirelessDeviceIds.length} wireless device IDs:`, accessibleWirelessDeviceIds);
@@ -128,7 +127,7 @@ app.get('/',
             // Use batchGetItem to fetch only the devices the user has access to
             // DynamoDB batchGetItem can handle up to 100 items per request
             const batchSize = 100;
-            const allDevices: any[] = [];
+            const deviceByWirelessDeviceId = new Map<string, any>();
 
             for (let i = 0; i < accessibleWirelessDeviceIds.length; i += batchSize) {
                 const batch = accessibleWirelessDeviceIds.slice(i, i + batchSize);
@@ -150,7 +149,9 @@ app.get('/',
                         return transformDeviceData(device);
                     });
 
-                    allDevices.push(...batchDevices);
+                    for (const device of batchDevices) {
+                        deviceByWirelessDeviceId.set(device.device_id, device);
+                    }
                 }
 
                 // Handle unprocessed keys if any (shouldn't happen with our batch size)
@@ -159,16 +160,24 @@ app.get('/',
                 }
             }
 
-            console.log(`Retrieved ${allDevices.length} devices from database`);
+            console.log(`Retrieved ${deviceByWirelessDeviceId.size} devices from database`);
 
-            // Resolve device IDs back to 6-digit format for response
-            const resolvedDevices = await Promise.all(allDevices.map(async (device) => {
-                const originalDeviceId = await resolveDeviceIdForResponse(dynamodb, device.device_id);
-                return {
+            const resolvedDevices = accessibleAssignments.flatMap((assignment) => {
+                const wirelessDeviceId = accessibleWirelessDeviceIds.find(id => assignmentByWirelessDeviceId.get(id)?.device_id === assignment.device_id);
+                const device = wirelessDeviceId ? deviceByWirelessDeviceId.get(wirelessDeviceId) : undefined;
+
+                if (!device) {
+                    const pendingDevice = buildPendingInstallDevice(assignment.device_id, assignment.status);
+                    return pendingDevice.effective_assignment_status === 'PENDING_INSTALL' ? [pendingDevice] : [];
+                }
+
+                return [{
                     ...device,
-                    device_id: originalDeviceId
-                };
-            }));
+                    device_id: assignment.device_id,
+                    assignment_status: assignment.status,
+                    effective_assignment_status: resolveEffectiveAssignmentStatus(assignment.status, device.updated_at)
+                }];
+            });
 
             console.log(`Resolved to ${resolvedDevices.length} devices with original device IDs`);
 
@@ -290,7 +299,19 @@ app.get('/:deviceId',
                 }
             });
 
+            const user = getUserFromContext(c);
+            if (!user || !user.sub) {
+                return c.json({ error: 'User not authenticated' }, 401);
+            }
+
+            const assignment = await getUserDeviceAssignment(dynamodb, user.sub, deviceId);
+
             if (!result.Item) {
+                const pendingDevice = buildPendingInstallDevice(deviceId, assignment?.status);
+                if (pendingDevice.effective_assignment_status === 'PENDING_INSTALL') {
+                    return c.json(pendingDevice);
+                }
+
                 return c.json({ error: 'Device not found' }, 404);
             }
 
@@ -299,6 +320,8 @@ app.get('/:deviceId',
 
             // Always return the original device ID in the response
             transformedDevice.device_id = deviceId;
+            transformedDevice.assignment_status = assignment?.status;
+            transformedDevice.effective_assignment_status = resolveEffectiveAssignmentStatus(assignment?.status, transformedDevice.updated_at);
 
             // Use safeParse for more resilient validation
             const singleDeviceParseResult = deviceSchema.safeParse(transformedDevice);

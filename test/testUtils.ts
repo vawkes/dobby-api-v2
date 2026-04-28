@@ -1,4 +1,5 @@
 import { marshall, unmarshall } from "@aws-sdk/util-dynamodb";
+import { jest } from '@jest/globals';
 
 /**
  * Creates a typed mock function

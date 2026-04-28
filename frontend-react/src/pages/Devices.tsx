@@ -20,6 +20,7 @@ const statusPriority: Record<DeviceStatus, number> = {
   no_data: 1,
   degraded: 2,
   online: 3,
+  pending_install: 4,
 };
 
 const isAttentionStatus = (status: DeviceStatus): boolean =>
@@ -62,6 +63,7 @@ const Devices: React.FC = () => {
       degraded: 0,
       offline: 0,
       no_data: 0,
+      pending_install: 0,
       weakSignal: 0,
     };
 
@@ -84,6 +86,7 @@ const Devices: React.FC = () => {
       if (filterParam === 'degraded') return status === 'degraded';
       if (filterParam === 'offline') return status === 'offline';
       if (filterParam === 'no_data') return status === 'no_data';
+      if (filterParam === 'pending_install') return status === 'pending_install';
       if (filterParam === 'weak_signal') return (device.last_rx_rssi ?? 0) <= -85;
       return true;
     });
@@ -180,7 +183,7 @@ const Devices: React.FC = () => {
               </div>
             </div>
 
-            <div className='mt-4 grid grid-cols-2 md:grid-cols-5 gap-3'>
+            <div className='mt-4 grid grid-cols-2 md:grid-cols-6 gap-3'>
               <div className='rounded-lg border border-red-200/60 dark:border-red-900/60 p-3'>
                 <p className='text-xs uppercase tracking-wide text-muted-foreground'>Attention</p>
                 <p className='mt-1 text-xl font-semibold text-foreground'>{attentionCount}</p>
@@ -197,6 +200,10 @@ const Devices: React.FC = () => {
               <div className='rounded-lg border border-red-200/60 dark:border-red-900/60 p-3'>
                 <p className='text-xs uppercase tracking-wide text-muted-foreground'>Offline</p>
                 <p className='mt-1 text-xl font-semibold text-foreground'>{statusSummary.offline}</p>
+              </div>
+              <div className='rounded-lg border border-blue-200/60 dark:border-blue-900/60 p-3'>
+                <p className='text-xs uppercase tracking-wide text-muted-foreground'>Pending Install</p>
+                <p className='mt-1 text-xl font-semibold text-foreground'>{statusSummary.pending_install}</p>
               </div>
               <div className='rounded-lg border border-border p-3'>
                 <p className='text-xs uppercase tracking-wide text-muted-foreground'>Weak RSSI</p>
@@ -255,6 +262,13 @@ const Devices: React.FC = () => {
                 onClick={() => navigate('/devices?filter=no_data')}
               >
                 No Data
+              </Button>
+              <Button
+                variant={filterParam === 'pending_install' ? 'primary' : 'outline'}
+                size='sm'
+                onClick={() => navigate('/devices?filter=pending_install')}
+              >
+                Pending Install
               </Button>
               <Button
                 variant={filterParam === 'weak_signal' ? 'danger' : 'outline'}
