@@ -27,6 +27,7 @@ const statusBadgeClass: Record<DeviceStatus, string> = {
   degraded: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300',
   offline: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300',
   no_data: 'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200',
+  pending_install: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
 };
 
 const statusPriority: Record<DeviceStatus, number> = {
@@ -34,6 +35,7 @@ const statusPriority: Record<DeviceStatus, number> = {
   no_data: 1,
   degraded: 2,
   online: 3,
+  pending_install: 4,
 };
 
 const formatTimeAgo = (dateString?: string): string => {
@@ -77,6 +79,7 @@ const Dashboard: React.FC = () => {
       degraded: 0,
       offline: 0,
       no_data: 0,
+      pending_install: 0,
       weakSignal: 0,
       lora: 0,
       ble: 0,
@@ -108,6 +111,7 @@ const Dashboard: React.FC = () => {
           ageHours: hoursSince(device.updated_at),
         }))
         .filter(device => device.status !== 'online')
+        .filter(device => device.status !== 'pending_install')
         .sort((a, b) => {
           const byStatus = statusPriority[a.status] - statusPriority[b.status];
           if (byStatus !== 0) return byStatus;
@@ -170,7 +174,7 @@ const Dashboard: React.FC = () => {
             </div>
 
             <div className='rounded-xl border border-border bg-card p-4 md:p-6'>
-              <div className='grid grid-cols-2 gap-3 md:grid-cols-5'>
+              <div className='grid grid-cols-2 gap-3 md:grid-cols-6'>
                 <div className='rounded-lg border border-emerald-200/60 dark:border-emerald-900/60 p-3'>
                   <p className='text-xs uppercase tracking-wide text-muted-foreground'>Online</p>
                   <p className='mt-1 text-2xl font-semibold text-foreground'>{statusSummary.online}</p>
@@ -190,6 +194,11 @@ const Dashboard: React.FC = () => {
                   <p className='text-xs uppercase tracking-wide text-muted-foreground'>No Data</p>
                   <p className='mt-1 text-2xl font-semibold text-foreground'>{statusSummary.no_data}</p>
                   <p className='text-xs text-muted-foreground'>Never reported</p>
+                </div>
+                <div className='rounded-lg border border-blue-200/60 dark:border-blue-900/60 p-3'>
+                  <p className='text-xs uppercase tracking-wide text-muted-foreground'>Pending Install</p>
+                  <p className='mt-1 text-2xl font-semibold text-foreground'>{statusSummary.pending_install}</p>
+                  <p className='text-xs text-muted-foreground'>Shelf inventory</p>
                 </div>
                 <div className='rounded-lg border border-border p-3'>
                   <p className='text-xs uppercase tracking-wide text-muted-foreground'>Attention Load</p>

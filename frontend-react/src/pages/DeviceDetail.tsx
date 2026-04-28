@@ -50,6 +50,7 @@ const statusBadgeClass: Record<DeviceStatus, string> = {
   degraded: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300',
   offline: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300',
   no_data: 'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200',
+  pending_install: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
 };
 
 const DeviceDetail: React.FC = () => {

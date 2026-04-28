@@ -1,5 +1,6 @@
 import { z } from '@hono/zod-openapi'
 import { deviceIdSchema as sharedDeviceIdSchema, wirelessDeviceIdSchema, gpsTimestampSchema, messageNumberSchema } from '../../shared/schemas/primitives'
+import { ASSIGNMENT_STATUSES } from '../utils/deviceLifecycle.ts';
 
 // Custom validator for device ID that can be either UUID or 6-digit
 const deviceIdSchema = z.union([
@@ -22,6 +23,8 @@ const deviceSchema = z.object({
     vendor_id: z.coerce.string().optional(), // Coerce numbers to strings for resilience
     last_rx_rssi: z.number().optional(), // Signal strength in dBm
     last_link_type: z.number().optional(), // 1 for BLE, 4 for LoRA
+    assignment_status: z.enum(ASSIGNMENT_STATUSES).optional(),
+    effective_assignment_status: z.enum(ASSIGNMENT_STATUSES).optional(),
 });
 
 const devicesSchema = z.array(deviceSchema);
