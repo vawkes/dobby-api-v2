@@ -300,7 +300,7 @@ const BulkScheduleEvent: React.FC<BulkScheduleEventProps> = ({ onEventsScheduled
                                                     />
                                                     <label
                                                         htmlFor={`device-${device.device_id}`}
-                                                        className="ml-2 block text-sm text-gray-700"
+                                                        className="ml-2 block text-sm text-card-foreground"
                                                     >
                                                         {device.device_id}
                                                     </label>
@@ -328,4 +328,4 @@ const BulkScheduleEvent: React.FC<BulkScheduleEventProps> = ({ onEventsScheduled
     );
 };
 
-export default BulkScheduleEvent; 
+export default BulkScheduleEvent;
