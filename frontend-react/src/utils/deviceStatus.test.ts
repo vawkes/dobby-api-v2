@@ -1,5 +1,5 @@
 import { Device } from '../types/index.ts';
-import { getDeviceStatus } from './deviceStatus.ts';
+import { getDeviceStatus, getDeviceStatusLabel } from './deviceStatus.ts';
 
 const baseDevice = (overrides: Partial<Device> = {}): Device => ({
   cta_version: '1',
@@ -26,5 +26,12 @@ describe('getDeviceStatus', () => {
   it('marks devices degraded when RSSI is -100 dBm or weaker', () => {
     expect(getDeviceStatus(baseDevice({ updated_at: hoursAgo(1), last_rx_rssi: -99 }))).toBe('online');
     expect(getDeviceStatus(baseDevice({ updated_at: hoursAgo(1), last_rx_rssi: -100 }))).toBe('degraded');
+  });
+
+  it('exposes shared user-facing status labels', () => {
+    expect(getDeviceStatusLabel('online')).toBe('Online');
+    expect(getDeviceStatusLabel('degraded')).toBe('Degraded');
+    expect(getDeviceStatusLabel('offline')).toBe('Offline');
+    expect(getDeviceStatusLabel('no_data')).toBe('No Data');
   });
 });

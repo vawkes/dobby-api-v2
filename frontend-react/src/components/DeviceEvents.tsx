@@ -3,6 +3,7 @@ import { FiAlertCircle, FiCalendar, FiClock, FiInfo } from 'react-icons/fi';
 import { eventsAPI } from '../services/api';
 import { Event, EventType } from '../types';
 import { formatGpsDate, getDateFromGpsOrIso } from '../utils/dateUtils';
+import { sanitizeDeviceText } from '../utils/deviceDisplay.ts';
 
 interface DeviceEventsProps {
     deviceId: string;
@@ -47,7 +48,7 @@ const DeviceEvents: React.FC<DeviceEventsProps> = ({ deviceId }) => {
     }, [deviceId]);
 
     // Helper to get event type display name and color
-    const getEventInfo = (eventType: EventType): { name: string; bgColor: string; textColor: string; icon: React.ReactNode } => {
+    const getEventInfo = (eventType: EventType | string): { name: string; bgColor: string; textColor: string; icon: React.ReactNode } => {
         switch (eventType) {
             case EventType.LOAD_UP:
                 return {
@@ -92,8 +93,9 @@ const DeviceEvents: React.FC<DeviceEventsProps> = ({ deviceId }) => {
                     icon: <FiInfo className="h-5 w-5 text-purple-600" />
                 };
             default:
+                const rawType = sanitizeDeviceText(eventType) || 'unreported';
                 return {
-                    name: "Unknown Event",
+                    name: `Unknown Event (${rawType})`,
                     bgColor: "bg-gray-100",
                     textColor: "text-gray-800",
                     icon: <FiInfo className="h-5 w-5 text-gray-600" />
@@ -101,14 +103,31 @@ const DeviceEvents: React.FC<DeviceEventsProps> = ({ deviceId }) => {
         }
     };
 
+    const formatEventDate = (dateValue?: string | number): string => {
+        const formatted = formatGpsDate(dateValue);
+        return formatted === 'Invalid Date' ? 'Unknown' : formatted;
+    };
+
+    const getAcknowledgementLabel = (eventAck?: boolean): string => {
+        if (eventAck === true) return 'Acknowledged';
+        if (eventAck === false) return 'Pending';
+        return 'Unknown acknowledgement';
+    };
+
+    const getAcknowledgementClass = (eventAck?: boolean): string => {
+        if (eventAck === true) return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-200';
+        if (eventAck === false) return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-200';
+        return 'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200';
+    };
+
     // Sort events by date in descending order (most recent first)
     const sortedEvents = [...events].sort((a, b) => {
         // Choose the appropriate date field based on the event type
         const getDateString = (event: Event) => {
-            if (event.event_type === EventType.INFO_REQUEST && event.event_data.timestamp) {
+            if (event.event_type === EventType.INFO_REQUEST && event.event_data?.timestamp) {
                 return event.event_data.timestamp;
             }
-            return event.event_data.start_time || "0";
+            return event.event_data?.start_time || "0";
         };
 
         const dateA = getDateFromGpsOrIso(getDateString(a)) || new Date(0);
@@ -167,11 +186,12 @@ const DeviceEvents: React.FC<DeviceEventsProps> = ({ deviceId }) => {
                                 const eventInfo = getEventInfo(event.event_type);
                                 // Get the appropriate date field based on event type
                                 const dateField = event.event_type === EventType.INFO_REQUEST
-                                    ? event.event_data.timestamp
-                                    : event.event_data.start_time;
+                                    ? event.event_data?.timestamp
+                                    : event.event_data?.start_time;
+                                const eventId = sanitizeDeviceText(event.event_id) || 'Unknown event ID';
 
                                 return (
-                                    <tr key={event.event_id}>
+                                    <tr key={eventId}>
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <div className="flex items-center">
                                                 <div className="flex-shrink-0">
@@ -181,27 +201,27 @@ const DeviceEvents: React.FC<DeviceEventsProps> = ({ deviceId }) => {
                                                     <div className="text-sm font-medium text-card-foreground">
                                                         {eventInfo.name}
                                                     </div>
+                                                    <div className="text-xs text-muted-foreground">
+                                                        {eventId}
+                                                    </div>
                                                 </div>
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
-                                            <div className="text-sm text-card-foreground">{formatGpsDate(dateField)}</div>
+                                            <div className="text-sm text-card-foreground">{formatEventDate(dateField)}</div>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <div className="text-sm text-card-foreground">
                                                 {event.event_type === EventType.INFO_REQUEST
                                                     ? 'N/A'
-                                                    : (event.event_data.duration
+                                                    : (event.event_data?.duration
                                                         ? `${event.event_data.duration} seconds`
                                                         : 'N/A')}
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
-                                            <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${event.event_ack
-                                                ? 'bg-green-100 text-green-800'
-                                                : 'bg-yellow-100 text-yellow-800'
-                                                }`}>
-                                                {event.event_ack ? 'Acknowledged' : 'Pending'}
+                                            <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getAcknowledgementClass(event.event_ack)}`}>
+                                                {getAcknowledgementLabel(event.event_ack)}
                                             </span>
                                         </td>
                                     </tr>
@@ -215,4 +235,4 @@ const DeviceEvents: React.FC<DeviceEventsProps> = ({ deviceId }) => {
     );
 };
 
-export default DeviceEvents; 
+export default DeviceEvents;

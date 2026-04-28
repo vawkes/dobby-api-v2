@@ -12,8 +12,8 @@ import { deviceAPI } from '../services/api.ts';
 import { Device } from '../types/index.ts';
 import { DataTable, deviceColumns } from '../components/data/index.ts';
 import { Button } from '../components/ui/Button.tsx';
-import { getDeviceTypeDescription } from '../utils/deviceTypes.ts';
 import { DeviceStatus, getDeviceStatus, hoursSince } from '../utils/deviceStatus.ts';
+import { getDeviceSearchText } from '../utils/deviceDisplay.ts';
 
 const statusPriority: Record<DeviceStatus, number> = {
   offline: 0,
@@ -91,18 +91,7 @@ const Devices: React.FC = () => {
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
       result = result.filter(device => {
-        const deviceTypeInfo = getDeviceTypeDescription(device.device_type);
-        const deviceTypeText = deviceTypeInfo.hexCode
-          ? `${deviceTypeInfo.description.toLowerCase()} ${deviceTypeInfo.hexCode.toLowerCase()}`
-          : deviceTypeInfo.description.toLowerCase();
-
-        return (
-          device.model_number.toLowerCase().includes(term) ||
-          device.serial_number.toLowerCase().includes(term) ||
-          deviceTypeText.includes(term) ||
-          device.firmware_version.toLowerCase().includes(term) ||
-          device.device_id.toLowerCase().includes(term)
-        );
+        return getDeviceSearchText(device).includes(term);
       });
     }
 

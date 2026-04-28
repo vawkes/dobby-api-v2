@@ -3,7 +3,8 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { deviceAPI } from '../services/api';
 import { Device } from '../types';
-import { DeviceStatus, getDeviceStatus, hoursSince } from '../utils/deviceStatus.ts';
+import { DeviceStatus, getDeviceStatus, getDeviceStatusLabel, hoursSince } from '../utils/deviceStatus.ts';
+import { getDeviceDisplayValue } from '../utils/deviceDisplay.ts';
 import {
   FiActivity,
   FiAlertCircle,
@@ -19,13 +20,6 @@ const getLinkTypeName = (linkType?: number): string => {
   if (linkType === 1) return 'BLE';
   if (linkType === 4) return 'LoRA';
   return 'Unknown';
-};
-
-const statusLabel: Record<DeviceStatus, string> = {
-  online: 'Online',
-  degraded: 'Degraded',
-  offline: 'Offline',
-  no_data: 'No Data',
 };
 
 const statusBadgeClass: Record<DeviceStatus, string> = {
@@ -234,7 +228,7 @@ const Dashboard: React.FC = () => {
                           <div>
                             <p className='text-sm font-semibold text-foreground'>{device.device_id}</p>
                             <p className='text-xs text-muted-foreground'>
-                              {device.model_number} • {device.serial_number}
+                              {getDeviceDisplayValue(device.model_number)} • {getDeviceDisplayValue(device.serial_number)}
                             </p>
                           </div>
                           <span
@@ -242,7 +236,7 @@ const Dashboard: React.FC = () => {
                               statusBadgeClass[device.status]
                             } ${device.status === 'offline' ? 'status-pulse' : ''}`}
                           >
-                            {statusLabel[device.status]}
+                            {getDeviceStatusLabel(device.status)}
                           </span>
                           <span className='text-xs text-muted-foreground whitespace-nowrap'>
                             {formatTimeAgo(device.updated_at)}
@@ -319,12 +313,14 @@ const Dashboard: React.FC = () => {
                       >
                         <div>
                           <p className='text-sm font-semibold text-foreground'>{device.device_id}</p>
-                          <p className='text-xs text-muted-foreground'>{device.model_number}</p>
+                          <p className='text-xs text-muted-foreground'>
+                            {getDeviceDisplayValue(device.model_number)}
+                          </p>
                         </div>
                         <span
                           className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-semibold ${statusBadgeClass[status]}`}
                         >
-                          {statusLabel[status]}
+                          {getDeviceStatusLabel(status)}
                         </span>
                         <span className='text-xs text-muted-foreground whitespace-nowrap'>
                           {formatTimeAgo(device.updated_at)}

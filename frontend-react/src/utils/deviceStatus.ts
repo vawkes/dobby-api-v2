@@ -2,6 +2,13 @@ import { Device } from '../types/index.ts';
 
 export type DeviceStatus = 'online' | 'degraded' | 'offline' | 'no_data';
 
+const deviceStatusLabels: Record<DeviceStatus, string> = {
+  online: 'Online',
+  degraded: 'Degraded',
+  offline: 'Offline',
+  no_data: 'No Data',
+};
+
 export const hoursSince = (dateString?: string): number | null => {
   if (!dateString) return null;
   try {
@@ -22,3 +29,5 @@ export const getDeviceStatus = (device: Device): DeviceStatus => {
   if (device.last_rx_rssi !== undefined && device.last_rx_rssi <= -100) return 'degraded';
   return 'online';
 };
+
+export const getDeviceStatusLabel = (status: DeviceStatus): string => deviceStatusLabels[status];

@@ -1,5 +1,6 @@
 import React from 'react';
 import { getDeviceTypeDescription } from '../../utils/deviceTypes.ts';
+import { sanitizeDeviceText } from '../../utils/deviceDisplay.ts';
 
 interface DeviceTypeDisplayProps {
   deviceType: string;
@@ -12,7 +13,7 @@ const DeviceTypeDisplay: React.FC<DeviceTypeDisplayProps> = ({
   className = '',
   showTooltip = true 
 }) => {
-  const { description, hexCode } = getDeviceTypeDescription(deviceType);
+  const { description, hexCode } = getDeviceTypeDescription(sanitizeDeviceText(deviceType));
   
   // If we have a hex code, show it in a tooltip
   if (hexCode && showTooltip) {

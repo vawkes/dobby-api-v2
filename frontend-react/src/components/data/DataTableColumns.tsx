@@ -4,6 +4,22 @@ import { FiAlertCircle, FiCheckCircle, FiWifi, FiRadio } from 'react-icons/fi';
 import { Device } from '../../types/index.ts';
 import { cn } from '../../lib/utils.ts';
 import DeviceTypeDisplay from '../ui/DeviceTypeDisplay.tsx';
+import { getDeviceStatus, getDeviceStatusLabel, DeviceStatus } from '../../utils/deviceStatus.ts';
+import { formatOptionalDate, getDeviceDisplayValue, sanitizeDeviceText } from '../../utils/deviceDisplay.ts';
+
+const statusPriority: Record<DeviceStatus, number> = {
+    offline: 0,
+    no_data: 1,
+    degraded: 2,
+    online: 3,
+};
+
+const statusBadgeClass: Record<DeviceStatus, string> = {
+    online: 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-200',
+    degraded: 'bg-amber-100 text-amber-800 dark:bg-amber-900/20 dark:text-amber-200',
+    offline: 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-200',
+    no_data: 'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200',
+};
 
 // Helper function to get link type name and icon
 const getLinkTypeInfo = (linkType?: number): { name: string; icon: React.ReactNode; color: string } => {
@@ -43,12 +59,7 @@ const isWithinOneDay = (dateString?: string): boolean => {
 
 // Format date for display
 const formatDate = (dateString?: string): string => {
-    if (!dateString) return 'Never';
-    try {
-        return new Date(dateString).toLocaleString();
-    } catch (e) {
-        return 'Invalid Date';
-    }
+    return formatOptionalDate(dateString, 'Never');
 };
 
 /**
@@ -62,28 +73,23 @@ export const deviceColumns: ColumnDef<Device>[] = [
         accessorFn: (device) => device.updated_at,
         cell: ({ row }) => {
             const device = row.original;
-            const isHealthy = device.updated_at ? isWithinOneDay(device.updated_at) : false;
+            const status = getDeviceStatus(device);
+            const isOnline = status === 'online';
 
             return (
                 <div className="flex items-center">
-                    {isHealthy ? (
+                    {isOnline ? (
                         <>
                             <FiCheckCircle className="h-4 w-4 text-green-600 dark:text-green-400 mr-2" />
-                            <span className={cn(
-                                'px-2 py-1 text-xs font-medium rounded-full',
-                                'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-200'
-                            )}>
-                                Healthy
+                            <span className={cn('px-2 py-1 text-xs font-medium rounded-full', statusBadgeClass[status])}>
+                                {getDeviceStatusLabel(status)}
                             </span>
                         </>
                     ) : (
                         <>
                             <FiAlertCircle className="h-4 w-4 text-red-600 dark:text-red-400 mr-2" />
-                            <span className={cn(
-                                'px-2 py-1 text-xs font-medium rounded-full',
-                                'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-200'
-                            )}>
-                                Needs Attention
+                            <span className={cn('px-2 py-1 text-xs font-medium rounded-full', statusBadgeClass[status])}>
+                                {getDeviceStatusLabel(status)}
                             </span>
                         </>
                     )}
@@ -91,11 +97,9 @@ export const deviceColumns: ColumnDef<Device>[] = [
             );
         },
         sortingFn: (rowA, rowB) => {
-            const aHealthy = rowA.original.updated_at ? isWithinOneDay(rowA.original.updated_at) : false;
-            const bHealthy = rowB.original.updated_at ? isWithinOneDay(rowB.original.updated_at) : false;
-
-            if (aHealthy === bHealthy) return 0;
-            return aHealthy ? 1 : -1; // Healthy devices first
+            const aStatus = getDeviceStatus(rowA.original);
+            const bStatus = getDeviceStatus(rowB.original);
+            return statusPriority[aStatus] - statusPriority[bStatus];
         },
     },
     {
@@ -104,7 +108,7 @@ export const deviceColumns: ColumnDef<Device>[] = [
         accessorKey: 'device_id',
         cell: ({ getValue }) => (
             <span className="font-mono text-sm font-medium text-blue-600 dark:text-blue-400">
-                {getValue<string>()}
+                {getDeviceDisplayValue(getValue<string>(), 'Unknown')}
             </span>
         ),
     },
@@ -114,7 +118,7 @@ export const deviceColumns: ColumnDef<Device>[] = [
         accessorKey: 'model_number',
         cell: ({ getValue }) => (
             <span className="text-sm text-foreground">
-                {getValue<string>()}
+                {getDeviceDisplayValue(getValue<string>())}
             </span>
         ),
     },
@@ -124,7 +128,7 @@ export const deviceColumns: ColumnDef<Device>[] = [
         accessorKey: 'serial_number',
         cell: ({ getValue }) => (
             <span className="font-mono text-sm text-muted-foreground">
-                {getValue<string>()}
+                {getDeviceDisplayValue(getValue<string>())}
             </span>
         ),
     },
@@ -134,7 +138,7 @@ export const deviceColumns: ColumnDef<Device>[] = [
         accessorKey: 'device_type',
         cell: ({ getValue }) => (
             <DeviceTypeDisplay
-                deviceType={getValue<string>()}
+                deviceType={sanitizeDeviceText(getValue<string>())}
                 className="text-sm text-foreground"
             />
         ),
@@ -145,7 +149,7 @@ export const deviceColumns: ColumnDef<Device>[] = [
         accessorKey: 'firmware_version',
         cell: ({ getValue }) => (
             <span className="font-mono text-xs text-muted-foreground">
-                {getValue<string>()}
+                {getDeviceDisplayValue(getValue<string>())}
             </span>
         ),
     },
@@ -244,8 +248,7 @@ export const deviceMobileColumns: ColumnDef<Device>[] = [
         accessorFn: (device) => device.updated_at,
         cell: ({ row }) => {
             const device = row.original;
-            const isHealthy = device.updated_at ? isWithinOneDay(device.updated_at) : false;
-            return isHealthy ? 'Healthy' : 'Needs Attention';
+            return getDeviceStatusLabel(getDeviceStatus(device));
         },
     },
     {
@@ -260,5 +263,4 @@ export const deviceMobileColumns: ColumnDef<Device>[] = [
         cell: ({ getValue }) => formatDate(getValue<string>()),
     },
 ];
-
 

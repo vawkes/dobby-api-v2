@@ -17,7 +17,14 @@ import {
 import DeviceEvents from '../components/DeviceEvents.tsx';
 import ScheduleEvent from '../components/ScheduleEvent.tsx';
 import DeviceTypeDisplay from '../components/ui/DeviceTypeDisplay.tsx';
-import { DeviceStatus, getDeviceStatus, hoursSince } from '../utils/deviceStatus.ts';
+import { DeviceStatus, getDeviceStatus, getDeviceStatusLabel, hoursSince } from '../utils/deviceStatus.ts';
+import {
+  formatOperationalState,
+  formatOptionalDate,
+  formatTelemetryEnergy,
+  getDeviceDisplayValue,
+  sanitizeDeviceText,
+} from '../utils/deviceDisplay.ts';
 
 const getLinkTypeName = (linkType?: number): string => {
   if (linkType === 1) return 'BLE';
@@ -26,12 +33,7 @@ const getLinkTypeName = (linkType?: number): string => {
 };
 
 const formatDate = (dateString?: string): string => {
-  if (!dateString) return 'Unknown';
-  try {
-    return new Date(dateString).toLocaleString();
-  } catch (e) {
-    return dateString;
-  }
+  return formatOptionalDate(dateString);
 };
 
 const formatTimeAgo = (dateString?: string): string => {
@@ -41,13 +43,6 @@ const formatTimeAgo = (dateString?: string): string => {
   if (ageHours < 1) return `${Math.max(1, Math.round(ageHours * 60))}m ago`;
   if (ageHours < 24) return `${Math.round(ageHours)}h ago`;
   return `${Math.round(ageHours / 24)}d ago`;
-};
-
-const statusLabel: Record<DeviceStatus, string> = {
-  online: 'Online',
-  degraded: 'Degraded',
-  offline: 'Offline',
-  no_data: 'No Data',
 };
 
 const statusBadgeClass: Record<DeviceStatus, string> = {
@@ -171,7 +166,7 @@ const DeviceDetail: React.FC = () => {
                   {device.device_id}
                 </h1>
                 <p className='mt-1 text-sm text-muted-foreground'>
-                  {device.model_number} • {device.serial_number}
+                  {getDeviceDisplayValue(device.model_number)} • {getDeviceDisplayValue(device.serial_number)}
                 </p>
               </div>
               <div className='flex items-center gap-3'>
@@ -200,7 +195,7 @@ const DeviceDetail: React.FC = () => {
                         getDeviceStatus(device) === 'offline' ? 'status-pulse' : ''
                       }`}
                     >
-                      {statusLabel[getDeviceStatus(device)]}
+                      {getDeviceStatusLabel(getDeviceStatus(device))}
                     </span>
                   </p>
                 </div>
@@ -221,7 +216,9 @@ const DeviceDetail: React.FC = () => {
                 </div>
                 <div className='rounded-lg border border-border p-3'>
                   <p className='text-xs uppercase tracking-wide text-muted-foreground'>Firmware</p>
-                  <p className='mt-1 text-lg font-semibold text-foreground'>{device.firmware_version}</p>
+                  <p className='mt-1 text-lg font-semibold text-foreground'>
+                    {getDeviceDisplayValue(device.firmware_version)}
+                  </p>
                 </div>
               </div>
             </div>
@@ -259,13 +256,13 @@ const DeviceDetail: React.FC = () => {
                     <div className='rounded-lg border border-border p-3'>
                       <p className='text-xs uppercase tracking-wide text-muted-foreground'>Cumulative Energy</p>
                       <p className='mt-1 text-lg font-semibold text-foreground'>
-                        {latestDataPoint.cumulative_energy ?? 'N/A'} kWh
+                        {formatTelemetryEnergy(latestDataPoint.cumulative_energy)}
                       </p>
                     </div>
                     <div className='rounded-lg border border-border p-3'>
                       <p className='text-xs uppercase tracking-wide text-muted-foreground'>Operational State</p>
                       <p className='mt-1 text-lg font-semibold text-foreground'>
-                        {latestDataPoint.operational_state ?? 'N/A'}
+                        {formatOperationalState(latestDataPoint.operational_state)}
                       </p>
                     </div>
                   </div>
@@ -341,34 +338,44 @@ const DeviceDetail: React.FC = () => {
                     <div className='px-4 py-3 flex items-start justify-between gap-3'>
                       <dt className='text-sm text-muted-foreground'>Device Type</dt>
                       <dd className='text-sm text-card-foreground text-right'>
-                        <DeviceTypeDisplay deviceType={device.device_type} />
+                        <DeviceTypeDisplay deviceType={sanitizeDeviceText(device.device_type)} />
                       </dd>
                     </div>
                     <div className='px-4 py-3 flex items-start justify-between gap-3'>
                       <dt className='text-sm text-muted-foreground'>Firmware Date</dt>
-                      <dd className='text-sm text-card-foreground text-right'>{device.firmware_date}</dd>
+                      <dd className='text-sm text-card-foreground text-right'>
+                        {getDeviceDisplayValue(device.firmware_date)}
+                      </dd>
                     </div>
                     <div className='px-4 py-3 flex items-start justify-between gap-3'>
                       <dt className='text-sm text-muted-foreground'>CTA Version</dt>
-                      <dd className='text-sm text-card-foreground text-right'>{device.cta_version}</dd>
+                      <dd className='text-sm text-card-foreground text-right'>
+                        {getDeviceDisplayValue(device.cta_version)}
+                      </dd>
                     </div>
                     <div className='px-4 py-3 flex items-start justify-between gap-3'>
                       <dt className='text-sm text-muted-foreground'>Vendor ID</dt>
-                      <dd className='text-sm text-card-foreground text-right'>{device.vendor_id}</dd>
+                      <dd className='text-sm text-card-foreground text-right'>
+                        {getDeviceDisplayValue(device.vendor_id)}
+                      </dd>
                     </div>
                     <div className='px-4 py-3 flex items-start justify-between gap-3'>
                       <dt className='text-sm text-muted-foreground'>Device Revision</dt>
-                      <dd className='text-sm text-card-foreground text-right'>{device.device_revision}</dd>
+                      <dd className='text-sm text-card-foreground text-right'>
+                        {getDeviceDisplayValue(device.device_revision)}
+                      </dd>
                     </div>
                     <div className='px-4 py-3 flex items-start justify-between gap-3'>
                       <dt className='text-sm text-muted-foreground'>Capability Bitmap</dt>
-                      <dd className='text-sm text-card-foreground text-right'>{device.capability_bitmap}</dd>
+                      <dd className='text-sm text-card-foreground text-right'>
+                        {getDeviceDisplayValue(device.capability_bitmap)}
+                      </dd>
                     </div>
-                    {device.gridcube_firmware_version && (
+                    {sanitizeDeviceText(device.gridcube_firmware_version) && (
                       <div className='px-4 py-3 flex items-start justify-between gap-3'>
                         <dt className='text-sm text-muted-foreground'>GridCube Firmware</dt>
                         <dd className='text-sm text-card-foreground text-right'>
-                          {device.gridcube_firmware_version}
+                          {getDeviceDisplayValue(device.gridcube_firmware_version)}
                         </dd>
                       </div>
                     )}
