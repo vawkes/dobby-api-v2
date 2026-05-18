@@ -26,6 +26,7 @@ export const lowLevelClient = client;
 export const TABLES = {
   DEVICE_INFO: 'DobbyInfo',
   DEVICE_DATA: 'DobbyData',
+  DEVICE_SIGNAL_DATA: 'DobbySignalData',
   EVENTS: 'DobbyEvent',
   PRODUCTION_LINE: 'ProductionLine',
   COMPANIES: 'Companies',

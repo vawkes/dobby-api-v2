@@ -6,10 +6,11 @@ import { handleModelNumber } from './packet-handlers/model-number';
 import { handleSerialNumber } from './packet-handlers/serial-number';
 import { handleFwVersion } from './packet-handlers/fw-version';
 import { handleOperationalState } from './packet-handlers/operational-state';
-import { handleConnectionInfo } from './packet-handlers/connection-info';
+import { handleConnectionInfo, parseConnectionInfoSignalData } from './packet-handlers/connection-info';
 import { handleGridcubeFwVersion } from './packet-handlers/gridcube-fw-version';
 import { handleEventAcknowledgment } from './packet-handlers/event-acknowledgment';
-import { writeSidewalkMetadataToDynamo, SidewalkMetadataEvent } from './utils/sidewalk-metadata';
+import { getSidewalkRssi, writeSidewalkMetadataToDynamo, SidewalkMetadataEvent } from './utils/sidewalk-metadata';
+import { SignalDataFields, writeSignalDataToDynamo } from './utils/signal-data';
 
 interface DobbyDataHandlerEvent extends SidewalkMetadataEvent {
   WirelessDeviceId: string;
@@ -23,8 +24,6 @@ export const handler = async (event: DobbyDataHandlerEvent): Promise<APIGatewayP
     const deviceId = event.WirelessDeviceId;
     const payload = event.PayloadData;
 
-    await writeSidewalkMetadataToDynamo(deviceId, event);
-
     // First decode base64 to get hex string
     const base64Decoded = Buffer.from(payload, 'base64').toString();
     console.log('Base64 decoded (hex string):', base64Decoded);
@@ -36,6 +35,25 @@ export const handler = async (event: DobbyDataHandlerEvent): Promise<APIGatewayP
     // Get payload type from first byte
     const payloadType = decodedPayload[0];
     console.log('Payload type:', payloadType);
+
+    const signalData: SignalDataFields = {
+      source_packet_type: payloadType
+    };
+    const sidewalkRssi = getSidewalkRssi(event);
+    if (sidewalkRssi !== undefined) {
+      signalData.sidewalk_rssi = sidewalkRssi;
+    }
+    const connectionSignalData = payloadType === 7
+      ? parseConnectionInfoSignalData(decodedPayload)
+      : undefined;
+    if (payloadType === 7) {
+      Object.assign(signalData, connectionSignalData);
+    }
+
+    if (sidewalkRssi !== undefined || connectionSignalData !== undefined) {
+      await writeSignalDataToDynamo(deviceId, signalData);
+    }
+    await writeSidewalkMetadataToDynamo(deviceId, event);
 
     // Handle different packet types
     switch (payloadType) {

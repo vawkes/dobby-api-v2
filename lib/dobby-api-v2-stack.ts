@@ -35,6 +35,14 @@ export class DobbyApiV2Stack extends cdk.Stack {
     const dataTable = dynamodb.Table.fromTableName(this, 'DobbyDataTable', 'DobbyData');
     const productionLineTable = dynamodb.Table.fromTableName(this, 'ProductionLineTable', 'ProductionLine');
 
+    const signalDataTable = new dynamodb.Table(this, 'DobbySignalDataTable', {
+      tableName: 'DobbySignalData',
+      partitionKey: { name: 'device_id', type: dynamodb.AttributeType.STRING },
+      sortKey: { name: 'timestamp', type: dynamodb.AttributeType.NUMBER },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
+    });
+
     // Create company-related DynamoDB tables
     const companiesTable = new dynamodb.Table(this, 'CompaniesTable', {
       tableName: 'Companies',
@@ -301,6 +309,7 @@ export class DobbyApiV2Stack extends cdk.Stack {
     infoTable.grantReadWriteData(dataHandlerFn);
     eventTable.grantReadWriteData(dataHandlerFn);
     dataTable.grantReadWriteData(dataHandlerFn);
+    signalDataTable.grantReadWriteData(dataHandlerFn);
 
     // Grant permissions for company-related tables
     companiesTable.grantReadData(dataHandlerFn);
@@ -335,10 +344,12 @@ export class DobbyApiV2Stack extends cdk.Stack {
         infoTable.tableArn,
         eventTable.tableArn,
         dataTable.tableArn,
+        signalDataTable.tableArn,
         `${productionLineTable.tableArn}/index/*`,
         `${infoTable.tableArn}/index/*`,
         `${eventTable.tableArn}/index/*`,
-        `${dataTable.tableArn}/index/*`
+        `${dataTable.tableArn}/index/*`,
+        `${signalDataTable.tableArn}/index/*`
       ]
     }));
 
