@@ -30,10 +30,10 @@ const devicesSchema = z.array(deviceSchema);
 const deviceDataPoint = z.object({
     device_id: deviceIdSchema, // Now accepts both UUID and 6-digit ID
     timestamp: gpsTimestampSchema, // GPS timestamp as a number (seconds since epoch)
-    cumulative_energy: z.number(),
-    instant_power: z.number(),
-    msg_number: messageNumberSchema,
-    operational_state: z.number()
+    cumulative_energy: z.number().optional(),
+    instant_power: z.number().optional(),
+    msg_number: messageNumberSchema.optional(),
+    operational_state: z.number().optional()
 });
 
 const deviceDataSchema = z.array(deviceDataPoint);
