@@ -104,6 +104,30 @@ CDK deploy/destroy:
 5. Summarize impact by area (API routes, DynamoDB access, auth/permissions,
    deployment risk).
 
+## Codex Cloud / Linear Workflow
+
+- Linear issues may be delegated to Codex. Treat the Linear issue body,
+  comments, and acceptance criteria as the source artifact.
+- If the issue is ambiguous, ask a clarification in Linear before editing code.
+- Use the branch pattern `feature/<linear-key>-<slug>`,
+  `bugfix/<linear-key>-<slug>`, or `chore/<linear-key>-<slug>`.
+- Keep production out of scope. Do not run `deploy:production`,
+  `destroy:production`, or commands that mutate production AWS resources.
+- Do not run `deploy:develop` unless the issue explicitly requests a develop
+  deployment and the PR summary includes the reason, blast radius, and rollback
+  plan.
+- Default verification before opening or updating a PR:
+  - Root/API changes: `bun run build` and `bun run test:unit`.
+  - Frontend changes: in `frontend-react/`, run `bun run lint` and
+    `bun run build`.
+  - Data-handler changes: in `data-handler-ts/`, run `npm test` and
+    `npm run build`.
+  - Infra/CDK changes: run `bun run cdk synth --all --context environment=develop`.
+- If a verification command is blocked by an existing unrelated failure,
+  include the exact command, failure summary, and why it is unrelated in the PR.
+- PR descriptions must link the Linear issue, list changed areas, and include
+  local verification results.
+
 ## Where to Start for Common Tasks
 
 - API route bug/feature:
