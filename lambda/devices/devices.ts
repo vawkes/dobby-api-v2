@@ -43,6 +43,12 @@ const transformDeviceData = (device: any) => {
         device.last_rx_rssi = Number(device.rssi);
         delete device.rssi;
     }
+
+    // Map Sidewalk metadata RSSI separately from device-reported RSSI
+    if (device.sidewalk_rssi !== undefined) {
+        device.last_sidewalk_rssi = Number(device.sidewalk_rssi);
+        delete device.sidewalk_rssi;
+    }
     
     // Map link_type to last_link_type and convert to number
     if (device.link_type !== undefined) {
@@ -53,6 +59,10 @@ const transformDeviceData = (device: any) => {
     // Convert other string values to numbers for fields expected to be numbers
     if (device.last_rx_rssi !== undefined && typeof device.last_rx_rssi === 'string') {
         device.last_rx_rssi = Number(device.last_rx_rssi);
+    }
+
+    if (device.last_sidewalk_rssi !== undefined && typeof device.last_sidewalk_rssi === 'string') {
+        device.last_sidewalk_rssi = Number(device.last_sidewalk_rssi);
     }
     
     if (device.last_link_type !== undefined && typeof device.last_link_type === 'string') {

@@ -17,6 +17,7 @@ export interface Device {
     serial_number: string;
     vendor_id: string;
     last_rx_rssi?: number;
+    last_sidewalk_rssi?: number;
     last_link_type?: number;
 }
 
@@ -53,4 +54,4 @@ export interface Event {
     event_type: EventType;
     event_data: EventData;
     event_ack?: boolean;  // Acknowledgment status from device
-} 
+}
