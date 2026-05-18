@@ -26,43 +26,47 @@ const deviceIdSchema = z.union([
     z.array(z.union([z.string().uuid(), sixDigitDeviceId]))
 ]);
 
+const responseTimestampSchema = z.union([z.string().datetime(), z.number().int()]);
+
+const eventSentResponseSchema = z
+    .boolean()
+    .optional()
+    .openapi({
+        description: 'Server-owned delivery status. Returned by the API; do not send in event requests.',
+        readOnly: true,
+    });
+
 const startShedSchema = z.object({
     device_id: deviceIdSchema,
     start_time: z.string().datetime(),
     duration: z.number().optional(),
-    event_sent: z.boolean().optional(),
-});
+}).passthrough();
 
 const endShedSchema = z.object({
     device_id: deviceIdSchema,
     start_time: z.string().datetime().optional(),
-    event_sent: z.boolean().optional(),
-});
+}).passthrough();
 
 const loadUpSchema = z.object({
     device_id: deviceIdSchema,
     start_time: z.string().datetime(),
     duration: z.number().optional(),
-    event_sent: z.boolean().optional(),
-});
+}).passthrough();
 
 const gridEmergencySchema = z.object({
     device_id: deviceIdSchema,
     start_time: z.string().datetime(),
-    event_sent: z.boolean().optional(),
-});
+}).passthrough();
 
 const criticalPeakSchema = z.object({
     device_id: deviceIdSchema,
     start_time: z.string().datetime(),
-    event_sent: z.boolean().optional(),
-});
+}).passthrough();
 
 const infoRequestSchema = z.object({
     device_id: deviceIdSchema,
     timestamp: z.string().datetime().optional(),
-    event_sent: z.boolean().optional(),
-});
+}).passthrough();
 
 const advancedLoadUpSchema = z.object({
     device_id: deviceIdSchema,
@@ -108,14 +112,6 @@ const advancedLoadUpSchema = z.object({
             description: 'Suggested load up efficiency (UInt8). Set to 0 if unused.',
             example: 0,
         }),
-    event_id: z
-        .string()
-        .uuid()
-        .openapi({
-            description:
-                'CTA-2045 Event ID. This is sent to the device (GridCube encodes the first 4 bytes of the UUID). Recommended: reuse the top-level event_id.',
-            example: '8d0b2c2e-2b8d-4d11-9f54-6d8c5d7b2a1f',
-        }),
     start_randomization: z
         .number()
         .int()
@@ -128,69 +124,163 @@ const advancedLoadUpSchema = z.object({
         .min(0)
         .max(255)
         .openapi({ description: 'End randomization in minutes (UInt8).', example: 0 }),
-    event_sent: z.boolean().optional(),
-});
+}).passthrough();
 
 const customerOverrideSchema = z.object({
     device_id: deviceIdSchema,
     override: z.boolean(),
-    event_sent: z.boolean().optional(),
-});
+}).passthrough();
 
 const setUtcTimeSchema = z.object({
     device_id: deviceIdSchema,
     utc_seconds: z.number(),
     utc_offset: z.number(),
     dst_offset: z.number(),
-    event_sent: z.boolean().optional(),
-});
+}).passthrough();
 
 const getUtcTimeSchema = z.object({
     device_id: deviceIdSchema,
-    event_sent: z.boolean().optional(),
-});
+}).passthrough();
 
 const setBitmapSchema = z.object({
     device_id: deviceIdSchema,
     bit_number: z.number().min(0).max(255),
     set_value: z.boolean(),
-    event_sent: z.boolean().optional()
-});
+}).passthrough();
 
 const requestConnectionInfoSchema = z.object({
     device_id: deviceIdSchema,
-    event_sent: z.boolean().optional(),
-    last_rx_rssi: z.number().optional(),  // Last received signal strength indicator
-    last_rx_snr: z.number().optional(),   // Last received signal-to-noise ratio
-    last_rx_link_type: z.number().optional()  // Last received link type
-});
+}).passthrough();
 
 const startDataPublishSchema = z.object({
     device_id: deviceIdSchema,
     interval_minutes: z.number().min(1).max(65535), // UInt16 range
-    event_sent: z.boolean().optional(),
-});
+}).passthrough();
+
+const loadUpResponseSchema = loadUpSchema.extend({
+    start_time: responseTimestampSchema,
+    event_sent: eventSentResponseSchema,
+}).passthrough();
+
+const gridEmergencyResponseSchema = gridEmergencySchema.extend({
+    start_time: responseTimestampSchema,
+    event_sent: eventSentResponseSchema,
+}).passthrough();
+
+const criticalPeakResponseSchema = criticalPeakSchema.extend({
+    start_time: responseTimestampSchema,
+    event_sent: eventSentResponseSchema,
+}).passthrough();
+
+const startShedResponseSchema = startShedSchema.extend({
+    start_time: responseTimestampSchema,
+    event_sent: eventSentResponseSchema,
+}).passthrough();
+
+const endShedResponseSchema = endShedSchema.extend({
+    start_time: responseTimestampSchema.optional(),
+    event_sent: eventSentResponseSchema,
+}).passthrough();
+
+const infoRequestResponseSchema = infoRequestSchema.extend({
+    timestamp: responseTimestampSchema.optional(),
+    start_time: responseTimestampSchema.optional(),
+    event_sent: eventSentResponseSchema,
+}).passthrough();
+
+const advancedLoadUpResponseSchema = advancedLoadUpSchema.extend({
+    start_time: responseTimestampSchema,
+    event_id: z
+        .string()
+        .uuid()
+        .optional()
+        .openapi({
+            description: 'Server-owned CTA-2045 Event ID sent to the device. Returned by the API; do not send in event requests.',
+            example: '8d0b2c2e-2b8d-4d11-9f54-6d8c5d7b2a1f',
+            readOnly: true,
+        }),
+    event_sent: eventSentResponseSchema,
+}).passthrough();
+
+const customerOverrideResponseSchema = customerOverrideSchema.extend({
+    event_sent: eventSentResponseSchema,
+}).passthrough();
+
+const setUtcTimeResponseSchema = setUtcTimeSchema.extend({
+    event_sent: eventSentResponseSchema,
+}).passthrough();
+
+const getUtcTimeResponseSchema = getUtcTimeSchema.extend({
+    event_sent: eventSentResponseSchema,
+}).passthrough();
+
+const setBitmapResponseSchema = setBitmapSchema.extend({
+    event_sent: eventSentResponseSchema,
+}).passthrough();
+
+const requestConnectionInfoResponseSchema = requestConnectionInfoSchema.extend({
+    event_sent: eventSentResponseSchema,
+    last_rx_rssi: z.number().optional().openapi({ description: 'Server-owned last received signal strength indicator.', readOnly: true }),
+    last_rx_snr: z.number().optional().openapi({ description: 'Server-owned last received signal-to-noise ratio.', readOnly: true }),
+    last_rx_link_type: z.number().optional().openapi({ description: 'Server-owned last received link type.', readOnly: true }),
+}).passthrough();
+
+const startDataPublishResponseSchema = startDataPublishSchema.extend({
+    event_sent: eventSentResponseSchema,
+}).passthrough();
+
+function eventRequestVariant<T extends z.ZodTypeAny>(eventType: EventType, eventData: T, title: string) {
+    return z
+        .object({
+            event_type: z.literal(eventType),
+            event_data: eventData,
+        })
+        .passthrough()
+        .openapi({ title });
+}
 
 const eventRequestSchema = z.discriminatedUnion('event_type', [
-    z.object({ event_id: z.string(), event_type: z.literal(EventType.LOAD_UP), event_data: loadUpSchema }),
-    z.object({ event_id: z.string(), event_type: z.literal(EventType.GRID_EMERGENCY), event_data: gridEmergencySchema }),
-    z.object({ event_id: z.string(), event_type: z.literal(EventType.CRITICAL_PEAK), event_data: criticalPeakSchema }),
-    z.object({ event_id: z.string(), event_type: z.literal(EventType.START_SHED), event_data: startShedSchema }),
-    z.object({ event_id: z.string(), event_type: z.literal(EventType.END_SHED), event_data: endShedSchema }),
-    z.object({ event_id: z.string(), event_type: z.literal(EventType.INFO_REQUEST), event_data: infoRequestSchema }),
-    z.object({ event_id: z.string(), event_type: z.literal(EventType.ADVANCED_LOAD_UP), event_data: advancedLoadUpSchema }),
-    z.object({ event_id: z.string(), event_type: z.literal(EventType.CUSTOMER_OVERRIDE), event_data: customerOverrideSchema }),
-    z.object({ event_id: z.string(), event_type: z.literal(EventType.SET_UTC_TIME), event_data: setUtcTimeSchema }),
-    z.object({ event_id: z.string(), event_type: z.literal(EventType.GET_UTC_TIME), event_data: getUtcTimeSchema }),
-    z.object({ event_id: z.string(), event_type: z.literal(EventType.SET_BITMAP), event_data: setBitmapSchema }),
-    z.object({ event_id: z.string(), event_type: z.literal(EventType.REQUEST_CONNECTION_INFO), event_data: requestConnectionInfoSchema }),
-    z.object({ event_id: z.string(), event_type: z.literal(EventType.START_DATA_PUBLISH), event_data: startDataPublishSchema }),
+    eventRequestVariant(EventType.LOAD_UP, loadUpSchema, 'LoadUpEventRequest'),
+    eventRequestVariant(EventType.GRID_EMERGENCY, gridEmergencySchema, 'GridEmergencyEventRequest'),
+    eventRequestVariant(EventType.CRITICAL_PEAK, criticalPeakSchema, 'CriticalPeakEventRequest'),
+    eventRequestVariant(EventType.START_SHED, startShedSchema, 'StartShedEventRequest'),
+    eventRequestVariant(EventType.END_SHED, endShedSchema, 'EndShedEventRequest'),
+    eventRequestVariant(EventType.INFO_REQUEST, infoRequestSchema, 'InfoRequestEventRequest'),
+    eventRequestVariant(EventType.ADVANCED_LOAD_UP, advancedLoadUpSchema, 'AdvancedLoadUpEventRequest'),
+    eventRequestVariant(EventType.CUSTOMER_OVERRIDE, customerOverrideSchema, 'CustomerOverrideEventRequest'),
+    eventRequestVariant(EventType.SET_UTC_TIME, setUtcTimeSchema, 'SetUtcTimeEventRequest'),
+    eventRequestVariant(EventType.GET_UTC_TIME, getUtcTimeSchema, 'GetUtcTimeEventRequest'),
+    eventRequestVariant(EventType.SET_BITMAP, setBitmapSchema, 'SetBitmapEventRequest'),
+    eventRequestVariant(EventType.REQUEST_CONNECTION_INFO, requestConnectionInfoSchema, 'RequestConnectionInfoEventRequest'),
+    eventRequestVariant(EventType.START_DATA_PUBLISH, startDataPublishSchema, 'StartDataPublishEventRequest'),
 ]);
 
+const eventDataResponseSchema = z.union([
+    loadUpResponseSchema.openapi({ title: 'LoadUpEventData' }),
+    gridEmergencyResponseSchema.openapi({ title: 'GridEmergencyEventData' }),
+    criticalPeakResponseSchema.openapi({ title: 'CriticalPeakEventData' }),
+    startShedResponseSchema.openapi({ title: 'StartShedEventData' }),
+    endShedResponseSchema.openapi({ title: 'EndShedEventData' }),
+    infoRequestResponseSchema.openapi({ title: 'InfoRequestEventData' }),
+    advancedLoadUpResponseSchema.openapi({ title: 'AdvancedLoadUpEventData' }),
+    customerOverrideResponseSchema.openapi({ title: 'CustomerOverrideEventData' }),
+    setUtcTimeResponseSchema.openapi({ title: 'SetUtcTimeEventData' }),
+    getUtcTimeResponseSchema.openapi({ title: 'GetUtcTimeEventData' }),
+    setBitmapResponseSchema.openapi({ title: 'SetBitmapEventData' }),
+    requestConnectionInfoResponseSchema.openapi({ title: 'RequestConnectionInfoEventData' }),
+    startDataPublishResponseSchema.openapi({ title: 'StartDataPublishEventData' }),
+]).openapi({ title: 'EventData', unionOneOf: true } as never);
+
 const eventSchema = z.object({
-    event_id: z.string(),
+    event_id: z
+        .string()
+        .openapi({
+            description: 'Canonical server-generated event identifier. Returned by the API; do not send in event requests.',
+            example: 'a1b2c3d4-e5f6-7890-1234-567890abcdef',
+            readOnly: true,
+        }),
     event_type: z.nativeEnum(EventType),
-    event_data: z.object({}).passthrough(),
+    event_data: eventDataResponseSchema,
     event_ack: z.boolean().optional().nullable(),
 });
 

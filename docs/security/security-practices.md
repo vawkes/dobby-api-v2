@@ -166,7 +166,6 @@ const deviceSchema = z.object({
 // From lambda/events/eventsSchema.ts
 const eventRequestSchema = z.discriminatedUnion("event_type", [
     z.object({
-        event_id: z.string(),
         event_type: z.literal(EventType.LOAD_UP),
         event_data: loadUpSchema,
     }),
@@ -298,7 +297,6 @@ const deviceIdSchema = z.union([
 // Event data validation with discriminated unions
 const eventRequestSchema = z.discriminatedUnion("event_type", [
     z.object({
-        event_id: z.string(),
         event_type: z.literal(EventType.LOAD_UP),
         event_data: loadUpSchema,
     }),

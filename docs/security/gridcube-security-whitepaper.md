@@ -235,7 +235,6 @@ const deviceIdSchema = z.union([
 
 const eventRequestSchema = z.discriminatedUnion("event_type", [
     z.object({
-        event_id: z.string(),
         event_type: z.literal(EventType.LOAD_UP),
         event_data: loadUpSchema,
     }),
