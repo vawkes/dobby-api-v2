@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import type { QueryCommandInput, QueryCommandOutput } from "@aws-sdk/client-dynamodb";
 import { createDynamoDBClient } from '../../shared/database/dynamodb';
 import { unmarshall } from "@aws-sdk/util-dynamodb";
 import { devicesSchema, deviceSchema, deviceDataSchema, deviceIdSchema } from './devicesSchema.ts';
@@ -14,6 +15,22 @@ interface ValidationIssue {
     message: string;
     received?: unknown;
     expected?: unknown;
+}
+
+const DEVICE_DATA_FIELDS = ['cumulative_energy', 'instant_power', 'msg_number', 'operational_state'] as const;
+type DeviceDataField = typeof DEVICE_DATA_FIELDS[number];
+
+interface ParsedIntegerQueryParam {
+    value?: number;
+    error?: string;
+}
+
+interface DeviceDataQueryOptions {
+    startTime: number;
+    endTime?: number;
+    limit?: number;
+    order: 'asc' | 'desc';
+    fields?: DeviceDataField[];
 }
 
 const app = new Hono()
@@ -43,6 +60,154 @@ const transformDeviceData = (device: any) => {
     }
     
     return device;
+};
+
+const getQueryAlias = (query: (name: string) => string | undefined, names: string[]): string | undefined => {
+    for (const name of names) {
+        const value = query(name);
+        if (value !== undefined) {
+            return value;
+        }
+    }
+
+    return undefined;
+};
+
+const parseIntegerQueryParam = (
+    rawValue: string | undefined,
+    name: string,
+    minimum: number,
+    maximum: number
+): ParsedIntegerQueryParam => {
+    if (rawValue === undefined) {
+        return {};
+    }
+
+    if (!/^\d+$/.test(rawValue)) {
+        return { error: `${name} must be an integer` };
+    }
+
+    const value = Number(rawValue);
+    if (!Number.isSafeInteger(value) || value < minimum || value > maximum) {
+        return { error: `${name} must be between ${minimum} and ${maximum}` };
+    }
+
+    return { value };
+};
+
+const parseDeviceDataFields = (rawFields: string | undefined): { fields?: DeviceDataField[]; error?: string } => {
+    if (rawFields === undefined || rawFields.trim() === '') {
+        return {};
+    }
+
+    const requestedFields = rawFields
+        .split(',')
+        .map(field => field.trim())
+        .filter(field => field.length > 0);
+
+    const invalidFields = requestedFields.filter(
+        field => !DEVICE_DATA_FIELDS.includes(field as DeviceDataField)
+    );
+
+    if (invalidFields.length > 0) {
+        return {
+            error: `Invalid fields: ${invalidFields.join(', ')}. Allowed fields: ${DEVICE_DATA_FIELDS.join(', ')}`
+        };
+    }
+
+    return {
+        fields: Array.from(new Set(requestedFields)) as DeviceDataField[]
+    };
+};
+
+const parseDeviceDataQueryOptions = (query: (name: string) => string | undefined): { options?: DeviceDataQueryOptions; error?: string } => {
+    const rawStartTime = getQueryAlias(query, ['start_time', 'startTime']);
+    const rawEndTime = getQueryAlias(query, ['end_time', 'endTime']);
+    const rawLimit = query('limit');
+    const rawDays = query('days');
+    const rawOrder = getQueryAlias(query, ['order', 'sort']) || 'asc';
+
+    if (rawOrder !== 'asc' && rawOrder !== 'desc') {
+        return { error: 'order must be asc or desc' };
+    }
+
+    const startTimeResult = parseIntegerQueryParam(rawStartTime, 'start_time', 0, Number.MAX_SAFE_INTEGER);
+    if (startTimeResult.error) {
+        return { error: startTimeResult.error };
+    }
+
+    const endTimeResult = parseIntegerQueryParam(rawEndTime, 'end_time', 0, Number.MAX_SAFE_INTEGER);
+    if (endTimeResult.error) {
+        return { error: endTimeResult.error };
+    }
+
+    const limitResult = parseIntegerQueryParam(rawLimit, 'limit', 1, 10000);
+    if (limitResult.error) {
+        return { error: limitResult.error };
+    }
+
+    const fieldsResult = parseDeviceDataFields(query('fields'));
+    if (fieldsResult.error) {
+        return { error: fieldsResult.error };
+    }
+
+    let startTime = startTimeResult.value;
+    const endTime = endTimeResult.value;
+
+    if (startTime === undefined) {
+        if (endTime !== undefined) {
+            startTime = 0;
+        } else {
+            const daysResult = parseIntegerQueryParam(rawDays || '1', 'days', 1, 365);
+            if (daysResult.error) {
+                return { error: daysResult.error };
+            }
+
+            const currentTime = new Date();
+            const startDate = new Date(currentTime);
+            startDate.setDate(startDate.getDate() - (daysResult.value || 1));
+            startTime = Math.floor(startDate.getTime() / 1000);
+        }
+    }
+
+    if (endTime !== undefined && startTime > endTime) {
+        return { error: 'start_time must be less than or equal to end_time' };
+    }
+
+    return {
+        options: {
+            startTime,
+            endTime,
+            limit: limitResult.value,
+            order: rawOrder,
+            fields: fieldsResult.fields
+        }
+    };
+};
+
+const toFiniteNumber = (value: unknown): number | undefined => {
+    if (value === undefined || value === null || value === '') {
+        return undefined;
+    }
+
+    const numberValue = Number(value);
+    return Number.isFinite(numberValue) ? numberValue : undefined;
+};
+
+const appendDeviceDataField = (
+    target: Record<string, string | number>,
+    source: Record<string, unknown>,
+    field: DeviceDataField,
+    selectedFields?: DeviceDataField[]
+) => {
+    if (selectedFields && !selectedFields.includes(field)) {
+        return;
+    }
+
+    const value = toFiniteNumber(source[field]);
+    if (value !== undefined) {
+        target[field] = value;
+    }
 };
 
 
@@ -352,8 +517,48 @@ app.get('/:deviceId/data',
                 in: 'query',
                 required: false,
                 schema: { type: 'integer', minimum: 1, maximum: 365, default: 1 },
-                description: 'Number of days of historical data to retrieve (default: 1 day).',
+                description: 'Number of days of historical data to retrieve when start_time is not provided (default: 1 day).',
                 example: 7
+            },
+            {
+                name: 'start_time',
+                in: 'query',
+                required: false,
+                schema: { type: 'integer', minimum: 0 },
+                description: 'Inclusive Unix timestamp lower bound. Overrides days when provided.',
+                example: 1700000000
+            },
+            {
+                name: 'end_time',
+                in: 'query',
+                required: false,
+                schema: { type: 'integer', minimum: 0 },
+                description: 'Inclusive Unix timestamp upper bound.',
+                example: 1700003600
+            },
+            {
+                name: 'limit',
+                in: 'query',
+                required: false,
+                schema: { type: 'integer', minimum: 1, maximum: 10000 },
+                description: 'Maximum number of data points to return.',
+                example: 500
+            },
+            {
+                name: 'order',
+                in: 'query',
+                required: false,
+                schema: { type: 'string', enum: ['asc', 'desc'], default: 'asc' },
+                description: 'Sort order by timestamp.',
+                example: 'desc'
+            },
+            {
+                name: 'fields',
+                in: 'query',
+                required: false,
+                schema: { type: 'string' },
+                description: 'Comma-separated telemetry fields to include. Allowed fields: cumulative_energy, instant_power, msg_number, operational_state.',
+                example: 'instant_power,operational_state'
             }
         ],
         responses: {
@@ -409,28 +614,38 @@ app.get('/:deviceId/data',
             // Resolve the device ID for communication (get wireless device ID if needed)
             const lookupId = await resolveDeviceIdForCommunication(dynamodb, deviceId);
 
-            // Get the timeframe from query parameters (default to last 24 hours)
-            const days = parseInt(c.req.query('days') || '1');
-            const currentTime = new Date();
-            const startTime = new Date(currentTime);
-            startTime.setDate(startTime.getDate() - days);
+            const parsedQuery = parseDeviceDataQueryOptions((name: string) => c.req.query(name));
+            if (parsedQuery.error || !parsedQuery.options) {
+                return c.json({ error: parsedQuery.error || 'Invalid query parameters' }, 400);
+            }
 
-            // Convert to seconds since epoch for comparison with timestamp
-            const startTimeSeconds = Math.floor(startTime.getTime() / 1000);
-
-            // Query the DobbyData table
-            const results = await dynamodb.query({
+            const queryParams: QueryCommandInput = {
                 TableName: "DobbyData",
-                KeyConditionExpression: "device_id = :deviceId AND #ts >= :startTime",
+                KeyConditionExpression: parsedQuery.options.endTime === undefined
+                    ? "device_id = :deviceId AND #ts >= :startTime"
+                    : "device_id = :deviceId AND #ts BETWEEN :startTime AND :endTime",
                 ExpressionAttributeValues: {
                     ":deviceId": { S: lookupId },
-                    ":startTime": { N: startTimeSeconds.toString() }
+                    ":startTime": { N: parsedQuery.options.startTime.toString() }
                 },
                 ExpressionAttributeNames: {
                     "#ts": "timestamp"  // Use expression attribute name for reserved keyword
                 },
-                ScanIndexForward: true // Return items in ascending order by sort key
-            });
+                ScanIndexForward: parsedQuery.options.order === 'asc'
+            };
+
+            if (parsedQuery.options.endTime !== undefined) {
+                queryParams.ExpressionAttributeValues![":endTime"] = {
+                    N: parsedQuery.options.endTime.toString()
+                };
+            }
+
+            if (parsedQuery.options.limit !== undefined) {
+                queryParams.Limit = parsedQuery.options.limit;
+            }
+
+            // Query the DobbyData table
+            const results = await dynamodb.query(queryParams) as QueryCommandOutput;
 
             if (!results.Items || results.Items.length === 0) {
                 return c.json({ error: 'No data found for this device' }, 404);
@@ -438,22 +653,19 @@ app.get('/:deviceId/data',
 
             const deviceData = results.Items.map((item: any) => {
                 const data = unmarshall(item);
-
-                // Helper function to safely convert to number, defaulting to 0 for NaN
-                const safeNumber = (value: unknown): number => {
-                    const num = Number(value);
-                    return isNaN(num) ? 0 : num;
+                const timestamp = toFiniteNumber(data.timestamp) || 0;
+                const point: Record<string, string | number> = {
+                    device_id: deviceId, // Always return the original device ID
+                    timestamp
                 };
 
                 // Ensure numeric fields are converted to numbers, handling NaN values
-                return {
-                    device_id: deviceId, // Always return the original device ID
-                    timestamp: safeNumber(data.timestamp),
-                    cumulative_energy: safeNumber(data.cumulative_energy),
-                    instant_power: safeNumber(data.instant_power),
-                    msg_number: safeNumber(data.msg_number),
-                    operational_state: safeNumber(data.operational_state)
-                };
+                appendDeviceDataField(point, data, 'cumulative_energy', parsedQuery.options?.fields);
+                appendDeviceDataField(point, data, 'instant_power', parsedQuery.options?.fields);
+                appendDeviceDataField(point, data, 'msg_number', parsedQuery.options?.fields);
+                appendDeviceDataField(point, data, 'operational_state', parsedQuery.options?.fields);
+
+                return point;
             });
 
             return c.json(deviceDataSchema.parse(deviceData));
