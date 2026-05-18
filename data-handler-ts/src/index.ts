@@ -9,8 +9,9 @@ import { handleOperationalState } from './packet-handlers/operational-state';
 import { handleConnectionInfo } from './packet-handlers/connection-info';
 import { handleGridcubeFwVersion } from './packet-handlers/gridcube-fw-version';
 import { handleEventAcknowledgment } from './packet-handlers/event-acknowledgment';
+import { writeSidewalkMetadataToDynamo, SidewalkMetadataEvent } from './utils/sidewalk-metadata';
 
-interface DobbyDataHandlerEvent {
+interface DobbyDataHandlerEvent extends SidewalkMetadataEvent {
   WirelessDeviceId: string;
   PayloadData: string;
 }
@@ -21,6 +22,8 @@ export const handler = async (event: DobbyDataHandlerEvent): Promise<APIGatewayP
 
     const deviceId = event.WirelessDeviceId;
     const payload = event.PayloadData;
+
+    await writeSidewalkMetadataToDynamo(deviceId, event);
 
     // First decode base64 to get hex string
     const base64Decoded = Buffer.from(payload, 'base64').toString();

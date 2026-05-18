@@ -21,6 +21,7 @@ const deviceSchema = z.object({
     serial_number: z.string().optional(),
     vendor_id: z.coerce.string().optional(), // Coerce numbers to strings for resilience
     last_rx_rssi: z.number().optional(), // Signal strength in dBm
+    last_sidewalk_rssi: z.number().optional(), // Sidewalk gateway signal strength in dBm
     last_link_type: z.number().optional(), // 1 for BLE, 4 for LoRA
 });
 

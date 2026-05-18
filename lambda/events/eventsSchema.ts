@@ -221,6 +221,7 @@ const setBitmapResponseSchema = setBitmapSchema.extend({
 const requestConnectionInfoResponseSchema = requestConnectionInfoSchema.extend({
     event_sent: eventSentResponseSchema,
     last_rx_rssi: z.number().optional().openapi({ description: 'Server-owned last received signal strength indicator.', readOnly: true }),
+    last_sidewalk_rssi: z.number().optional().openapi({ description: 'Server-owned Sidewalk gateway RSSI from AWS uplink metadata.', readOnly: true }),
     last_rx_snr: z.number().optional().openapi({ description: 'Server-owned last received signal-to-noise ratio.', readOnly: true }),
     last_rx_link_type: z.number().optional().openapi({ description: 'Server-owned last received link type.', readOnly: true }),
 }).passthrough();

@@ -83,6 +83,12 @@ Uplink:
 5. Parsed values are stored in DynamoDB via `data-handler-ts/src/utils/dynamo.ts`
    and some telemetry packets are ACKed back to the device.
 
+AWS IoT Wireless Sidewalk uplinks can also include
+`WirelessMetadata.Sidewalk.Rssi`. That value is the Sidewalk network/gateway RSSI
+for the uplink path, not the GridCube device-reported RSSI from response type
+`7`. The data handler stores it in `DobbyInfo.sidewalk_rssi`; the API exposes it
+as `last_sidewalk_rssi`.
+
 ## Time Fields
 
 The protocol uses two time concepts. Keep them distinct.
