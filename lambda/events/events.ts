@@ -383,9 +383,9 @@ app.post("/",
         description: `Creates a new event (command) or a batch of events for one or more devices. The \`event_data\` structure varies by \`event_type\`.
 
 Notes:
-- For CTA-2045 Advanced Load Up, use \`event_type: ADVANCED_LOAD_UP\` and provide CTA fields in \`event_data\` (including \`value\`, \`units\`, and \`event_data.event_id\`).
+- For CTA-2045 Advanced Load Up, use \`event_type: ADVANCED_LOAD_UP\` and provide CTA fields in \`event_data\` (including \`value\` and \`units\`).
 - \`LOAD_UP.duration\` is interpreted as seconds, but \`ADVANCED_LOAD_UP.duration\` is interpreted as minutes.
-- Advanced Load Up has two IDs: the top-level \`event_id\` (API request ID) and \`event_data.event_id\` (CTA Event ID sent to the device). Recommended: reuse the same UUID for both.`,
+- Event IDs and delivery status are server-owned response fields. Do not send \`event_id\` or \`event_sent\` in event requests.`,
         requestBody: {
             required: true,
             content: {
@@ -395,7 +395,6 @@ Notes:
                         loadUpSingleDevice: {
                             summary: 'Load Up Event for a Single Device',
                             value: {
-                                event_id: "a1b2c3d4-e5f6-7890-1234-567890abcdef",
                                 event_type: "LOAD_UP",
                                 event_data: {
                                     device_id: "000012",
@@ -407,7 +406,6 @@ Notes:
                         loadUpMultipleDevices: {
                             summary: 'Load Up Event for Multiple Devices',
                             value: {
-                                event_id: "b2c3d4e5-f6a7-8901-2345-67890abcdef0",
                                 event_type: "LOAD_UP",
                                 event_data: {
                                     device_id: ["000012", "000013"],
@@ -419,7 +417,6 @@ Notes:
                         infoRequest: {
                             summary: 'Info Request Event',
                             value: {
-                                event_id: "c3d4e5f6-a7b8-9012-3456-7890abcdef01",
                                 event_type: "INFO_REQUEST",
                                 event_data: {
                                     device_id: "000012",
@@ -430,7 +427,6 @@ Notes:
                         advancedLoadUpKwh: {
                             summary: 'CTA-2045 Advanced Load Up (example: minimum +3 kWh above normal)',
                             value: {
-                                event_id: "8d0b2c2e-2b8d-4d11-9f54-6d8c5d7b2a1f",
                                 event_type: "ADVANCED_LOAD_UP",
                                 event_data: {
                                     device_id: "000012",
@@ -439,7 +435,6 @@ Notes:
                                     value: 3,
                                     units: 3,
                                     suggested_load_up_efficiency: 0,
-                                    event_id: "8d0b2c2e-2b8d-4d11-9f54-6d8c5d7b2a1f",
                                     start_randomization: 0,
                                     end_randomization: 0
                                 }
@@ -448,7 +443,6 @@ Notes:
                         advancedLoadUpNoEffect: {
                             summary: 'CTA-2045 Advanced Load Up (no-effect / capability check)',
                             value: {
-                                event_id: "9d0b2c2e-2b8d-4d11-9f54-6d8c5d7b2a1f",
                                 event_type: "ADVANCED_LOAD_UP",
                                 event_data: {
                                     device_id: "000012",
@@ -457,7 +451,6 @@ Notes:
                                     value: 0,
                                     units: 255,
                                     suggested_load_up_efficiency: 0,
-                                    event_id: "9d0b2c2e-2b8d-4d11-9f54-6d8c5d7b2a1f",
                                     start_randomization: 0,
                                     end_randomization: 0
                                 }
@@ -474,23 +467,20 @@ Notes:
                     'application/json': {
                         schema: resolver(bulkResponseSchema),
                         example: {
-                            statusCode: 200,
-                            body: {
-                                successful_events: [
-                                    {
-                                        event_id: "a1b2c3d4-e5f6-7890-1234-567890abcdef",
+                            successful_events: [
+                                {
+                                    event_id: "a1b2c3d4-e5f6-7890-1234-567890abcdef",
+                                    event_type: "LOAD_UP",
+                                    event_data: {
                                         device_id: "000012",
-                                        event_type: "LOAD_UP",
-                                        timestamp: "2023-10-27T10:00:00Z",
-                                        event_data: {
-                                            start_time: "2023-10-27T10:00:00Z",
-                                            duration: 3600
-                                        },
-                                        event_ack: false
-                                    }
-                                ],
-                                failed_events: []
-                            }
+                                        start_time: 752148000,
+                                        duration: 3600,
+                                        event_sent: true
+                                    },
+                                    event_ack: false
+                                }
+                            ],
+                            failed_events: []
                         }
                     },
                 },
