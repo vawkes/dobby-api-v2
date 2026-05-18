@@ -11,7 +11,12 @@ Both run Bun-based test checks.
 
 - `.github/workflows/deploy.yml`
 
-Manual trigger (`workflow_dispatch`) with:
+Automatic trigger:
+
+- Pushes to `main` deploy `production`.
+
+Manual trigger (`workflow_dispatch`) still supports:
+
 - `environment`: `develop` or `production`
 - `diff_only`: `true` or `false`
 
@@ -33,4 +38,5 @@ bun run deploy --env <develop|production> --ci --diff-only
 - `AWS_ROLE_TO_ASSUME_PRODUCTION`
 
 Optional repo variable:
+
 - `AWS_REGION` (defaults to `us-east-1`)
