@@ -1,6 +1,8 @@
 name: Deploy
 
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
     inputs:
       environment:
@@ -24,7 +26,7 @@ permissions:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    environment: ${{ inputs.environment }}
+    environment: ${{ github.event_name == 'push' && 'production' || inputs.environment }}
 
     steps:
       - name: Checkout code
@@ -33,29 +35,29 @@ jobs:
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
-          bun-version: "1.2.2"
+          bun-version: '1.2.2'
 
       - name: Install dependencies
         run: bun install
 
       - name: Configure AWS credentials (develop)
-        if: ${{ inputs.environment == 'develop' }}
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.environment == 'develop' }}
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME_DEVELOP }}
           aws-region: ${{ vars.AWS_REGION || 'us-east-1' }}
 
       - name: Configure AWS credentials (production)
-        if: ${{ inputs.environment == 'production' }}
+        if: ${{ github.event_name == 'push' || inputs.environment == 'production' }}
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME_PRODUCTION }}
           aws-region: ${{ vars.AWS_REGION || 'us-east-1' }}
 
       - name: Deploy
-        if: ${{ !inputs.diff_only }}
-        run: bun run cdk deploy --all --context environment=${{ inputs.environment }} --require-approval never
+        if: ${{ github.event_name == 'push' || !inputs.diff_only }}
+        run: bun run deploy --env ${{ github.event_name == 'push' && 'production' || inputs.environment }} --ci
 
       - name: Diff only
-        if: ${{ inputs.diff_only }}
-        run: bun run cdk diff --all --context environment=${{ inputs.environment }}
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.diff_only }}
+        run: bun run deploy --env ${{ inputs.environment }} --ci --diff-only

@@ -11,26 +11,47 @@ function makeTempBuild(): string {
 }
 
 describe('frontend deploy safety', () => {
+  test('deploy workflow deploys production from main with the unified deploy command', () => {
+    const packageJson = JSON.parse(fs.readFileSync(path.join(repoRoot, 'package.json'), 'utf8'));
+    const deployWorkflow = fs.readFileSync(
+      path.join(repoRoot, '.github', 'workflows', 'deploy.yml'),
+      'utf8',
+    );
+
+    expect(packageJson.scripts.deploy).toBe('bun scripts/deploy.ts');
+    expect(deployWorkflow).toContain('push:');
+    expect(deployWorkflow).toContain('branches: [main]');
+    expect(deployWorkflow).toContain(
+      "environment: ${{ github.event_name == 'push' && 'production' || inputs.environment }}",
+    );
+    expect(deployWorkflow).toContain(
+      "if: ${{ github.event_name == 'push' || inputs.environment == 'production' }}",
+    );
+    expect(deployWorkflow).toContain(
+      "bun run deploy --env ${{ github.event_name == 'push' && 'production' || inputs.environment }} --ci",
+    );
+  });
+
   test('deploy scripts build the matching frontend artifact before CDK deploy', () => {
     const packageJson = JSON.parse(fs.readFileSync(path.join(repoRoot, 'package.json'), 'utf8'));
 
     expect(packageJson.scripts['deploy:develop']).toContain('scripts/require-node20.ts');
     expect(packageJson.scripts['deploy:production']).toContain('scripts/require-node20.ts');
     expect(packageJson.scripts['deploy:develop']).toContain(
-      'bun run --cwd frontend-react build:develop'
+      'bun run --cwd frontend-react build:develop',
     );
     expect(packageJson.scripts['deploy:production']).toContain(
-      'bun run --cwd frontend-react build:production'
+      'bun run --cwd frontend-react build:production',
     );
     expect(packageJson.scripts['deploy:develop'].indexOf('scripts/require-node20.ts')).toBeLessThan(
-      packageJson.scripts['deploy:develop'].indexOf('bun run --cwd frontend-react build:develop')
+      packageJson.scripts['deploy:develop'].indexOf('bun run --cwd frontend-react build:develop'),
     );
     expect(
-      packageJson.scripts['deploy:production'].indexOf('scripts/require-node20.ts')
+      packageJson.scripts['deploy:production'].indexOf('scripts/require-node20.ts'),
     ).toBeLessThan(
       packageJson.scripts['deploy:production'].indexOf(
-        'bun run --cwd frontend-react build:production'
-      )
+        'bun run --cwd frontend-react build:production',
+      ),
     );
   });
 

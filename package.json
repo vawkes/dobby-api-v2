@@ -38,6 +38,7 @@
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md}\"",
     "cdk": "cdk",
+    "deploy": "bun scripts/deploy.ts",
     "deploy:develop": "bun scripts/require-node20.ts && bun run --cwd frontend-react build:develop && cdk deploy --all --context environment=develop --profile dobby_develop",
     "deploy:production": "bun scripts/require-node20.ts && bun run --cwd frontend-react build:production && cdk deploy --all --context environment=production --profile dobby_production",
     "destroy": "cdk destroy --all",
