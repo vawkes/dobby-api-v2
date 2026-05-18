@@ -38,3 +38,5 @@ export const getDeviceStatus = (device: Device): DeviceStatus => {
 };
 
 export const getDeviceStatusLabel = (status: DeviceStatus): string => deviceStatusLabels[status];
+
+export const isDeviceCommandEligible = (device: Device): boolean => getDeviceStatus(device) !== 'pending_install';

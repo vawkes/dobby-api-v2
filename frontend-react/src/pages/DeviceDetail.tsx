@@ -17,7 +17,7 @@ import {
 import DeviceEvents from '../components/DeviceEvents.tsx';
 import ScheduleEvent from '../components/ScheduleEvent.tsx';
 import DeviceTypeDisplay from '../components/ui/DeviceTypeDisplay.tsx';
-import { DeviceStatus, getDeviceStatus, getDeviceStatusLabel, hoursSince } from '../utils/deviceStatus.ts';
+import { DeviceStatus, getDeviceStatus, getDeviceStatusLabel, hoursSince, isDeviceCommandEligible } from '../utils/deviceStatus.ts';
 import {
   formatOperationalState,
   formatOptionalDate,
@@ -385,8 +385,13 @@ const DeviceDetail: React.FC = () => {
               </div>
 
               <div className='xl:col-span-7 space-y-6'>
-                {deviceId && (
+                {deviceId && isDeviceCommandEligible(device) && (
                   <ScheduleEvent deviceId={deviceId || ''} onEventScheduled={handleEventScheduled} />
+                )}
+                {!isDeviceCommandEligible(device) && (
+                  <div className='bg-card shadow overflow-hidden sm:rounded-lg p-4 text-sm text-muted-foreground'>
+                    Commands become available after the device reports telemetry.
+                  </div>
                 )}
                 {deviceId && <DeviceEvents key={eventsKey} deviceId={deviceId || ''} />}
               </div>
