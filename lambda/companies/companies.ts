@@ -817,8 +817,13 @@ app.post('/:companyId/devices',
             const companyDevice = {
                 company_id: companyId,
                 device_id: body.device_id,
+                status: body.status,
                 assigned_at: new Date().toISOString()
             };
+
+            if (body.location) {
+                Object.assign(companyDevice, { location: body.location });
+            }
 
             await dynamodb.putItem({
                 TableName: 'CompanyDevices',

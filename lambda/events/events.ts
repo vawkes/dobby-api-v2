@@ -4,10 +4,11 @@ import { unmarshall } from "@aws-sdk/util-dynamodb";
 import { eventsSchema, eventSchema, eventRequestSchema, bulkResponseSchema, EventType, EventSchemaType } from './eventsSchema.ts';
 import { describeRoute } from 'hono-openapi';
 import { resolver, validator as zValidator } from "hono-openapi/zod";
-import { getUserFromContext, getUserAccessibleDevices } from '../utils/deviceAccess.ts';
+import { getUserFromContext, getUserAccessibleDevices, getUserDeviceAssignment } from '../utils/deviceAccess.ts';
 import { requirePermission, requireDevicePermission, Action } from '../utils/permissions.ts';
 import { resolveDeviceIdForCommunication } from '../utils/deviceIdMapping.ts';
 import { dispatchEventToDevice, EventRequestData } from './eventDispatcher.ts';
+import { resolveEffectiveAssignmentStatus } from '../utils/deviceLifecycle.ts';
 
 const app = new Hono();
 const describeRouteCompat = (options: unknown) => describeRoute(options as never);
@@ -16,16 +17,49 @@ interface EventProcessingOutcome {
     device_id: string;
     result: EventSchemaType | null;
     error: string | null;
+    errorStatusCode?: number;
 }
 
 async function processEventForDevice(
     dynamodb: ReturnType<typeof createDynamoDBClient>,
+    userId: string,
     deviceId: string,
     eventType: EventType,
     eventData: EventRequestData
 ): Promise<EventProcessingOutcome> {
     try {
+        const assignment = await getUserDeviceAssignment(dynamodb, userId, deviceId);
+        if (!assignment) {
+            return {
+                device_id: deviceId,
+                result: null,
+                error: 'Device is not accessible to this user',
+                errorStatusCode: 403,
+            };
+        }
+
         const resolvedDeviceId = await resolveDeviceIdForCommunication(dynamodb, deviceId);
+
+        if (assignment.status === 'PENDING_INSTALL') {
+            const deviceResult = await dynamodb.getItem({
+                TableName: "DobbyInfo",
+                Key: {
+                    'device_id': { S: resolvedDeviceId }
+                }
+            });
+            const device = deviceResult.Item ? unmarshall(deviceResult.Item) : undefined;
+            const effectiveStatus = resolveEffectiveAssignmentStatus(assignment.status, device?.updated_at);
+
+            if (effectiveStatus === 'PENDING_INSTALL') {
+                return {
+                    device_id: deviceId,
+                    result: null,
+                    error: 'Device is pending install and cannot receive commands until telemetry is available',
+                    errorStatusCode: 400,
+                };
+            }
+        }
+
         const result = await dispatchEventToDevice(eventType, eventData, resolvedDeviceId);
 
         if (!result) {
@@ -46,6 +80,7 @@ async function processEventForDevice(
             device_id: deviceId,
             result: null,
             error: error instanceof Error ? error.message : 'Unknown error',
+            errorStatusCode: 500,
         };
     }
 }
@@ -509,6 +544,10 @@ Notes:
             const parsedBody = c.req.valid('json');
             const eventType = parsedBody.event_type;
             const eventData = parsedBody.event_data as EventRequestData;
+            const user = getUserFromContext(c);
+            if (!user || !user.sub) {
+                return c.json({ error: 'User not authenticated' }, 401);
+            }
 
             const deviceIds = Array.isArray(eventData.device_id)
                 ? eventData.device_id
@@ -516,24 +555,25 @@ Notes:
             const dynamodb = createDynamoDBClient();
 
             const outcomes = await Promise.all(
-                deviceIds.map(deviceId => processEventForDevice(dynamodb, deviceId, eventType, eventData))
+                deviceIds.map(deviceId => processEventForDevice(dynamodb, user.sub, deviceId, eventType, eventData))
             );
 
             const successfulEvents = outcomes
                 .filter((outcome): outcome is EventProcessingOutcome & { result: EventSchemaType } => outcome.result !== null)
                 .map(outcome => outcome.result);
-            const failedEvents = outcomes
-                .filter((outcome): outcome is EventProcessingOutcome & { error: string } => outcome.error !== null)
-                .map(outcome => ({
-                    device_id: outcome.device_id,
-                    error: outcome.error
-                }));
+            const failedOutcomes = outcomes
+                .filter((outcome): outcome is EventProcessingOutcome & { error: string } => outcome.error !== null);
+            const failedEvents = failedOutcomes.map(outcome => ({
+                device_id: outcome.device_id,
+                error: outcome.error
+            }));
 
-            if (deviceIds.length === 1 && failedEvents.length > 0) {
+            if (deviceIds.length === 1 && failedOutcomes.length > 0) {
+                const statusCode = failedOutcomes[0].errorStatusCode || 500;
                 return c.json({
-                    statusCode: 500,
-                    body: { reason: failedEvents[0].error }
-                }, 500);
+                    statusCode,
+                    body: { reason: failedOutcomes[0].error }
+                }, statusCode as 400 | 403 | 500);
             }
 
             return c.json({

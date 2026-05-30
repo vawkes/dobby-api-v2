@@ -1,12 +1,13 @@
 import { Device } from '../types/index.ts';
 
-export type DeviceStatus = 'online' | 'degraded' | 'offline' | 'no_data';
+export type DeviceStatus = 'online' | 'degraded' | 'offline' | 'no_data' | 'pending_install';
 
 const deviceStatusLabels: Record<DeviceStatus, string> = {
   online: 'Online',
   degraded: 'Degraded',
   offline: 'Offline',
   no_data: 'No Data',
+  pending_install: 'Pending Install',
 };
 
 export const hoursSince = (dateString?: string): number | null => {
@@ -21,6 +22,12 @@ export const hoursSince = (dateString?: string): number | null => {
 };
 
 export const getDeviceStatus = (device: Device): DeviceStatus => {
+  const pendingInstall =
+    device.effective_assignment_status === 'PENDING_INSTALL' ||
+    (device.assignment_status === 'PENDING_INSTALL' && !device.updated_at);
+
+  if (pendingInstall) return 'pending_install';
+
   const ageHours = hoursSince(device.updated_at);
 
   if (ageHours === null) return 'no_data';
@@ -31,3 +38,5 @@ export const getDeviceStatus = (device: Device): DeviceStatus => {
 };
 
 export const getDeviceStatusLabel = (status: DeviceStatus): string => deviceStatusLabels[status];
+
+export const isDeviceCommandEligible = (device: Device): boolean => getDeviceStatus(device) !== 'pending_install';

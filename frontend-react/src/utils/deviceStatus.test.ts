@@ -1,5 +1,5 @@
 import { Device } from '../types/index.ts';
-import { getDeviceStatus, getDeviceStatusLabel } from './deviceStatus.ts';
+import { getDeviceStatus, getDeviceStatusLabel, isDeviceCommandEligible } from './deviceStatus.ts';
 
 const baseDevice = (overrides: Partial<Device> = {}): Device => ({
   cta_version: '1',
@@ -28,10 +28,44 @@ describe('getDeviceStatus', () => {
     expect(getDeviceStatus(baseDevice({ updated_at: hoursAgo(1), last_rx_rssi: -100 }))).toBe('degraded');
   });
 
+  it('keeps pending install devices out of telemetry health states until data flows', () => {
+    expect(getDeviceStatus(baseDevice({ effective_assignment_status: 'PENDING_INSTALL' } as any))).toBe('pending_install');
+  });
+
+  it('uses telemetry health once pending install devices become effectively active', () => {
+    expect(
+      getDeviceStatus(
+        baseDevice({
+          effective_assignment_status: 'ACTIVE',
+          updated_at: hoursAgo(1),
+        } as any),
+      ),
+    ).toBe('online');
+  });
+
   it('exposes shared user-facing status labels', () => {
     expect(getDeviceStatusLabel('online')).toBe('Online');
     expect(getDeviceStatusLabel('degraded')).toBe('Degraded');
     expect(getDeviceStatusLabel('offline')).toBe('Offline');
     expect(getDeviceStatusLabel('no_data')).toBe('No Data');
+    expect(getDeviceStatusLabel('pending_install')).toBe('Pending Install');
+  });
+});
+
+describe('isDeviceCommandEligible', () => {
+  it('prevents command dispatch to pending install devices without telemetry', () => {
+    expect(isDeviceCommandEligible(baseDevice({ effective_assignment_status: 'PENDING_INSTALL' }))).toBe(false);
+  });
+
+  it('allows commands once pending install devices are effectively active', () => {
+    expect(
+      isDeviceCommandEligible(
+        baseDevice({
+          assignment_status: 'PENDING_INSTALL',
+          effective_assignment_status: 'ACTIVE',
+          updated_at: hoursAgo(1),
+        }),
+      ),
+    ).toBe(true);
   });
 });

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { eventsAPI, deviceAPI } from '../services/api';
 import { EventType, Device } from '../types';
+import { isDeviceCommandEligible } from '../utils/deviceStatus.ts';
 
 interface BulkScheduleEventProps {
     onEventsScheduled: () => void;
@@ -29,6 +30,7 @@ const BulkScheduleEvent: React.FC<BulkScheduleEventProps> = ({ onEventsScheduled
     const eventRequiresDuration = () => {
         return eventType === EventType.LOAD_UP || eventType === EventType.START_SHED;
     };
+    const commandEligibleDevices = devices.filter(isDeviceCommandEligible);
 
     // Load devices
     useEffect(() => {
@@ -61,12 +63,12 @@ const BulkScheduleEvent: React.FC<BulkScheduleEventProps> = ({ onEventsScheduled
     };
 
     const handleSelectAll = () => {
-        if (selectedDeviceIds.length === devices.length) {
+        if (selectedDeviceIds.length === commandEligibleDevices.length && commandEligibleDevices.length > 0) {
             // If all are selected, deselect all
             setSelectedDeviceIds([]);
         } else {
             // Otherwise, select all
-            setSelectedDeviceIds(devices.map(device => device.device_id));
+            setSelectedDeviceIds(commandEligibleDevices.map(device => device.device_id));
         }
     };
 
@@ -278,18 +280,18 @@ const BulkScheduleEvent: React.FC<BulkScheduleEventProps> = ({ onEventsScheduled
                                             onClick={handleSelectAll}
                                             className="text-sm text-blue-600 hover:text-blue-800"
                                         >
-                                            {selectedDeviceIds.length === devices.length ? 'Deselect All' : 'Select All'}
+                                            {selectedDeviceIds.length === commandEligibleDevices.length && commandEligibleDevices.length > 0 ? 'Deselect All' : 'Select All'}
                                         </button>
                                         <span className="ml-2 text-sm text-muted-foreground">
-                                            {selectedDeviceIds.length} of {devices.length} selected
+                                            {selectedDeviceIds.length} of {commandEligibleDevices.length} selected
                                         </span>
                                     </div>
 
                                     <div className="max-h-60 overflow-y-auto border border-border rounded-md p-2">
-                                        {devices.length === 0 ? (
-                                            <p className="text-muted-foreground">No devices available</p>
+                                        {commandEligibleDevices.length === 0 ? (
+                                            <p className="text-muted-foreground">No command-eligible devices available</p>
                                         ) : (
-                                            devices.map((device) => (
+                                            commandEligibleDevices.map((device) => (
                                                 <div key={device.device_id} className="flex items-center py-1">
                                                     <input
                                                         type="checkbox"

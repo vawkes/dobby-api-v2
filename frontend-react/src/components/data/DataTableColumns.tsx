@@ -1,6 +1,6 @@
 import React from 'react';
 import { ColumnDef } from '@tanstack/react-table';
-import { FiAlertCircle, FiCheckCircle, FiWifi, FiRadio } from 'react-icons/fi';
+import { FiAlertCircle, FiCheckCircle, FiClock, FiWifi, FiRadio } from 'react-icons/fi';
 import { Device } from '../../types/index.ts';
 import { cn } from '../../lib/utils.ts';
 import DeviceTypeDisplay from '../ui/DeviceTypeDisplay.tsx';
@@ -12,6 +12,7 @@ const statusPriority: Record<DeviceStatus, number> = {
     no_data: 1,
     degraded: 2,
     online: 3,
+    pending_install: 4,
 };
 
 const statusBadgeClass: Record<DeviceStatus, string> = {
@@ -19,6 +20,7 @@ const statusBadgeClass: Record<DeviceStatus, string> = {
     degraded: 'bg-amber-100 text-amber-800 dark:bg-amber-900/20 dark:text-amber-200',
     offline: 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-200',
     no_data: 'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200',
+    pending_install: 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-200',
 };
 
 // Helper function to get link type name and icon
@@ -75,12 +77,20 @@ export const deviceColumns: ColumnDef<Device>[] = [
             const device = row.original;
             const status = getDeviceStatus(device);
             const isOnline = status === 'online';
+            const isPendingInstall = status === 'pending_install';
 
             return (
                 <div className="flex items-center">
                     {isOnline ? (
                         <>
                             <FiCheckCircle className="h-4 w-4 text-green-600 dark:text-green-400 mr-2" />
+                            <span className={cn('px-2 py-1 text-xs font-medium rounded-full', statusBadgeClass[status])}>
+                                {getDeviceStatusLabel(status)}
+                            </span>
+                        </>
+                    ) : isPendingInstall ? (
+                        <>
+                            <FiClock className="h-4 w-4 text-blue-600 dark:text-blue-400 mr-2" />
                             <span className={cn('px-2 py-1 text-xs font-medium rounded-full', statusBadgeClass[status])}>
                                 {getDeviceStatusLabel(status)}
                             </span>
@@ -263,4 +273,3 @@ export const deviceMobileColumns: ColumnDef<Device>[] = [
         cell: ({ getValue }) => formatDate(getValue<string>()),
     },
 ];
-
