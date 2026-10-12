@@ -65,6 +65,10 @@ From repo root:
 - Unit/integration set used in current scripts: `bun run test:unit`
 - Full Jest suite: `bun run test`
 - Coverage: `bun run test:coverage`
+- Local API server: `bun run dev:server` (port 3333; override with `PORT`)
+- API docs/OpenAPI smoke tests: `bun run test:playwright`. The Playwright
+  config starts the local API server automatically or reuses an existing one;
+  it also honors `PORT`.
 
 Frontend (run inside `frontend-react/`):
 
